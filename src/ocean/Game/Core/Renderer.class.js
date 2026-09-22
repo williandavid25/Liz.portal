@@ -1,0 +1,101 @@
+import * as THREE from 'three';
+import Game from '../Game.class';
+
+export default class Renderer {
+  constructor() {
+    this.game = Game.getInstance();
+    this.canvas = this.game.canvas;
+    this.sizes = this.game.sizes;
+    this.scene = this.game.scene;
+    this.camera = this.game.camera;
+    this.renderer = this.game.renderer;
+    this.debug = this.game.debug;
+    this.isDebugEnabled = this.game.isDebugEnabled;
+
+    this.setRendererInstance();
+    if (this.isDebugEnabled) {
+      this.initTweakPane();
+    }
+  }
+
+  setRendererInstance() {
+    this.toneMappingOptions = {
+      NoToneMapping: THREE.NoToneMapping,
+      LinearToneMapping: THREE.LinearToneMapping,
+      ReinhardToneMapping: THREE.ReinhardToneMapping,
+      CineonToneMapping: THREE.CineonToneMapping,
+      ACESFilmicToneMapping: THREE.ACESFilmicToneMapping,
+      AgXToneMapping: THREE.AgXToneMapping,
+      NeutralToneMapping: THREE.NeutralToneMapping,
+    };
+
+    this.rendererInstance = new THREE.WebGLRenderer({
+      canvas: this.canvas,
+      antialias: false,
+      alpha: false,
+      powerPreference: 'high-performance',
+      stencil: false,
+      depth: true,
+    });
+    
+    // Optimize renderer settings for better performance
+    this.rendererInstance.sortObjects = false; // Disable sorting for better performance
+    this.rendererInstance.shadowMap.autoUpdate = false; // Manual shadow updates if needed
+    this.rendererInstance.info.autoReset = false; // Disable automatic reset of render info
+    this.rendererInstance.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap pixel ratio
+    
+    // Enable frustum culling optimizations
+    this.rendererInstance.localClippingEnabled = false;
+    this.rendererInstance.physicallyCorrectLights = false;
+
+    this.rendererInstance.setClearColor(0x010126);
+    this.rendererInstance.toneMapping = THREE.NoToneMapping; // Disable - handle in post-processing
+    this.rendererInstance.toneMappingExposure = 1.0;
+    this.rendererInstance.shadowMap.enabled = true;
+    this.rendererInstance.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.rendererInstance.setSize(this.sizes.width, this.sizes.height);
+    this.rendererInstance.setPixelRatio(this.sizes.pixelRatio);
+    this.rendererInstance.outputColorSpace = THREE.SRGBColorSpace;
+
+    if (this.isDebugEnabled) {
+      this.setUpPerformanceMonitor();
+    }
+  }
+
+  setUpPerformanceMonitor() {}
+
+  resize() {
+    this.rendererInstance.setSize(this.sizes.width, this.sizes.height);
+    this.rendererInstance.setPixelRatio(this.sizes.pixelRatio);
+  }
+
+  initTweakPane() {
+    this.debug.add(
+      this.rendererInstance,
+      'toneMapping',
+      {
+        options: this.toneMappingOptions,
+        label: 'Tone Mapping',
+        onChange: (toneMappingType) => {
+          this.rendererInstance.toneMapping = toneMappingType;
+        },
+      },
+      'Renderer Settings'
+    );
+  }
+  update() {
+    if (this.perf) {
+      this.perf.beginFrame();
+    }
+
+    if (this.game.postProcessing) {
+      this.game.postProcessing.render();
+    } else {
+      this.rendererInstance.render(this.scene, this.camera.cameraInstance);
+    }
+
+    if (this.perf) {
+      this.perf.endFrame();
+    }
+  }
+}

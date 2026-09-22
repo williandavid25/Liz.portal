@@ -10,33 +10,115 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BienvenidaRouteImport } from './routes/bienvenida'
+import { Route as CalendarioRouteImport } from './routes/calendario'
+import { Route as CartasRouteImport } from './routes/cartas'
+import { Route as RecuerdosRouteImport } from './routes/recuerdos'
+import { Route as ApiBlobUploadRouteImport } from './routes/api/blob-upload'
+import { Route as ApiFilesIdRouteImport } from './routes/api/files/$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BienvenidaRoute = BienvenidaRouteImport.update({
+  id: '/bienvenida',
+  path: '/bienvenida',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalendarioRoute = CalendarioRouteImport.update({
+  id: '/calendario',
+  path: '/calendario',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CartasRoute = CartasRouteImport.update({
+  id: '/cartas',
+  path: '/cartas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecuerdosRoute = RecuerdosRouteImport.update({
+  id: '/recuerdos',
+  path: '/recuerdos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBlobUploadRoute = ApiBlobUploadRouteImport.update({
+  id: '/api/blob-upload',
+  path: '/api/blob-upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFilesIdRoute = ApiFilesIdRouteImport.update({
+  id: '/api/files/$id',
+  path: '/api/files/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/bienvenida': typeof BienvenidaRoute
+  '/calendario': typeof CalendarioRoute
+  '/cartas': typeof CartasRoute
+  '/recuerdos': typeof RecuerdosRoute
+  '/api/blob-upload': typeof ApiBlobUploadRoute
+  '/api/files/$id': typeof ApiFilesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/bienvenida': typeof BienvenidaRoute
+  '/calendario': typeof CalendarioRoute
+  '/cartas': typeof CartasRoute
+  '/recuerdos': typeof RecuerdosRoute
+  '/api/blob-upload': typeof ApiBlobUploadRoute
+  '/api/files/$id': typeof ApiFilesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/bienvenida': typeof BienvenidaRoute
+  '/calendario': typeof CalendarioRoute
+  '/cartas': typeof CartasRoute
+  '/recuerdos': typeof RecuerdosRoute
+  '/api/blob-upload': typeof ApiBlobUploadRoute
+  '/api/files/$id': typeof ApiFilesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/bienvenida'
+    | '/calendario'
+    | '/cartas'
+    | '/recuerdos'
+    | '/api/blob-upload'
+    | '/api/files/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/bienvenida'
+    | '/calendario'
+    | '/cartas'
+    | '/recuerdos'
+    | '/api/blob-upload'
+    | '/api/files/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/bienvenida'
+    | '/calendario'
+    | '/cartas'
+    | '/recuerdos'
+    | '/api/blob-upload'
+    | '/api/files/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BienvenidaRoute: typeof BienvenidaRoute
+  CalendarioRoute: typeof CalendarioRoute
+  CartasRoute: typeof CartasRoute
+  RecuerdosRoute: typeof RecuerdosRoute
+  ApiBlobUploadRoute: typeof ApiBlobUploadRoute
+  ApiFilesIdRoute: typeof ApiFilesIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +130,59 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bienvenida': {
+      id: '/bienvenida'
+      path: '/bienvenida'
+      fullPath: '/bienvenida'
+      preLoaderRoute: typeof BienvenidaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calendario': {
+      id: '/calendario'
+      path: '/calendario'
+      fullPath: '/calendario'
+      preLoaderRoute: typeof CalendarioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cartas': {
+      id: '/cartas'
+      path: '/cartas'
+      fullPath: '/cartas'
+      preLoaderRoute: typeof CartasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recuerdos': {
+      id: '/recuerdos'
+      path: '/recuerdos'
+      fullPath: '/recuerdos'
+      preLoaderRoute: typeof RecuerdosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/blob-upload': {
+      id: '/api/blob-upload'
+      path: '/api/blob-upload'
+      fullPath: '/api/blob-upload'
+      preLoaderRoute: typeof ApiBlobUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/files/$id': {
+      id: '/api/files/$id'
+      path: '/api/files/$id'
+      fullPath: '/api/files/$id'
+      preLoaderRoute: typeof ApiFilesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BienvenidaRoute: BienvenidaRoute,
+  CalendarioRoute: CalendarioRoute,
+  CartasRoute: CartasRoute,
+  RecuerdosRoute: RecuerdosRoute,
+  ApiBlobUploadRoute: ApiBlobUploadRoute,
+  ApiFilesIdRoute: ApiFilesIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
