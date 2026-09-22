@@ -86,7 +86,7 @@
   <div id="start-text">Toca para iniciar</div>
 </div>
 
-<audio id="audio" loop="">
+<audio id="audio" loop="" preload="none">
   <source src="/video-portada.mp4" type="audio/mp4">
 </audio>
 
@@ -119,12 +119,11 @@ const CONFIG=(window.DEDICA&&window.DEDICA.merge)?window.DEDICA.merge(DEFAULTS,w
 document.getElementById('main-title').textContent=CONFIG.titulo;
 const audio=document.getElementById('audio');
 audio.querySelector('source').src=CONFIG.musica;
-audio.load();
 
 // ================= Escena =================
 const canvas=document.getElementById('c');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
 renderer.setSize(innerWidth,innerHeight);
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,5000);
@@ -210,9 +209,30 @@ function ringTexture(size=1024){
   }
   return new THREE.CanvasTexture(c);
 }
+const ringSystem=new THREE.Group();
+ringSystem.rotation.x=Math.PI/2;
+ringSystem.rotation.z=-0.12;
+scene.add(ringSystem);
 const ring=new THREE.Mesh(new THREE.RingGeometry(42,116,160),new THREE.MeshBasicMaterial({map:ringTexture(),transparent:true,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,opacity:1}));
-ring.rotation.x=Math.PI/2;
-scene.add(ring);
+ringSystem.add(ring);
+const innerRing=new THREE.Mesh(new THREE.RingGeometry(40,49,160),new THREE.MeshBasicMaterial({color:0xffffc0,transparent:true,opacity:.7,side:THREE.DoubleSide,blending:THREE.AdditiveBlending}));
+innerRing.position.z=2;
+ringSystem.add(innerRing);
+const outerRing=new THREE.Mesh(new THREE.RingGeometry(113,132,160),new THREE.MeshBasicMaterial({color:0xffa51c,transparent:true,opacity:.3,side:THREE.DoubleSide,blending:THREE.AdditiveBlending}));
+outerRing.position.z=-2;
+ringSystem.add(outerRing);
+const ringDust=new THREE.Points(new THREE.BufferGeometry(),new THREE.PointsMaterial({color:0xffe98a,size:2.2,transparent:true,opacity:.75,blending:THREE.AdditiveBlending,depthWrite:false}));
+const dustPositions=new Float32Array(360*3);
+for(let i=0;i<360;i++){
+  const angle=Math.random()*Math.PI*2;
+  const radius=48+Math.random()*78;
+  dustPositions[i*3]=Math.cos(angle)*radius;
+  dustPositions[i*3+1]=Math.sin(angle)*radius;
+  dustPositions[i*3+2]=(Math.random()-.5)*4;
+}
+ringDust.geometry.setAttribute('position',new THREE.BufferAttribute(dustPositions,3));
+ringDust.position.z=3;
+ringSystem.add(ringDust);
 
 // Palabras alrededor: frases del Día de las Flores Amarillas (min 1, se repiten
 // ciclicamente hasta llenar las 150 posiciones que la escena ya reserva,
@@ -289,7 +309,15 @@ addEventListener('touchend',()=>{pinch=0;},{passive:true});
 // Animación
 let t=0;
 function tick(){requestAnimationFrame(tick);t+=0.01;
-  ring.rotation.z+=0.003;
+  const ringPulse=1+Math.sin(t*1.7)*0.018;
+  ringSystem.rotation.z+=0.0024;
+  ringSystem.rotation.x=Math.PI/2+Math.sin(t*.45)*.045;
+  ringSystem.rotation.y=Math.cos(t*.32)*.035;
+  ringSystem.scale.set(ringPulse,1/ringPulse,1);
+  innerRing.material.opacity=.56+Math.sin(t*2.2)*.16;
+  outerRing.material.opacity=.24+Math.sin(t*1.4+.8)*.1;
+  ringDust.rotation.z-=.0045;
+  ringDust.material.opacity=.58+Math.sin(t*2.8)*.18;
   glow.scale.set(GLOW_BASE*(1+Math.sin(t*0.4)*0.03),GLOW_BASE*(1+Math.sin(t*0.4)*0.03),1);
   const s=1.0+0.05*Math.sin(t*3); // latido
   core.scale.set(s,s,s);
