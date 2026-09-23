@@ -446,23 +446,26 @@ function AppShell() {
     setMusicError(null);
     try {
       let finalUrl: string | null = null;
+      // 1. Subir a Supabase (rápido y sin límites de Vercel Blob)
       try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await uploadAudio({ data: formData });
+        if (res?.url) {
+          finalUrl = res.url;
+        }
+      } catch (supaErr) {
+        console.warn("Subida a Supabase falló, intentando Vercel Blob:", supaErr);
+      }
+
+      // 2. Respaldo secundario: Vercel Blob
+      if (!finalUrl) {
         const path = `musica/${Date.now()}-${Math.round(Math.random() * 1e9)}-${file.name}`;
         const blob = await upload(path, file, {
           access: "public",
           handleUploadUrl: "/api/blob-upload",
         });
         finalUrl = blob.url;
-      } catch (blobErr) {
-        console.warn("Vercel blob falló, usando respaldo en base de datos:", blobErr);
-        const formData = new FormData();
-        formData.append("file", file);
-        const res = await uploadAudio({ data: formData });
-        if (res?.url) {
-          finalUrl = res.url;
-        } else {
-          throw blobErr;
-        }
       }
 
       if (finalUrl) {

@@ -189,8 +189,20 @@ export const uploadImage = createServerFn({ method: "POST" })
     const file = data.get("file");
     if (!(file instanceof File)) return { url: null as string | null };
     try {
-      const { saveFileBytes } = await import("./cloud.server");
+      const { uploadToSupabaseStorage, saveFileBytes } = await import("./cloud.server");
       const bytes = new Uint8Array(await file.arrayBuffer());
+      const ext = (file.name || "foto.jpg").split(".").pop() || "jpg";
+      const filename = `foto-${Date.now()}-${Math.round(Math.random() * 1e9)}.${ext}`;
+
+      // 1. Intentar primero en Supabase Storage (rápido y con CDN público)
+      const storageUrl = await uploadToSupabaseStorage(
+        filename,
+        file.type || "image/jpeg",
+        bytes,
+      );
+      if (storageUrl) return { url: storageUrl };
+
+      // 2. Respaldo: guardar en tabla app_files de Postgres
       const id = await saveFileBytes(file.type || "image/jpeg", bytes);
       return { url: `/api/files/${id}` as string | null };
     } catch (e) {
@@ -206,8 +218,20 @@ export const uploadAudio = createServerFn({ method: "POST" })
     const file = data.get("file");
     if (!(file instanceof File)) return { url: null as string | null };
     try {
-      const { saveFileBytes } = await import("./cloud.server");
+      const { uploadToSupabaseStorage, saveFileBytes } = await import("./cloud.server");
       const bytes = new Uint8Array(await file.arrayBuffer());
+      const ext = (file.name || "audio.mp3").split(".").pop() || "mp3";
+      const filename = `audio-${Date.now()}-${Math.round(Math.random() * 1e9)}.${ext}`;
+
+      // 1. Intentar primero en Supabase Storage (soporta hasta 50MB)
+      const storageUrl = await uploadToSupabaseStorage(
+        filename,
+        file.type || "audio/mpeg",
+        bytes,
+      );
+      if (storageUrl) return { url: storageUrl };
+
+      // 2. Respaldo: guardar en tabla app_files de Postgres
       const id = await saveFileBytes(file.type || "audio/mpeg", bytes);
       return { url: `/api/files/${id}` as string | null };
     } catch (e) {
