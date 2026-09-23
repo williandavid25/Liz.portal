@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { ArrowDown, ArrowUp, Mail } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import OceanScene from "@/components/OceanScene";
 import { FallingStars } from "@/components/FallingStars";
 
@@ -27,6 +28,31 @@ export const Route = createFileRoute("/")({
 });
 
 function Inicio() {
+  const oceanSectionRef = useRef<HTMLElement>(null);
+  const [shouldLoadOcean, setShouldLoadOcean] = useState(false);
+
+  useEffect(() => {
+    const section = oceanSectionRef.current;
+    if (!section || !("IntersectionObserver" in window)) {
+      setShouldLoadOcean(true);
+      return;
+    }
+
+    // El motor 3D descarga el modelo, texturas y audio. Se inicia solo al
+    // acercarse a la sección para que la galaxia y los botones respondan de
+    // inmediato, especialmente en teléfonos de gama media.
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setShouldLoadOcean(true);
+        observer.disconnect();
+      },
+      { rootMargin: "35% 0px" },
+    );
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="relative scroll-smooth snap-y snap-mandatory">
       <section id="galaxia" className="relative snap-start overflow-hidden bg-[#02020a]">
@@ -67,10 +93,17 @@ function Inicio() {
 
       <section
         id="oceano"
+        ref={oceanSectionRef}
         className="relative min-h-[min(100svh,52rem)] snap-start overflow-hidden bg-transparent"
       >
-        <OceanScene className="video-cover-container" />
-        <FallingStars className="pointer-events-none absolute inset-0 overflow-hidden" />
+        {shouldLoadOcean ? (
+          <>
+            <OceanScene className="video-cover-container" />
+            <FallingStars className="pointer-events-none absolute inset-0 overflow-hidden" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-cosmos" aria-hidden="true" />
+        )}
         <button
           type="button"
           onClick={() => document.getElementById("galaxia")?.scrollIntoView({ behavior: "smooth" })}

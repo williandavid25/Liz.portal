@@ -1,4 +1,4 @@
-import EventEmitter from './EventEmitter.class';
+import EventEmitter from "./EventEmitter.class";
 
 export default class Time extends EventEmitter {
   constructor() {
@@ -9,6 +9,13 @@ export default class Time extends EventEmitter {
     this.elapsedTime = 0;
     this.delta = 34;
     this.stopped = false;
+    this.hidden = document.hidden;
+    this._onVisibilityChange = () => {
+      this.hidden = document.hidden;
+      // Evita un salto de tiempo al volver a la pestaña.
+      if (!this.hidden) this.current = Date.now();
+    };
+    document.addEventListener("visibilitychange", this._onVisibilityChange);
 
     window.requestAnimationFrame(() => {
       this.animate();
@@ -17,16 +24,18 @@ export default class Time extends EventEmitter {
 
   stop() {
     this.stopped = true;
+    document.removeEventListener("visibilitychange", this._onVisibilityChange);
   }
 
   animate() {
     if (this.stopped) return;
-    const currentTime = Date.now();
-    this.delta = Math.min((currentTime - this.current) / 1000, 0.05);
-    this.current = currentTime;
-    this.elapsedTime = (this.current - this.start) / 1000;
-
-    this.trigger('animate');
+    if (!this.hidden) {
+      const currentTime = Date.now();
+      this.delta = Math.min((currentTime - this.current) / 1000, 0.05);
+      this.current = currentTime;
+      this.elapsedTime = (this.current - this.start) / 1000;
+      this.trigger("animate");
+    }
 
     window.requestAnimationFrame(() => {
       this.animate();

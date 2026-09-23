@@ -9,14 +9,20 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { lazy, useEffect, useRef, useState, type ReactNode } from "react";
-import { Menu, Settings, X } from "lucide-react";
+import { Menu, Settings, X, Volume2, VolumeX, Play, Pause } from "lucide-react";
 import { upload } from "@vercel/blob/client";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { NotificationBell } from "../components/NotificationBell";
 import { FallingStars } from "../components/FallingStars";
-import { loadStore, saveMusica, queuePendingMusica, flushPendingSync } from "../lib/cloud";
+import {
+  loadStore,
+  saveMusica,
+  queuePendingMusica,
+  flushPendingSync,
+  uploadAudio,
+} from "../lib/cloud";
 
 function NotFoundComponent() {
   return (
@@ -145,13 +151,26 @@ declare global {
     onYouTubeIframeAPIReady?: () => void;
   }
 }
-function extractYouTubeId(url: string): string | null {
+function extractYouTubeId(url: string | null | undefined): string | null {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
   try {
-    const u = new URL(url);
-    if (u.hostname === "youtu.be") return u.pathname.slice(1) || null;
+    const u = new URL(
+      trimmed.startsWith("http://") || trimmed.startsWith("https://")
+        ? trimmed
+        : `https://${trimmed}`,
+    );
+    if (u.hostname === "youtu.be") {
+      const id = u.pathname.slice(1).split("/")[0]?.split("?")[0];
+      return id && id.length === 11 ? id : null;
+    }
     if (u.hostname.includes("youtube.com")) {
-      if (u.pathname === "/watch") return u.searchParams.get("v");
-      const m = u.pathname.match(/^\/(?:shorts|embed)\/([^/?]+)/);
+      if (u.pathname === "/watch") {
+        const v = u.searchParams.get("v");
+        return v && v.length === 11 ? v : null;
+      }
+      const m = u.pathname.match(/^\/(?:shorts|embed|live|v)\/([a-zA-Z0-9_-]{11})/);
       if (m) return m[1];
     }
     return null;
@@ -160,11 +179,36 @@ function extractYouTubeId(url: string): string | null {
   }
 }
 
+function isValidMusicUrl(url: string | null | undefined): boolean {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith("/")) return true;
+  if (extractYouTubeId(trimmed)) return true;
+  try {
+    const parsed = new URL(
+      trimmed.startsWith("http://") || trimmed.startsWith("https://")
+        ? trimmed
+        : `https://${trimmed}`,
+    );
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    const host = parsed.hostname;
+    if (!host || host.endsWith(".") || !host.includes(".")) return false;
+    if (host.includes("youtube.com") || host === "youtu.be") {
+      return !!extractYouTubeId(trimmed);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function AppShell() {
   const routerState = useRouterState();
   const isHome = routerState.location.pathname === "/";
   const [musicUrl, setMusicUrl] = useState("");
   const [draftMusicUrl, setDraftMusicUrl] = useState("");
+  const [isPlaying, setIsPlaying] = useState(false);
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [showMusic, setShowMusic] = useState(false);
   const [uploadingMusic, setUploadingMusic] = useState(false);
@@ -204,33 +248,87 @@ function AppShell() {
     return () => window.removeEventListener("online", onOnline);
   }, []);
 
+  const playTrack = (targetUrl?: string) => {
+    const activeUrl = (targetUrl ?? musicUrl).trim() || DEFAULT_MUSIC;
+    const ytId = extractYouTubeId(activeUrl);
+
+    if (ytId) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      if (ytPlayerRef.current) {
+        try {
+          ytPlayerRef.current.loadVideoById(ytId);
+          ytPlayerRef.current.playVideo();
+          setIsPlaying(true);
+        } catch {}
+      }
+    } else {
+      if (ytPlayerRef.current) {
+        try {
+          ytPlayerRef.current.pauseVideo();
+        } catch {}
+      }
+      const a = audioRef.current;
+      if (a) {
+        if (a.src !== activeUrl && !a.src.endsWith(activeUrl)) {
+          a.src = activeUrl;
+        }
+        a.play()
+          .then(() => setIsPlaying(true))
+          .catch((err) => {
+            console.warn("Autoplay diferido hasta interacción del usuario:", err);
+            setIsPlaying(false);
+          });
+      }
+    }
+  };
+
+  const pauseTrack = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    if (ytPlayerRef.current) {
+      try {
+        ytPlayerRef.current.pauseVideo();
+      } catch {}
+    }
+    setIsPlaying(false);
+  };
+
+  // Carga inicial: espejo local primero, luego la nube verificando validez
   useEffect(() => {
-    // Espejo local primero (rápido), luego la nube (fuente de verdad: se
-    // escucha la misma música elegida en cualquier dispositivo).
-    const localMusic = localStorage.getItem(MUSIC_KEY) || DEFAULT_MUSIC;
+    const rawLocal = localStorage.getItem(MUSIC_KEY);
+    const localMusic = isValidMusicUrl(rawLocal) ? rawLocal! : DEFAULT_MUSIC;
+    if (rawLocal && !isValidMusicUrl(rawLocal)) {
+      localStorage.setItem(MUSIC_KEY, DEFAULT_MUSIC);
+    }
     setMusicUrl(localMusic);
     setDraftMusicUrl(localMusic);
+
     loadStore()
       .then((s) => {
         if (!s.configured) return;
-        if (s.musica) {
+        if (s.musica && isValidMusicUrl(s.musica)) {
           setMusicUrl(s.musica);
           setDraftMusicUrl(s.musica);
           localStorage.setItem(MUSIC_KEY, s.musica);
+        } else if (s.musica && !isValidMusicUrl(s.musica)) {
+          setMusicUrl(DEFAULT_MUSIC);
+          setDraftMusicUrl(DEFAULT_MUSIC);
+          localStorage.setItem(MUSIC_KEY, DEFAULT_MUSIC);
         }
       })
       .catch(() => {});
   }, []);
 
-  // Cambiar la fuente también debe iniciar la nueva música inmediatamente.
+  // Iniciar reproducción cuando se define la música
   useEffect(() => {
-    const a = audioRef.current;
-    if (!a || !musicUrl || youtubeId) return;
-    a.load();
-    a.play().catch(() => {});
+    if (!musicUrl) return;
+    playTrack(musicUrl);
   }, [musicUrl, youtubeId]);
 
-  // Carga la API de YouTube solo cuando hace falta (link de YouTube pegado).
+  // Carga la API de YouTube solo cuando hace falta
   useEffect(() => {
     if (!youtubeId) return;
     if (window.YT?.Player) {
@@ -250,22 +348,40 @@ function AppShell() {
     };
   }, [youtubeId]);
 
-  // Crea el reproductor de YouTube (oculto) una vez, y después solo le pide
-  // que cargue el nuevo video cuando cambias de link.
+  // Reproductor de YouTube persistente
   useEffect(() => {
     if (!youtubeId || !ytReady || !ytContainerRef.current) return;
     if (ytPlayerRef.current) {
-      ytPlayerRef.current.loadVideoById(youtubeId);
-      ytPlayerRef.current.playVideo();
+      try {
+        ytPlayerRef.current.loadVideoById(youtubeId);
+        ytPlayerRef.current.playVideo();
+        setIsPlaying(true);
+      } catch {}
       return;
     }
     ytPlayerRef.current = new window.YT!.Player(ytContainerRef.current, {
       videoId: youtubeId,
-      playerVars: { autoplay: 1, controls: 0, playsinline: 1, loop: 1, playlist: youtubeId },
+      playerVars: {
+        autoplay: 1,
+        controls: 0,
+        playsinline: 1,
+        loop: 1,
+        playlist: youtubeId,
+      },
       events: {
+        onReady: (e: { target: YTPlayer }) => {
+          try {
+            e.target.playVideo();
+            setIsPlaying(true);
+          } catch {}
+        },
         onStateChange: (e: { data: number; target: YTPlayer }) => {
           const YT = window.YT!;
-          if (e.data === YT.PlayerState.ENDED) {
+          if (e.data === YT.PlayerState.PLAYING) {
+            setIsPlaying(true);
+          } else if (e.data === YT.PlayerState.PAUSED) {
+            setIsPlaying(false);
+          } else if (e.data === YT.PlayerState.ENDED) {
             e.target.seekTo(0, true);
             e.target.playVideo();
           }
@@ -273,6 +389,33 @@ function AppShell() {
       },
     });
   }, [youtubeId, ytReady]);
+
+  // Desbloqueo pasivo de autoplay al primer toque/tecla del usuario
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      if (youtubeId) {
+        if (ytPlayerRef.current && typeof ytPlayerRef.current.getPlayerState === "function") {
+          try {
+            if (ytPlayerRef.current.getPlayerState() !== 1) {
+              ytPlayerRef.current.playVideo();
+              setIsPlaying(true);
+            }
+          } catch {}
+        }
+      } else if (audioRef.current && audioRef.current.paused && musicUrl) {
+        audioRef.current
+          .play()
+          .then(() => setIsPlaying(true))
+          .catch(() => {});
+      }
+    };
+    window.addEventListener("pointerdown", handleFirstInteraction, { passive: true });
+    window.addEventListener("keydown", handleFirstInteraction, { passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", handleFirstInteraction);
+      window.removeEventListener("keydown", handleFirstInteraction);
+    };
+  }, [youtubeId, musicUrl]);
 
   const saveMusic = (url: string) => {
     setMusicUrl(url);
@@ -282,26 +425,51 @@ function AppShell() {
 
   const saveMusicChanges = () => {
     const nextUrl = draftMusicUrl.trim();
-    if (!nextUrl) return;
+    if (!nextUrl) {
+      setMusicError("Ingresa un enlace o sube un archivo.");
+      return;
+    }
+    if (!isValidMusicUrl(nextUrl)) {
+      setMusicError(
+        "Por favor ingresa un enlace válido (archivo de audio o enlace de YouTube completo).",
+      );
+      return;
+    }
+    setMusicError(null);
     saveMusic(nextUrl);
     setShowMusic(false);
+    playTrack(nextUrl);
   };
 
-  // Solo hay una canción activa a la vez: subir un archivo nuevo reemplaza
-  // (descarta) la que sonaba antes, no se guarda un banco con historial.
   const uploadMusicFile = async (file: File) => {
     setUploadingMusic(true);
     setMusicError(null);
     try {
-      // Sube directo del navegador a Vercel Blob (sin pasar el archivo entero
-      // por el servidor): un mp3 de varios MB fallaba o se colgaba antes,
-      // porque iba y volvía completo a través de la función del servidor.
-      const path = `musica/${Date.now()}-${Math.round(Math.random() * 1e9)}-${file.name}`;
-      const blob = await upload(path, file, {
-        access: "public",
-        handleUploadUrl: "/api/blob-upload",
-      });
-      setDraftMusicUrl(blob.url);
+      let finalUrl: string | null = null;
+      try {
+        const path = `musica/${Date.now()}-${Math.round(Math.random() * 1e9)}-${file.name}`;
+        const blob = await upload(path, file, {
+          access: "public",
+          handleUploadUrl: "/api/blob-upload",
+        });
+        finalUrl = blob.url;
+      } catch (blobErr) {
+        console.warn("Vercel blob falló, usando respaldo en base de datos:", blobErr);
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await uploadAudio({ data: formData });
+        if (res?.url) {
+          finalUrl = res.url;
+        } else {
+          throw blobErr;
+        }
+      }
+
+      if (finalUrl) {
+        setDraftMusicUrl(finalUrl);
+        saveMusic(finalUrl);
+        playTrack(finalUrl);
+      }
     } catch (err) {
       console.error("No se pudo subir la música:", err);
       const detail = err instanceof Error ? err.message : String(err);
@@ -390,6 +558,26 @@ function AppShell() {
             </button>
           </div>
         )}
+        <button
+          type="button"
+          onClick={() => {
+            if (isPlaying) pauseTrack();
+            else playTrack(musicUrl || DEFAULT_MUSIC);
+          }}
+          className={`p-2.5 rounded-full transition-all duration-300 hover:scale-105 flex items-center justify-center border ${
+            isHome
+              ? "bg-white/5 hover:bg-white/15 text-white border-white/25 drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)]"
+              : "bg-white/60 hover:bg-white/80 text-popover-foreground/80 hover:text-popover-foreground border-black/5"
+          }`}
+          aria-label={isPlaying ? "Pausar música" : "Reproducir música"}
+          title={isPlaying ? "Pausar música" : "Reproducir música"}
+        >
+          {isPlaying ? (
+            <Volume2 size={20} className="text-pink-300 animate-pulse" />
+          ) : (
+            <VolumeX size={20} />
+          )}
+        </button>
         <NotificationBell isHome={isHome} />
       </nav>
 
@@ -409,12 +597,48 @@ function AppShell() {
               <X size={20} />
             </button>
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2.5">
+            {/* Estado y control rápido */}
+            <div className="flex items-center justify-between rounded-xl bg-white/40 px-3 py-2 border border-black/5">
+              <span className="text-xs font-semibold text-popover-foreground/80 flex items-center gap-1.5">
+                <span
+                  className={`inline-block w-2.5 h-2.5 rounded-full ${
+                    isPlaying ? "bg-emerald-500 animate-pulse" : "bg-amber-400"
+                  }`}
+                />
+                {isPlaying ? "Reproduciendo música" : "Música pausada"}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isPlaying) {
+                    pauseTrack();
+                  } else {
+                    playTrack(draftMusicUrl.trim() || musicUrl || DEFAULT_MUSIC);
+                  }
+                }}
+                className="flex items-center gap-1 text-xs font-bold text-primary hover:underline px-2 py-1 rounded-lg hover:bg-primary/10 transition"
+              >
+                {isPlaying ? (
+                  <>
+                    <Pause size={13} /> Pausar
+                  </>
+                ) : (
+                  <>
+                    <Play size={13} /> Reproducir
+                  </>
+                )}
+              </button>
+            </div>
+
             <input
               type="url"
               placeholder="https://... (mp3 o link de YouTube)"
               value={draftMusicUrl}
-              onChange={(e) => setDraftMusicUrl(e.target.value)}
+              onChange={(e) => {
+                setDraftMusicUrl(e.target.value);
+                if (musicError) setMusicError(null);
+              }}
               className="w-full bg-white/60 text-popover-foreground rounded-full px-4 py-2 text-sm outline-none border border-primary/20 focus:border-primary"
             />
             <label
@@ -440,15 +664,13 @@ function AppShell() {
             <button
               type="button"
               onClick={saveMusicChanges}
-              disabled={uploadingMusic || !draftMusicUrl.trim() || draftMusicUrl === musicUrl}
+              disabled={uploadingMusic || !draftMusicUrl.trim()}
               className="rounded-full border border-primary/30 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-45"
             >
-              Guardar cambios
+              Guardar y Reproducir
             </button>
             <p className="text-xs text-popover-foreground/60 text-center">
-              También puedes pegar un link de YouTube: se repite solo, sin necesidad de subir
-              archivos. Se guarda en la nube para escucharla en cualquier dispositivo que abra la
-              página.
+              Pega un enlace de YouTube o archivo mp3. Se guardará en la nube y seguirá reproduciéndose de fondo sin interrupción.
             </p>
             {musicError && (
               <p className="text-xs text-destructive text-center font-semibold">{musicError}</p>
@@ -460,10 +682,20 @@ function AppShell() {
       <audio
         id="global-bg-audio"
         ref={audioRef}
-        src={youtubeId ? undefined : musicUrl || undefined}
+        src={youtubeId ? undefined : musicUrl || DEFAULT_MUSIC}
         loop
         autoPlay
         preload="auto"
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onError={() => {
+          console.warn("Audio falló al cargar, restaurando música por defecto");
+          if (musicUrl !== DEFAULT_MUSIC) {
+            setMusicUrl(DEFAULT_MUSIC);
+            localStorage.setItem(MUSIC_KEY, DEFAULT_MUSIC);
+            playTrack(DEFAULT_MUSIC);
+          }
+        }}
       />
       {/* Reproductor de YouTube oculto: solo se usa cuando la música es un link de YouTube. */}
       <div

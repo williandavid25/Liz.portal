@@ -8,10 +8,28 @@ import type { CloudStore } from "./cloud";
 // rompiendo la página entera con "Uncaught ReferenceError: Buffer is not
 // defined" en cuanto cargaba.
 
+function getDbUrl(): string | undefined {
+  if (
+    !process.env.POSTGRES_URL &&
+    !process.env.POSTGRES_URL_NON_POOLING &&
+    !process.env.POSTGRES_PRISMA_URL &&
+    typeof process.loadEnvFile === "function"
+  ) {
+    try {
+      process.loadEnvFile();
+    } catch {}
+  }
+  return (
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.POSTGRES_PRISMA_URL
+  );
+}
+
 let sql: ReturnType<typeof postgres> | null = null;
 function db() {
   if (!sql) {
-    const url = process.env.POSTGRES_URL;
+    const url = getDbUrl();
     if (!url) throw new Error("No hay POSTGRES_URL configurada");
     sql = postgres(url, { ssl: "require", max: 1 });
   }
@@ -88,7 +106,8 @@ export async function readStore(): Promise<CloudStore & { configured: boolean }>
       musica: data.musica,
       configured: true,
     };
-  } catch {
+  } catch (err) {
+    console.error("Error reading store from Postgres:", err);
     return { ...EMPTY, configured: false };
   }
 }

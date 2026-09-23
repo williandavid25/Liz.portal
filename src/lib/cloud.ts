@@ -199,6 +199,24 @@ export const uploadImage = createServerFn({ method: "POST" })
     }
   });
 
+/** Sube un archivo de audio a la nube y devuelve su URL pública (o null si falla). */
+export const uploadAudio = createServerFn({ method: "POST" })
+  .validator((formData: FormData) => formData)
+  .handler(async ({ data }) => {
+    const file = data.get("file");
+    if (!(file instanceof File)) return { url: null as string | null };
+    try {
+      const { saveFileBytes } = await import("./cloud.server");
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const id = await saveFileBytes(file.type || "audio/mpeg", bytes);
+      return { url: `/api/files/${id}` as string | null };
+    } catch (e) {
+      console.error("No se pudo guardar el audio:", e);
+      return { url: null as string | null };
+    }
+  });
+
+
 // La música se sube directo del navegador a Vercel Blob (ver
 // src/routes/api/blob-upload.ts), no por una función de servidor: un archivo
 // de varios MB pasando entero por el servidor fallaba o se colgaba.
