@@ -94,16 +94,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "author", content: "Made with love" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "theme-color", content: "#1e1428" },
+      { name: "theme-color", content: "#02020a" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "Liz" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
-      { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/icon-192.png" },
+      { rel: "icon", href: "/favicon.ico?v=2", type: "image/x-icon" },
+      { rel: "icon", href: "/icons/liz-192.png", type: "image/png", sizes: "192x192" },
+      { rel: "manifest", href: "/manifest.webmanifest?v=2" },
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png", sizes: "180x180" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -521,7 +522,14 @@ function AppShell() {
         aria-label="Ir al inicio"
       >
         <span className="block h-12 w-12 overflow-hidden rounded-full border-2 border-white/50 shadow-glow sm:h-14 sm:w-14">
-          <img src="/logo.jpg" alt="" className="h-full w-full object-cover" />
+          <img
+            src="/icons/logo-liz.jpg"
+            alt=""
+            width={256}
+            height={256}
+            decoding="async"
+            className="h-full w-full object-cover"
+          />
         </span>
         <span className="text-xs font-bold leading-none sm:text-sm">Inicio</span>
       </Link>

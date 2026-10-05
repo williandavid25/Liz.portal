@@ -1,6 +1,6 @@
 // Service worker: permite "instalar" el sitio, abrirlo sin internet una vez
 // visitado, y recibir avisos de cartas nuevas con la app cerrada.
-const CACHE_NAME = "liz-portal-v3";
+const CACHE_NAME = "liz-portal-v4";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -70,8 +70,8 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(title, {
       body: data.body || "Toca para leerla",
       tag: data.tag || "carta",
-      icon: "/icon-192.png",
-      badge: "/icon-192.png",
+      icon: "/icons/liz-192.png",
+      badge: "/icons/liz-192.png",
       vibrate: [120, 60, 120],
       data: { url: data.url || "/bienvenida" },
     }),
