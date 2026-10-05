@@ -232,7 +232,13 @@ function AppShell() {
   // abrirlo aunque no haya internet (después de haberlo visitado una vez).
   useEffect(() => {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+      // updateViaCache "none" + update(): cada vez que se abre la app se
+      // revisa si hay versión nueva (portada, íconos, fotos) sin esperar al
+      // caché del navegador.
+      navigator.serviceWorker
+        .register("/sw.js", { updateViaCache: "none" })
+        .then((reg) => reg.update())
+        .catch(() => {});
     }
   }, []);
 
