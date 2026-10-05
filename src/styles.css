@@ -468,13 +468,95 @@
   position: absolute;
   inset-inline: 0;
   top: 0;
-  height: 7rem;
+  height: clamp(15rem, 42svh, 24rem);
   pointer-events: none;
-  background: linear-gradient(to bottom, rgb(2 2 10 / 0.55), transparent);
+  /* Más oscuro arriba para que la bienvenida se lea sobre el video. */
+  background: linear-gradient(
+    to bottom,
+    rgb(2 2 10 / 0.7) 0%,
+    rgb(2 2 10 / 0.45) 45%,
+    transparent 100%
+  );
 }
 @media (prefers-reduced-motion: reduce) {
   .portada-video {
     transition: none !important;
+  }
+}
+
+/* ===== Bienvenida de la portada (título escrito a mano) ===== */
+.bienvenida-titulo {
+  /* Revela el título de izquierda a derecha, como la punta de una pluma. */
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 45%, transparent 55%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 0%, #000 45%, transparent 55%, transparent 100%);
+  -webkit-mask-size: 260% 100%;
+  mask-size: 260% 100%;
+  -webkit-mask-position: 100% 0;
+  mask-position: 100% 0;
+  filter: drop-shadow(0 0 14px rgb(255 120 180 / 0.55)) drop-shadow(0 2px 6px rgb(0 0 0 / 0.7));
+}
+.bienvenida-trazo {
+  fill: none;
+  stroke: #fff2f8;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 900;
+  stroke-dashoffset: 900;
+}
+.bienvenida-relleno {
+  opacity: 0;
+}
+.bienvenida-texto {
+  opacity: 0;
+  filter: blur(12px);
+  transform: translateY(10px);
+  text-shadow:
+    0 1px 3px rgb(0 0 0 / 0.85),
+    0 0 18px rgb(0 0 0 / 0.55);
+}
+.bienvenida--play .bienvenida-titulo {
+  animation: bienvenida-escribir 3.4s cubic-bezier(0.45, 0.05, 0.4, 1) 0.3s forwards;
+}
+.bienvenida--play .bienvenida-trazo {
+  animation: bienvenida-trazo 3.6s ease-in-out 0.3s forwards;
+}
+.bienvenida--play .bienvenida-relleno {
+  animation: bienvenida-relleno 1.6s ease-out 2.2s forwards;
+}
+.bienvenida--play .bienvenida-texto {
+  animation: bienvenida-difuminado 1.6s ease-out 3.3s forwards;
+}
+@keyframes bienvenida-escribir {
+  to {
+    -webkit-mask-position: 0% 0;
+    mask-position: 0% 0;
+  }
+}
+@keyframes bienvenida-trazo {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes bienvenida-relleno {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes bienvenida-difuminado {
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bienvenida--play .bienvenida-titulo,
+  .bienvenida--play .bienvenida-trazo,
+  .bienvenida--play .bienvenida-relleno,
+  .bienvenida--play .bienvenida-texto {
+    animation-duration: 0.01s;
+    animation-delay: 0s;
   }
 }
 

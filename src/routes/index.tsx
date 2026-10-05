@@ -5,6 +5,7 @@ import { useRef } from "react";
 import OceanScene from "@/components/OceanScene";
 import { FallingStars } from "@/components/FallingStars";
 import { PortadaVideo } from "@/components/PortadaVideo";
+import { Bienvenida } from "@/components/Bienvenida";
 import { useAjustes } from "@/lib/ajustes";
 import { resolvePortada } from "@/lib/portadas";
 import { useNearViewport } from "@/hooks/use-near-viewport";
@@ -120,6 +121,8 @@ function Inicio() {
         ) : (
           <PortadaVideo src={portada.src} poster={portada.poster} />
         )}
+        {/* La galaxia ya trae su propio título, así que ahí no se superpone. */}
+        {!portadaEsGalaxia && <Bienvenida />}
         <div className="absolute inset-x-0 bottom-5 z-20 flex items-end gap-3 px-4 sm:bottom-8 sm:justify-center">
           <CartasButton />
           {nextPortada && (

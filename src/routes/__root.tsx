@@ -88,7 +88,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Feliz Cumpleaños ✨" },
       { name: "description", content: "Una sorpresa mágica de cumpleaños con recuerdos y cartas." },
       { name: "author", content: "Made with love" },
@@ -109,7 +109,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Karla:wght@400;500;600;700&family=Patrick+Hand&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Great+Vibes&family=Karla:wght@400;500;600;700&family=Patrick+Hand&display=swap",
       },
     ],
   }),
@@ -521,10 +521,19 @@ function AppShell() {
       {/* Estrellas que caen como nieve. */}
       <FallingStars className="pointer-events-none fixed inset-0 z-0 overflow-hidden" />
 
+      {/* Panel transparente detrás del logo y los íconos de arriba. Solo es
+          decorativo (no recibe toques); respeta el notch del iPhone. */}
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none fixed inset-x-1.5 top-[calc(env(safe-area-inset-top)+6px)] z-40 h-[80px] rounded-2xl border shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-md sm:inset-x-3 sm:top-[calc(env(safe-area-inset-top)+10px)] sm:h-[96px] ${
+          isHome ? "border-white/15 bg-black/25" : "border-white/40 bg-white/25"
+        }`}
+      />
+
       {/* Logo */}
       <Link
         to="/"
-        className="fixed top-3 left-3 sm:top-6 sm:left-6 z-50 flex flex-col items-center gap-0.5 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] transition-transform hover:scale-105"
+        className="fixed top-[calc(env(safe-area-inset-top)+12px)] left-4 sm:top-[calc(env(safe-area-inset-top)+20px)] sm:left-7 z-50 flex flex-col items-center gap-0.5 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] transition-transform hover:scale-105"
         aria-label="Ir al inicio"
       >
         <span className="block h-12 w-12 overflow-hidden rounded-full border-2 border-white/50 shadow-glow sm:h-14 sm:w-14">
@@ -544,7 +553,7 @@ function AppShell() {
       {panel && <DismissLayer onDismiss={closePanel} />}
 
       {/* Nav */}
-      <nav className="fixed top-3 right-3 sm:top-6 sm:right-6 z-50 flex items-center gap-2 text-[11px] sm:text-xs font-bold">
+      <nav className="fixed top-[calc(env(safe-area-inset-top)+17px)] right-4 sm:top-[calc(env(safe-area-inset-top)+27px)] sm:right-7 z-50 flex items-center gap-2 text-[11px] sm:text-xs font-bold">
         <button
           onClick={() => setPanel((p) => (p === "menu" ? null : "menu"))}
           className={`p-2.5 rounded-full transition-all duration-300 hover:scale-105 flex items-center justify-center border ${
@@ -558,7 +567,7 @@ function AppShell() {
           {showNavMenu ? <X size={20} /> : <Menu size={20} />}
         </button>
         {showNavMenu && (
-          <div className="fixed left-3 right-3 top-16 flex max-h-[calc(100svh-5rem)] w-auto flex-col gap-1 overflow-y-auto rounded-2xl glass p-2 shadow-xl sm:left-auto sm:right-6 sm:top-20 sm:w-56">
+          <div className="fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+94px)] flex max-h-[calc(100svh-7rem)] w-auto flex-col gap-1 overflow-y-auto rounded-2xl glass p-2 shadow-xl sm:left-auto sm:right-6 sm:top-[calc(env(safe-area-inset-top)+114px)] sm:w-56">
             {links.map(([to, label]) => (
               <Link
                 key={to}
@@ -613,7 +622,7 @@ function AppShell() {
         <div
           role="dialog"
           aria-label="Ajustes"
-          className="fixed left-1/2 top-16 z-50 max-h-[calc(100svh-5rem)] w-[calc(100vw-1rem)] max-w-md -translate-x-1/2 overflow-y-auto overscroll-contain glass rounded-2xl p-4 shadow-xl sm:top-20"
+          className="fixed left-1/2 top-[calc(env(safe-area-inset-top)+94px)] z-50 max-h-[calc(100svh-7rem)] w-[calc(100vw-1rem)] max-w-md -translate-x-1/2 overflow-y-auto overscroll-contain glass rounded-2xl p-4 shadow-xl sm:top-[calc(env(safe-area-inset-top)+114px)]"
         >
           <div className="mb-3 flex items-center justify-between">
             <p className="font-display text-xl text-popover-foreground">Ajustes</p>
