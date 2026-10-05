@@ -42,10 +42,33 @@ export function Bienvenida() {
       <div className="bienvenida-titulo w-full max-w-[44rem]" aria-hidden="true">
         <svg viewBox="0 0 1100 210" className="h-auto w-full overflow-visible">
           <defs>
-            <linearGradient id="bienvenida-tinta" x1="0" x2="1" y1="0" y2="0">
-              <stop offset="0%" stopColor="#ffe3ef" />
-              <stop offset="50%" stopColor="#ffffff" />
-              <stop offset="100%" stopColor="#ffd1e6" />
+            {/* Degradado con los colores de la flor (dorado → rosa → lavanda).
+                Mide el doble del título y se desplaza en bucle: un brillo que
+                recorre las letras lentamente. */}
+            <linearGradient
+              id="bienvenida-tinta"
+              gradientUnits="userSpaceOnUse"
+              x1="0"
+              y1="0"
+              x2="2200"
+              y2="0"
+              spreadMethod="repeat"
+            >
+              <stop offset="0%" stopColor="#ffd9a0" />
+              <stop offset="18%" stopColor="#ff9ec4" />
+              <stop offset="34%" stopColor="#ffe9f3" />
+              <stop offset="50%" stopColor="#d4b0ff" />
+              <stop offset="68%" stopColor="#ff8db8" />
+              <stop offset="84%" stopColor="#ffd9a0" />
+              <stop offset="100%" stopColor="#ffd9a0" />
+              <animateTransform
+                attributeName="gradientTransform"
+                type="translate"
+                from="0 0"
+                to="-2200 0"
+                dur="9s"
+                repeatCount="indefinite"
+              />
             </linearGradient>
           </defs>
           <text
@@ -69,7 +92,7 @@ export function Bienvenida() {
           </text>
         </svg>
       </div>
-      <p className="bienvenida-texto mt-1 max-w-[30rem] font-display text-[1.05rem] italic leading-snug text-white/90 sm:mt-2 sm:text-[1.35rem]">
+      <p className="bienvenida-texto mt-1 max-w-[30rem] font-display text-[1.05rem] italic leading-snug sm:mt-2 sm:text-[1.35rem]">
         {DESCRIPCION}
       </p>
     </div>
