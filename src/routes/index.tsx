@@ -81,10 +81,11 @@ function Inicio() {
   const ajustes = useAjustes();
   const portada = resolvePortada(ajustes.portada, ajustes.portadaUrl);
   const portadaEsGalaxia = portada.tipo === "galaxia";
+  const portadaEsOceano = portada.tipo === "oceano";
 
-  // Si la galaxia ya es la portada, no se repite más abajo.
+  // Si la galaxia o el océano ya son la portada, no se repiten más abajo.
   const showGalaxia = ajustes.mostrarGalaxia && !portadaEsGalaxia;
-  const showOceano = ajustes.mostrarOceano;
+  const showOceano = ajustes.mostrarOceano && !portadaEsOceano;
 
   const galaxiaRef = useRef<HTMLElement>(null);
   const oceanoRef = useRef<HTMLElement>(null);
@@ -116,8 +117,15 @@ function Inicio() {
         id="portada"
         className="relative h-[100svh] min-h-[32rem] overflow-hidden bg-[#02020a]"
       >
-        {portadaEsGalaxia ? (
+        {portada.tipo === "galaxia" ? (
           <GalaxiaIframe />
+        ) : portada.tipo === "oceano" ? (
+          <>
+            <OceanScene className="video-cover-container" />
+            <FallingStars className="pointer-events-none absolute inset-0 overflow-hidden" />
+            <div className="portada-fade-top" />
+            <div className="portada-fade-bottom" />
+          </>
         ) : (
           <PortadaVideo src={portada.src} poster={portada.poster} />
         )}
@@ -182,7 +190,8 @@ function Inicio() {
             <button
               type="button"
               onClick={() => scrollTo(prevOceano)}
-              className={`absolute inset-x-0 top-5 z-30 mx-auto w-fit sm:top-8 ${roundBtn}`}
+              // Debajo del panel transparente de arriba, para que no quede tapado.
+              className={`absolute inset-x-0 top-24 z-30 mx-auto w-fit sm:top-32 ${roundBtn}`}
               aria-label={`Subir a ${label[prevOceano]}`}
             >
               <ArrowUp size={20} />

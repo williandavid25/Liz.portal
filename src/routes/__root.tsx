@@ -640,7 +640,7 @@ function AppShell() {
           <p className="mb-2 text-xs font-bold uppercase tracking-wide text-popover-foreground/60">
             Portada del inicio
           </p>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-1.5">
             {[...PORTADAS, { id: "personalizada", nombre: "Mi video" } as const].map((p) => {
               const active = ajustes.portada === p.id;
               const mini = "miniatura" in p ? p.miniatura : undefined;
@@ -668,6 +668,10 @@ function AppShell() {
                       <span className="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_50%_45%,#fde047_0%,#b45309_22%,#1e1b4b_55%,#02020a_80%)] text-lg">
                         🌼
                       </span>
+                    ) : p.id === "oceano" ? (
+                      <span className="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_50%_40%,#5eead4_0%,#0e7490_28%,#172554_62%,#02020a_90%)] text-lg">
+                        🐬
+                      </span>
                     ) : (
                       <span className="grid h-full w-full place-items-center text-white/70">
                         <Sparkles size={18} />
@@ -679,7 +683,7 @@ function AppShell() {
                       </span>
                     )}
                   </span>
-                  <span className="w-full truncate text-center">{p.nombre}</span>
+                  <span className="line-clamp-2 w-full text-center leading-tight">{p.nombre}</span>
                 </button>
               );
             })}

@@ -259,7 +259,7 @@ function Bienvenida() {
     openTimer.current = setTimeout(() => {
       handleOpen(l);
       setOpeningId(null);
-    }, 850);
+    }, 1000);
   };
 
   // Si venimos de la campanita de notificaciones (?open=<id>), abrimos esa carta.
@@ -520,19 +520,20 @@ function Bienvenida() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <AnimatePresence>
-              {letters.map((l) => {
+              {letters.map((l, i) => {
                 const isOpening = openingId === l.id;
                 return (
                   <motion.div
                     key={l.id}
                     layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
+                    initial={{ opacity: 0, y: 16, scale: 0.94 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
-                    className={`group relative rounded-2xl bg-white/70 backdrop-blur-md border p-3 transition-all hover:shadow-soft hover:-translate-y-0.5 ${
+                    transition={{ duration: 0.5, delay: Math.min(i, 8) * 0.06, ease: "easeOut" }}
+                    className={`group relative rounded-2xl border bg-white/25 p-2.5 shadow-[0_10px_30px_-12px_rgba(40,10,40,0.45)] backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:bg-white/35 hover:shadow-[0_18px_40px_-14px_rgba(120,40,90,0.55)] ${
                       editingId === l.id
-                        ? "border-primary ring-2 ring-primary/30"
-                        : "border-black/5"
+                        ? "border-primary/70 ring-2 ring-primary/30"
+                        : "border-white/35"
                     }`}
                   >
                     <span
@@ -550,64 +551,78 @@ function Bienvenida() {
                       className="w-full text-left"
                       title="Abrir carta"
                     >
-                      {/* Sobre animado */}
+                      {/* Sobre crema con sello de cera. Flota suavemente; al
+                          abrirlo el sello se rompe y la carta sale del sobre. */}
                       <div
-                        className="relative w-full aspect-[4/3] mb-2 overflow-visible"
-                        style={{ perspective: "800px" }}
+                        className="sobre-flotar relative mb-2 mt-1 aspect-[640/498] w-full overflow-visible"
+                        style={{ animationDelay: `${-(i % 6) * 0.8}s` }}
                       >
-                        {/* Cuerpo del sobre */}
-                        <div
-                          className="absolute inset-0 rounded-lg shadow-[0_6px_14px_-4px_rgba(90,10,10,0.5)]"
-                          style={{ background: "linear-gradient(160deg,#8f1d1d,#4d0c0c)" }}
-                        />
-                        {/* Base triangular (pliegues inferiores del sobre) */}
-                        <div
-                          className="absolute inset-x-0 bottom-0 h-1/2 rounded-b-lg"
-                          style={{
-                            background: "linear-gradient(160deg,#7a1717,#5c0f0f)",
-                            clipPath: "polygon(0% 100%, 50% 40%, 100% 100%)",
-                          }}
-                        />
-                        {/* Carta que se asoma / sale del sobre */}
+                        {/* Carta dentro del sobre (se transparenta un poco) */}
                         <motion.div
-                          className="absolute left-[12%] right-[12%] top-[8%] h-[75%] rounded-sm bg-[#f7f3ea] shadow-md flex items-start justify-center pt-2.5 px-1.5"
-                          style={{ zIndex: 1 }}
+                          className="absolute left-[11%] right-[11%] top-[7%] z-0 flex h-[80%] items-start justify-center rounded-[3px] bg-[#fbf6ea] px-2 pt-[9%] shadow-[0_4px_14px_rgba(60,35,10,0.25)]"
+                          style={{
+                            backgroundImage:
+                              "repeating-linear-gradient(to bottom, transparent 0, transparent 13px, rgba(150,110,60,0.18) 13px, rgba(150,110,60,0.18) 14px)",
+                          }}
                           initial={false}
-                          animate={isOpening ? { y: "-38%" } : { y: "0%" }}
+                          animate={isOpening ? { y: "-52%", rotate: -2 } : { y: "0%", rotate: 0 }}
                           transition={{
-                            duration: 0.5,
+                            duration: 0.6,
                             delay: isOpening ? 0.3 : 0,
-                            ease: "easeOut",
+                            ease: [0.22, 1, 0.36, 1],
                           }}
                         >
-                          <span className="text-[10px] leading-tight font-handwritten text-[#3a260f] text-center line-clamp-3">
+                          <span
+                            className="line-clamp-2 text-center text-[15px] leading-tight text-[#5a3a1a] sm:text-lg"
+                            style={{ fontFamily: '"Great Vibes", cursive' }}
+                          >
                             {l.title || "Sin título"}
                           </span>
                         </motion.div>
-                        {/* Solapa frontal del sobre (se abre hacia atrás) */}
-                        <motion.div
-                          className="absolute inset-x-0 top-0 h-[58%] origin-top"
-                          style={{
-                            background: "linear-gradient(200deg,#b32a2a,#7a1414)",
-                            clipPath: "polygon(0% 0%, 100% 0%, 50% 100%)",
-                            transformStyle: "preserve-3d",
-                            zIndex: 2,
-                          }}
+
+                        {/* Sobre (un poco transparente) */}
+                        <motion.img
+                          src="/cartas/sobre.webp"
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          draggable={false}
+                          className="absolute inset-0 z-10 h-full w-full select-none rounded-lg object-cover shadow-[0_10px_24px_-10px_rgba(70,40,15,0.55)]"
                           initial={false}
-                          animate={isOpening ? { rotateX: -170 } : { rotateX: 0 }}
-                          transition={{ duration: 0.45, ease: "easeInOut" }}
-                        >
-                          <span className="absolute left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 text-[13px]">
-                            ❤️
-                          </span>
-                        </motion.div>
+                          animate={isOpening ? { opacity: 0.55, y: "6%" } : { opacity: 0.9, y: "0%" }}
+                          transition={{ duration: 0.55, delay: isOpening ? 0.25 : 0 }}
+                        />
+
+                        {/* Destello que cruza el sobre al pasar el mouse */}
+                        <span className="sobre-brillo pointer-events-none absolute inset-0 z-20 overflow-hidden rounded-lg" />
+
+                        {/* Sello de cera: late despacito y se rompe al abrir */}
+                        <span className="pointer-events-none absolute left-[52.3%] top-[57.6%] z-30 w-[18.5%] -translate-x-1/2 -translate-y-1/2">
+                          <motion.img
+                            src="/cartas/sello.webp"
+                            alt=""
+                            aria-hidden="true"
+                            draggable={false}
+                            className="sello-latir block w-full select-none"
+                            initial={false}
+                            animate={
+                              isOpening
+                                ? { scale: 1.45, rotate: 18, opacity: 0 }
+                                : { scale: 1, rotate: 0, opacity: 1 }
+                            }
+                            transition={{ duration: 0.35, ease: "easeOut" }}
+                          />
+                        </span>
                       </div>
 
                       <div className="px-1">
-                        <span className="block font-bold text-popover-foreground/90 truncate font-handwritten text-sm">
+                        <span
+                          className="block truncate text-lg leading-tight text-popover-foreground/90"
+                          style={{ fontFamily: '"Great Vibes", cursive' }}
+                        >
                           {l.title || "Sin título"}
                         </span>
-                        <span className="block text-[11px] text-popover-foreground/60">
+                        <span className="block text-[11px] tracking-wide text-popover-foreground/60">
                           {l.date}
                         </span>
                       </div>

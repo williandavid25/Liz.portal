@@ -12,7 +12,8 @@ export type Portada =
       poster?: string;
       miniatura?: string;
     }
-  | { id: "galaxia"; nombre: string; tipo: "galaxia"; miniatura?: undefined };
+  | { id: "galaxia"; nombre: string; tipo: "galaxia"; miniatura?: undefined }
+  | { id: "oceano"; nombre: string; tipo: "oceano"; miniatura?: undefined };
 
 export const PORTADAS: Portada[] = [
   {
@@ -33,6 +34,7 @@ export const PORTADAS: Portada[] = [
     miniatura: "/portadas/corazon-mini.jpg",
   },
   { id: "galaxia", nombre: "Rosas amarillas", tipo: "galaxia" },
+  { id: "oceano", nombre: "Océano delfín", tipo: "oceano" },
 ];
 
 export const PORTADA_DEFAULT = "flor-de-loto";

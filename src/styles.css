@@ -560,6 +560,72 @@
   }
 }
 
+/* ===== Sobres de las cartas guardadas ===== */
+.sobre-flotar {
+  animation: sobre-flotar 5s ease-in-out infinite;
+}
+@keyframes sobre-flotar {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-0.6deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(0.6deg);
+  }
+}
+/* Destello diagonal que cruza el sobre al pasar el mouse / tocarlo. */
+.sobre-brillo::after {
+  content: "";
+  position: absolute;
+  inset: -20% auto -20% -60%;
+  width: 45%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.55) 50%,
+    transparent 100%
+  );
+  transform: skewX(-18deg) translateX(0);
+  opacity: 0;
+}
+.group:hover .sobre-brillo::after,
+.group:focus-within .sobre-brillo::after {
+  animation: sobre-brillo 1.1s ease-out;
+}
+@keyframes sobre-brillo {
+  0% {
+    opacity: 0;
+    transform: skewX(-18deg) translateX(0);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: skewX(-18deg) translateX(420%);
+  }
+}
+/* El sello de cera "respira" con un brillo cálido (sin tocar su transform,
+   que lo usa la animación de abrir). */
+.sello-latir {
+  animation: sello-latir 2.8s ease-in-out infinite;
+}
+@keyframes sello-latir {
+  0%,
+  100% {
+    filter: drop-shadow(0 3px 5px rgb(80 10 10 / 0.45));
+  }
+  50% {
+    filter: drop-shadow(0 3px 5px rgb(80 10 10 / 0.45)) drop-shadow(0 0 10px rgb(255 90 70 / 0.7));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sobre-flotar,
+  .sello-latir {
+    animation: none;
+  }
+}
+
 /* Contenteditable placeholder styling */
 [contenteditable]:empty::before {
   content: attr(data-placeholder);
