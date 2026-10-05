@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { esperarSplash } from "./Splash";
 
 const TITULO = "Bienvenida, mi niña";
 const DESCRIPCION =
@@ -22,13 +23,13 @@ export function Bienvenida() {
       hecho = true;
       setListo(true);
     };
-    // Si la fuente tarda (conexión lenta), igual se muestra a los 2 s.
-    const respaldo = window.setTimeout(empezar, 2000);
-    if (document.fonts?.load) {
-      document.fonts.load('120px "Great Vibes"').then(empezar, empezar);
-    } else {
-      empezar();
-    }
+    // Se escribe cuando la pantalla de carga se va (si no, se animaría
+    // escondida detrás) y la letra está lista. Respaldo: 4 s como máximo.
+    const respaldo = window.setTimeout(empezar, 4000);
+    const fuente = document.fonts?.load
+      ? document.fonts.load('120px "Great Vibes"').catch(() => {})
+      : Promise.resolve();
+    Promise.all([fuente, esperarSplash()]).then(empezar, empezar);
     return () => window.clearTimeout(respaldo);
   }, []);
 
@@ -92,7 +93,9 @@ export function Bienvenida() {
           </text>
         </svg>
       </div>
-      <p className="bienvenida-texto mt-1 max-w-[30rem] font-display text-[1.05rem] italic leading-snug sm:mt-2 sm:text-[1.35rem]">
+      {/* px extra + text-balance: en celular el texto queda bien dentro del
+          margen (no pegado a los bordes) y las líneas salen parejas. */}
+      <p className="bienvenida-texto mt-1 w-full max-w-[26rem] px-5 font-display text-[1rem] italic leading-snug [text-wrap:balance] sm:mt-2 sm:max-w-[30rem] sm:px-0 sm:text-[1.35rem]">
         {DESCRIPCION}
       </p>
     </div>

@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { ArrowDown, ArrowUp, Mail } from "lucide-react";
-import { useRef } from "react";
-import OceanScene from "@/components/OceanScene";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { FallingStars } from "@/components/FallingStars";
 import { PortadaVideo } from "@/components/PortadaVideo";
 import { Bienvenida } from "@/components/Bienvenida";
@@ -77,6 +76,36 @@ function GalaxiaIframe() {
   );
 }
 
+/**
+ * El océano usa three.js (~1.6 MB). Se importa recién cuando se va a mostrar,
+ * así no viaja con la portada. Es un import manual en un efecto (no
+ * React.lazy/Suspense, que dejaba la escena colgada en producción).
+ */
+function OceanoDiferido() {
+  const [Scene, setScene] = useState<ComponentType<{ className?: string }> | null>(null);
+  useEffect(() => {
+    let alive = true;
+    import("@/components/OceanScene")
+      .then((m) => {
+        if (alive) setScene(() => m.default);
+      })
+      .catch((err) => console.error("No se pudo cargar el océano:", err));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (!Scene) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-cosmos" aria-hidden="true">
+        <p className="animate-pulse text-xs font-semibold tracking-wide text-white/50">
+          Cargando el océano…
+        </p>
+      </div>
+    );
+  }
+  return <Scene className="video-cover-container" />;
+}
+
 function Inicio() {
   const ajustes = useAjustes();
   const portada = resolvePortada(ajustes.portada, ajustes.portadaUrl);
@@ -121,7 +150,7 @@ function Inicio() {
           <GalaxiaIframe />
         ) : portada.tipo === "oceano" ? (
           <>
-            <OceanScene className="video-cover-container" />
+            <OceanoDiferido />
             <FallingStars className="pointer-events-none absolute inset-0 overflow-hidden" />
             <div className="portada-fade-top" />
             <div className="portada-fade-bottom" />
@@ -178,7 +207,7 @@ function Inicio() {
         >
           {loadOceano ? (
             <>
-              <OceanScene className="video-cover-container" />
+              <OceanoDiferido />
               <FallingStars className="pointer-events-none absolute inset-0 overflow-hidden" />
             </>
           ) : (

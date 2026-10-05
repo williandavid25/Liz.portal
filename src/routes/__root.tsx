@@ -17,6 +17,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { NotificationBell } from "../components/NotificationBell";
 import { FallingStars } from "../components/FallingStars";
 import { DismissLayer } from "../components/DismissLayer";
+import { Splash } from "../components/Splash";
 import { useAjustes, setAjustes, hydrateAjustes } from "../lib/ajustes";
 import { PORTADAS } from "../lib/portadas";
 import {
@@ -101,6 +102,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      {
+        rel: "preload",
+        href: "/fonts/great-vibes-latin.woff2",
+        as: "font",
+        type: "font/woff2",
+        crossOrigin: "anonymous",
+      },
+      { rel: "preload", href: "/icons/logo-liz.jpg", as: "image" },
       { rel: "icon", href: "/favicon.ico?v=2", type: "image/x-icon" },
       { rel: "icon", href: "/icons/liz-192.png", type: "image/png", sizes: "192x192" },
       { rel: "manifest", href: "/manifest.webmanifest?v=2" },
@@ -109,7 +118,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Great+Vibes&family=Karla:wght@400;500;600;700&family=Patrick+Hand&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Karla:wght@400;500;600;700&family=Patrick+Hand&display=swap",
       },
     ],
   }),
@@ -312,17 +321,28 @@ function AppShell() {
   // Carga inicial: espejo local primero, luego la nube verificando validez
   useEffect(() => {
     const rawLocal = localStorage.getItem(MUSIC_KEY);
-    const localMusic = isValidMusicUrl(rawLocal) ? rawLocal! : DEFAULT_MUSIC;
-    if (rawLocal && !isValidMusicUrl(rawLocal)) {
-      localStorage.setItem(MUSIC_KEY, DEFAULT_MUSIC);
+    const hasLocal = isValidMusicUrl(rawLocal);
+    if (rawLocal && !hasLocal) {
+      localStorage.removeItem(MUSIC_KEY);
     }
-    setMusicUrl(localMusic);
-    setDraftMusicUrl(localMusic);
+    // Si no hay nada guardado en este dispositivo NO se pone la canción por
+    // defecto de inmediato: antes eso descargaba 3 MB (video-portada.mp4)
+    // compitiendo con la portada, para luego cambiarla por la de la nube.
+    if (hasLocal) {
+      setMusicUrl(rawLocal!);
+      setDraftMusicUrl(rawLocal!);
+    }
+    const useDefault = () => {
+      if (hasLocal) return;
+      setMusicUrl(DEFAULT_MUSIC);
+      setDraftMusicUrl(DEFAULT_MUSIC);
+    };
 
     loadStoreShared()
       .then((s) => {
-        if (!s.configured) return;
+        if (!s.configured) return useDefault();
         hydrateAjustes(s.ajustes);
+        if (!s.musica) return useDefault();
         if (s.musica && isValidMusicUrl(s.musica)) {
           setMusicUrl(s.musica);
           setDraftMusicUrl(s.musica);
@@ -333,7 +353,7 @@ function AppShell() {
           localStorage.setItem(MUSIC_KEY, DEFAULT_MUSIC);
         }
       })
-      .catch(() => {});
+      .catch(useDefault);
   }, []);
 
   // Iniciar reproducción cuando se define la música
@@ -349,16 +369,39 @@ function AppShell() {
       setYtReady(true);
       return;
     }
-    if (!document.getElementById("youtube-iframe-api")) {
-      const tag = document.createElement("script");
-      tag.id = "youtube-iframe-api";
-      tag.src = "https://www.youtube.com/iframe_api";
-      document.body.appendChild(tag);
-    }
     const prev = window.onYouTubeIframeAPIReady;
     window.onYouTubeIframeAPIReady = () => {
       prev?.();
       setYtReady(true);
+    };
+    // El reproductor de YouTube pesa ~1.4 MB: se carga cuando la página ya
+    // terminó de cargar y el celular está libre, para no frenar la portada.
+    // (Los navegadores igual no dejan sonar música antes del primer toque.)
+    let idleId: number | undefined;
+    const inject = () => {
+      if (document.getElementById("youtube-iframe-api")) return;
+      const tag = document.createElement("script");
+      tag.id = "youtube-iframe-api";
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.body.appendChild(tag);
+    };
+    const schedule = () => {
+      idleId =
+        typeof window.requestIdleCallback === "function"
+          ? window.requestIdleCallback(inject, { timeout: 2500 })
+          : window.setTimeout(inject, 800);
+    };
+    if (document.readyState === "complete") schedule();
+    else window.addEventListener("load", schedule, { once: true });
+    // Si la persona toca antes, se carga en ese momento.
+    window.addEventListener("pointerdown", inject, { once: true });
+    return () => {
+      window.removeEventListener("load", schedule);
+      window.removeEventListener("pointerdown", inject);
+      if (idleId !== undefined) {
+        if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idleId);
+        window.clearTimeout(idleId);
+      }
     };
   }, [youtubeId]);
 
@@ -504,6 +547,7 @@ function AppShell() {
 
   return (
     <div className="relative min-h-screen">
+      <Splash />
       {/* Foto de Snoopy en la cama con luz violeta, difuminada para que el texto se lea bien. */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden bg-cosmos">
         <img
@@ -831,7 +875,8 @@ function AppShell() {
       <audio
         id="global-bg-audio"
         ref={audioRef}
-        src={youtubeId ? undefined : musicUrl || DEFAULT_MUSIC}
+        // Sin canción decidida aún no hay src: no se descarga nada de más.
+        src={youtubeId || !musicUrl ? undefined : musicUrl}
         loop
         autoPlay
         preload="auto"
