@@ -1,4 +1,4 @@
-import type { CSSProperties, Ref } from "react";
+import type { CSSProperties, KeyboardEvent, Ref } from "react";
 
 export type AccionTecho = null | "feliz";
 export type OidoMascota = "inactivo" | "escuchando" | "oyendo" | "hablando";
@@ -20,6 +20,14 @@ export interface EstadoHueso {
 }
 
 const SUELO_Y = 522;
+
+/** Enter o espacio activan lo que se puede tocar (teclado / lectores de pantalla). */
+const teclaActiva = (fn: () => void) => (e: KeyboardEvent<SVGGElement>) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    fn();
+  }
+};
 const TECHO = { x: 800, y: 262 };
 
 /* ------------------------------------------------------------------ */
@@ -99,6 +107,8 @@ function SnoopyTecho({ durmiendo }: { durmiendo: boolean }) {
 function SnoopyLado({ anim }: { anim: AnimSuelo }) {
   return (
     <g className={`m-lado m-lado-${anim}`}>
+      <circle className="m-polvo" cx="-18" cy="-4" r="7" fill="#e9dcc0" />
+      <circle className="m-polvo p2" cx="-8" cy="-2" r="5" fill="#e9dcc0" />
       <g className="m-pierna m-pierna-atras">
         <rect x="-15" y="-40" width="15" height="34" rx="7" fill="#ebe7de" stroke={TRAZO} strokeWidth="3" />
         <ellipse cx="-2" cy="-6" rx="16" ry="7.5" fill="#ebe7de" stroke={TRAZO} strokeWidth="3" />
@@ -150,9 +160,9 @@ function SnoopyFrente({ bocaRef, enTina }: { bocaRef: Ref<SVGEllipseElement>; en
       <g transform="translate(0 -113)">
         <g className="m-cabeza-frente">
           <ellipse cx="0" cy="0" rx="34" ry="31" fill={PELAJE} stroke={TRAZO} strokeWidth="3" />
-          <ellipse cx="0" cy="14" rx="23" ry="17" fill={PELAJE} stroke={TRAZO} strokeWidth="3" />
+          <ellipse cx="0" cy="15" rx="26" ry="19" fill={PELAJE} stroke={TRAZO} strokeWidth="3" />
           <path d="M-20 6 q20 -8 40 0" fill="none" stroke="#fff" strokeWidth="6" strokeLinecap="round" />
-          <ellipse cx="0" cy="4" rx="9.5" ry="7.5" fill="#161413" />
+          <ellipse cx="0" cy="5" rx="10.5" ry="8" fill="#161413" />
           <ellipse cx="-3" cy="1.5" rx="3" ry="2" fill="#fff" opacity="0.65" />
           <g className="m-ojo">
             <ellipse cx="-13" cy="-11" rx="3.4" ry="5.2" fill="#161413" />
@@ -160,8 +170,8 @@ function SnoopyFrente({ bocaRef, enTina }: { bocaRef: Ref<SVGEllipseElement>; en
             <circle cx="-12" cy="-13" r="1.1" fill="#fff" />
             <circle cx="14" cy="-13" r="1.1" fill="#fff" />
           </g>
-          <path className="m-sonrisa" d="M-9 22 q9 7 18 0" fill="none" stroke="#161413" strokeWidth="2.6" strokeLinecap="round" />
-          <ellipse ref={bocaRef} className="m-boca" cx="0" cy="23" rx="7" ry="1" fill="#5a1d1d" />
+          <path className="m-sonrisa" d="M-10 24 q10 8 20 0" fill="none" stroke="#161413" strokeWidth="2.6" strokeLinecap="round" />
+          <ellipse ref={bocaRef} className="m-boca" cx="0" cy="25" rx="7" ry="1" fill="#5a1d1d" />
           <g className="m-oreja-izq">
             <path d="M-26 -18 C-38 -16 -44 4 -42 24 C-40 42 -32 52 -26 50 C-20 48 -22 28 -20 12 C-18 -2 -16 -16 -26 -18 Z" fill="url(#m-oreja-grad)" />
           </g>
@@ -235,7 +245,9 @@ export function SnoopyEscena({
   bocaRef,
   onTocarSnoopy,
   onTocarLampara,
+  pausada = false,
 }: {
+  pausada?: boolean;
   nombre: string;
   durmiendo: boolean;
   accionTecho: AccionTecho;
@@ -261,13 +273,14 @@ export function SnoopyEscena({
     oido === "hablando" && "hablando",
     contento && "contento",
     suelo.anim === "tina" && "accion-banando",
+    pausada && "escena-pausada",
   ]
     .filter(Boolean)
     .join(" ");
 
   const sueloStyle: CSSProperties = {
     transform: `translate(${suelo.x}px, ${SUELO_Y}px)`,
-    transition: `transform ${suelo.dur}ms ${suelo.anim === "correr" ? "linear" : "ease-in-out"}`,
+    transition: `transform ${suelo.dur}ms ${suelo.anim === "correr" ? "cubic-bezier(0.45, 0, 0.25, 1)" : "ease-in-out"}`,
   };
 
   return (
@@ -367,6 +380,7 @@ export function SnoopyEscena({
         ].map(([x, y], i) => (
           <circle key={i} cx={x} cy={y} r={i % 3 === 0 ? 2.6 : 1.8} fill="#fff8d8" className="m-estrella" style={{ animationDelay: `${(i % 5) * 0.6}s` }} />
         ))}
+        <circle cx="1010" cy="100" r="90" fill="url(#m-sol)" opacity="0.35" />
         <path d="M1010 70 a38 38 0 1 0 34 56 a30 30 0 1 1 -34 -56 Z" fill="#ffe27a" />
       </g>
 
@@ -379,7 +393,9 @@ export function SnoopyEscena({
         <circle cx="1450" cy="360" r="80" />
         <circle cx="1560" cy="380" r="70" />
       </g>
+      <rect x="0" y="300" width="1600" height="140" fill="#dbe9f2" opacity="0.22" />
       <rect x="0" y="340" width="1600" height="100" fill="url(#m-tablas)" />
+      <rect x="0" y="340" width="1600" height="100" fill="#e8f1f6" opacity="0.12" />
       <rect x="0" y="362" width="1600" height="9" fill="#946640" />
       <rect x="0" y="408" width="1600" height="9" fill="#946640" />
       <rect x="0" y="430" width="1600" height="12" fill="#2f5a1c" opacity="0.25" />
@@ -403,6 +419,8 @@ export function SnoopyEscena({
         className={`m-lampara ${durmiendo ? "apagada" : "encendida"}`}
         transform="translate(612 525)"
         onClick={onTocarLampara}
+        onKeyDown={teclaActiva(onTocarLampara)}
+        tabIndex={0}
         style={{ cursor: "pointer" }}
         role="button"
         aria-label={durmiendo ? "Encender la luz" : "Apagar la luz"}
@@ -439,7 +457,7 @@ export function SnoopyEscena({
         <path d="M770 526 V474 A30 30 0 0 1 830 474 V526 Z" fill="#2e110c" />
         <path d="M770 526 V474 A30 30 0 0 1 830 474" fill="none" stroke="#7d2219" strokeWidth="4" />
         <rect x="758" y="392" width="84" height="27" rx="6" fill="#f6e6c4" stroke="#8a5a2a" strokeWidth="2.5" />
-        <text x="800" y="411" textAnchor="middle" fontSize="15" fontWeight="800" fill="#6b3a14" letterSpacing="1.5" style={{ fontFamily: "Karla, sans-serif" }}>
+        <text x="800" y="411" textAnchor="middle" fontSize="15" fontWeight="800" fill="#6b3a14" letterSpacing="1.5" style={{ fontFamily: "Fredoka, Karla, sans-serif" }}>
           {nombre.toUpperCase().slice(0, 9)}
         </text>
         <path d="M712 372 L800 300 L800 316 L712 388 Z" fill="#000" opacity="0.12" />
@@ -452,6 +470,10 @@ export function SnoopyEscena({
       <g
         transform={`translate(${TECHO.x} ${TECHO.y})`}
         onClick={suelo.pose === "techo" ? onTocarSnoopy : undefined}
+        onKeyDown={suelo.pose === "techo" ? teclaActiva(onTocarSnoopy) : undefined}
+        tabIndex={suelo.pose === "techo" ? 0 : -1}
+        role="button"
+        aria-label="Jugar con Snoopy"
         style={{ cursor: "pointer" }}
       >
         <g className={`m-techo m-techo-${suelo.pose}`}>
@@ -530,7 +552,7 @@ export function SnoopyEscena({
           </g>
         ))}
       </g>
-      <g className="m-zzz" pointerEvents="none" fill="#eaf0ff" fontWeight="800" style={{ fontFamily: "Karla, sans-serif" }}>
+      <g className="m-zzz" pointerEvents="none" fill="#eaf0ff" fontWeight="800" style={{ fontFamily: "Fredoka, Karla, sans-serif" }}>
         <text x="776" y="226" fontSize="20" className="z z1">z</text>
         <text x="790" y="212" fontSize="26" className="z z2">Z</text>
         <text x="806" y="196" fontSize="32" className="z z3">Z</text>
@@ -541,7 +563,7 @@ export function SnoopyEscena({
 
       {/* ===== Globo de diálogo ===== */}
       <foreignObject
-        x={enSuelo ? 788 : 822}
+        x={enSuelo ? 788 : 808}
         y={enSuelo ? 236 : 96}
         width="232"
         height="140"

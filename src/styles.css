@@ -630,6 +630,32 @@
   }
 }
 
+/* Letra redonda de "Mi mascota". Solo se descarga al abrir esa página
+   (el navegador baja una fuente recién cuando algo la usa). */
+@font-face {
+  font-family: "Fredoka";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/fonts/fredoka-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+.mascota-ui {
+  font-family: "Fredoka", Karla, sans-serif;
+}
+/* Pausa todas las animaciones de la escena cuando no está en pantalla. */
+.escena-pausada,
+.escena-pausada * {
+  animation-play-state: paused !important;
+}
+.escena-mascota [tabindex]:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
 /* ===== Mi mascota (escena SVG) =====
    fill-box solo en las piezas con clase (las animadas). Ponerlo a todo hacía
    que los transform="scale/rotate" del SVG giraran desde otro punto y, por
@@ -640,6 +666,12 @@
 .m-oculto {
   opacity: 0;
   pointer-events: none;
+}
+/* Lo que no se ve no se anima (ahorra batería). */
+.m-oculto *,
+.m-techo-suelo *,
+.m-techo-subiendo * {
+  animation: none !important;
 }
 /* Nubes */
 .m-nube {
@@ -683,7 +715,7 @@
 .es-noche .m-sol {
   opacity: 0;
 }
-.m-estrella {
+.es-noche .m-estrella {
   animation: m-titilar 2.6s ease-in-out infinite;
 }
 @keyframes m-titilar {
@@ -702,7 +734,6 @@
 .m-lampara-halo {
   transform-origin: 50% 50%;
   transition: opacity 0.5s;
-  animation: m-halo 2.4s ease-in-out infinite;
 }
 .m-lampara.apagada .m-lampara-halo {
   opacity: 0;
@@ -906,8 +937,12 @@
   animation: m-trote 0.3s ease-in-out infinite;
 }
 @keyframes m-trote {
+  0%,
+  100% {
+    transform: rotate(7deg);
+  }
   50% {
-    transform: translateY(-9px) rotate(3deg);
+    transform: translateY(-9px) rotate(9deg);
   }
 }
 .m-lado-correr .m-pierna-frente {
@@ -1011,11 +1046,11 @@
 }
 .escuchando .m-oreja-izq {
   animation: none;
-  transform: rotate(118deg);
+  transform: rotate(58deg) translateY(-4px);
 }
 .escuchando .m-oreja-der {
   animation: none;
-  transform: rotate(-118deg);
+  transform: rotate(-58deg) translateY(-4px);
 }
 .oyendo .m-oreja-izq {
   animation: m-oyendo-izq 0.45s ease-in-out infinite;
@@ -1026,19 +1061,19 @@
 @keyframes m-oyendo-izq {
   0%,
   100% {
-    transform: rotate(118deg);
+    transform: rotate(58deg) translateY(-4px);
   }
   50% {
-    transform: rotate(104deg);
+    transform: rotate(46deg) translateY(-2px);
   }
 }
 @keyframes m-oyendo-der {
   0%,
   100% {
-    transform: rotate(-118deg);
+    transform: rotate(-58deg) translateY(-4px);
   }
   50% {
-    transform: rotate(-104deg);
+    transform: rotate(-46deg) translateY(-2px);
   }
 }
 .escuchando .m-cabeza-frente {
@@ -1144,7 +1179,7 @@
 .accion-banando .m-espuma {
   opacity: 1;
 }
-.m-patito {
+.m-tina-pos.visible .m-patito {
   animation: m-patito 1.4s ease-in-out infinite;
 }
 @keyframes m-patito {
@@ -1152,7 +1187,7 @@
     transform: translateY(-4px) rotate(-8deg);
   }
 }
-.m-gota {
+.accion-banando .m-gota {
   animation: m-gota 0.55s linear infinite;
 }
 @keyframes m-gota {
@@ -1165,7 +1200,7 @@
     opacity: 0;
   }
 }
-.m-burbuja {
+.accion-banando .m-burbuja {
   animation: m-burbuja 1.8s ease-out infinite;
 }
 @keyframes m-burbuja {
@@ -1282,14 +1317,14 @@
 }
 .m-globo-texto {
   position: relative;
-  max-width: 228px;
+  max-width: 214px;
   border-radius: 22px;
   border: 2.5px solid #4a3426;
   background: #fffaf2;
   padding: 8px 14px;
-  font-family: Karla, sans-serif;
+  font-family: Fredoka, Karla, sans-serif;
   font-size: 19px;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1.15;
   color: #3b2a20;
   box-shadow: 0 4px 0 rgb(74 52 38 / 0.25);
@@ -1329,41 +1364,39 @@
   }
 }
 
-/* ---- Botones y barras de la mascota ---- */
+/* ---- Botones y barras de la mascota ----
+   En reposo están quietos (el protagonista es Snoopy). Reaccionan al pasar
+   el mouse / tocar, y solo "llaman" cuando esa necesidad está baja. */
 .m-boton {
   position: relative;
   overflow: hidden;
-  animation: m-boton-flotar 3.2s ease-in-out infinite;
+  transition:
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.18s,
+    filter 0.2s;
 }
-.m-boton:nth-child(2) {
-  animation-delay: -1s;
-}
-.m-boton:nth-child(3) {
-  animation-delay: -2s;
-}
-@keyframes m-boton-flotar {
-  50% {
+@media (hover: hover) {
+  .m-boton:hover {
     transform: translateY(-3px);
+    filter: brightness(1.05);
+  }
+  .m-boton:hover .m-boton-icono {
+    animation: m-icono-baile 0.6s ease-in-out;
+  }
+  .m-boton:hover::after {
+    animation: m-boton-brillo 0.8s ease-out;
   }
 }
-.m-boton:hover {
-  animation-play-state: paused;
-  filter: brightness(1.06);
-}
 .m-boton:active {
-  animation: none;
   transform: translateY(6px) scale(0.97);
   box-shadow: 0 0 0 #2b211b !important;
 }
 .m-boton .m-boton-icono {
   display: inline-block;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.m-boton:hover .m-boton-icono {
-  animation: m-icono-baile 0.6s ease-in-out;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .m-boton:active .m-boton-icono {
-  transform: scale(1.25) rotate(-10deg);
+  transform: scale(1.22) rotate(-10deg);
 }
 @keyframes m-icono-baile {
   25% {
@@ -1373,7 +1406,6 @@
     transform: rotate(12deg) scale(1.1);
   }
 }
-/* Destello que cruza el botón cada tanto */
 .m-boton::after {
   content: "";
   position: absolute;
@@ -1381,27 +1413,21 @@
   width: 35%;
   background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.45), transparent);
   transform: skewX(-18deg);
-  animation: m-boton-brillo 4.5s ease-in-out infinite;
   pointer-events: none;
 }
-.m-boton:nth-child(2)::after {
-  animation-delay: 1.5s;
-}
-.m-boton:nth-child(3)::after {
-  animation-delay: 3s;
-}
 @keyframes m-boton-brillo {
-  0%,
-  70% {
+  from {
     left: -50%;
   }
-  100% {
+  to {
     left: 130%;
   }
 }
-/* Pide atención si esa necesidad está baja */
 .m-boton.necesita {
-  animation: m-necesita 1.1s ease-in-out infinite;
+  animation: m-necesita 1.4s ease-in-out infinite;
+}
+.m-boton.necesita::after {
+  animation: m-boton-brillo 1.4s ease-in-out infinite;
 }
 @keyframes m-necesita {
   0%,
@@ -1410,6 +1436,46 @@
   }
   50% {
     transform: translateY(-4px) scale(1.04);
+  }
+}
+/* Botón de micrófono flotante sobre la escena */
+.m-mic {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.3s;
+}
+.m-mic:active {
+  transform: scale(0.92);
+}
+.m-mic-onda {
+  animation: m-mic-onda 1.6s ease-out infinite;
+}
+@keyframes m-mic-onda {
+  from {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+/* Polvo al correr */
+.m-polvo {
+  opacity: 0;
+}
+.m-lado-correr .m-polvo {
+  animation: m-polvo 0.45s ease-out infinite;
+}
+.m-lado-correr .m-polvo.p2 {
+  animation-delay: 0.22s;
+}
+@keyframes m-polvo {
+  from {
+    opacity: 0.7;
+    transform: translate(0, 0) scale(0.5);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-26px, -10px) scale(1.4);
   }
 }
 .m-barra-relleno {
@@ -1423,7 +1489,9 @@
     transparent 75%
   );
   background-size: 18px 18px;
-  animation: m-rayas 1s linear infinite;
+}
+.m-barra-relleno.cambiando {
+  animation: m-rayas 0.6s linear infinite;
 }
 @keyframes m-rayas {
   to {
@@ -1432,7 +1500,6 @@
 }
 .m-icono-barra {
   display: inline-block;
-  animation: m-boton-flotar 2.4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

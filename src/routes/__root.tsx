@@ -590,7 +590,10 @@ function AppShell() {
       </div>
 
       {/* Estrellas que caen como nieve. */}
-      <FallingStars className="pointer-events-none fixed inset-0 z-0 overflow-hidden" />
+      {/* En "Mi mascota" la escena tapa todo el fondo: animarlas ahí sería gasto inútil. */}
+      {pathname !== "/mascota" && (
+        <FallingStars className="pointer-events-none fixed inset-0 z-0 overflow-hidden" />
+      )}
 
       {/* Panel transparente detrás del logo y los íconos de arriba. Solo es
           decorativo (no recibe toques); respeta el notch del iPhone. */}
@@ -930,7 +933,8 @@ function AppShell() {
         <Outlet />
       </main>
 
-      {!isHome && (
+      {/* En "Mi mascota" no va: cortaba el jardín con una franja morada. */}
+      {!isHome && pathname !== "/mascota" && (
         <footer className="relative z-10 py-10 text-center text-sm text-muted-foreground">
           Creado por{" "}
           <a

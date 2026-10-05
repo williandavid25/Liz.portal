@@ -75,6 +75,23 @@ function MiMascota() {
   sueloRef.current = suelo;
   const [ocupado, setOcupado] = useState(false);
 
+  // Pausa las animaciones de la escena cuando no se ve (ahorra batería).
+  const escenaRef = useRef<HTMLDivElement>(null);
+  const [escenaVisible, setEscenaVisible] = useState(true);
+  useEffect(() => {
+    const el = escenaRef.current;
+    if (!el || !("IntersectionObserver" in window)) return;
+    const io = new IntersectionObserver(([e]) => setEscenaVisible(!!e?.isIntersecting), {
+      threshold: 0.05,
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // Las rayas de una barra solo se mueven un momento, cuando sube su valor.
+  const [cambiando, setCambiando] = useState<Record<string, boolean>>({});
+  const previos = useRef<Record<string, number>>({});
+
   useEffect(() => {
     const id = window.setInterval(() => setFrase((f) => (f + 1) % FRASES.length), 7000);
     return () => window.clearInterval(id);
@@ -288,12 +305,33 @@ function MiMascota() {
     ["🌙", "Energía", m.energia, "#f2c23a"],
   ];
 
+  useEffect(() => {
+    if (!listo) return;
+    const valores: Record<string, number> = {
+      Comida: m.comida,
+      Felicidad: m.felicidad,
+      Higiene: m.higiene,
+      Energía: m.energia,
+    };
+    const subieron = Object.keys(valores).filter(
+      (k) => previos.current[k] !== undefined && valores[k]! - previos.current[k]! > 0.5,
+    );
+    previos.current = valores;
+    if (subieron.length === 0) return;
+    setCambiando((c) => ({ ...c, ...Object.fromEntries(subieron.map((k) => [k, true])) }));
+    const t = window.setTimeout(
+      () => setCambiando((c) => ({ ...c, ...Object.fromEntries(subieron.map((k) => [k, false])) })),
+      1400,
+    );
+    return () => window.clearTimeout(t);
+  }, [listo, m.comida, m.felicidad, m.higiene, m.energia]);
+
   const botones: Array<{ icono: string; label: string; color: string; fn: () => void; necesita: boolean }> = [
-    { icono: "🦴", label: "Lanzar hueso", color: "#e2483d", fn: lanzarHueso, necesita: !m.durmiendo && m.comida < 35 },
+    { icono: "🦴", label: "Hueso", color: "#e2483d", fn: lanzarHueso, necesita: !m.durmiendo && m.comida < 35 },
     { icono: "🛁", label: "Bañar", color: "#7cc4e4", fn: banar, necesita: !m.durmiendo && m.higiene < 35 },
     m.durmiendo
-      ? { icono: "💡", label: "Encender luz", color: "#f2c23a", fn: tocarLampara, necesita: m.energia >= 100 }
-      : { icono: "🌙", label: "Apagar luz", color: "#b07cd6", fn: tocarLampara, necesita: m.energia < 25 },
+      ? { icono: "💡", label: "Encender", color: "#f2c23a", fn: tocarLampara, necesita: m.energia >= 100 }
+      : { icono: "🌙", label: "Apagar", color: "#b07cd6", fn: tocarLampara, necesita: m.energia < 25 },
   ];
 
   const guardarNombre = () => {
@@ -304,7 +342,7 @@ function MiMascota() {
 
   return (
     <section
-      className={`relative -mb-px min-h-[100svh] overflow-hidden transition-colors duration-1000 ${
+      className={`mascota-ui relative -mb-px min-h-[100svh] overflow-hidden transition-colors duration-1000 ${
         m.durmiendo ? "bg-[#1b2554]" : "bg-[#6fa8d8]"
       }`}
     >
@@ -341,7 +379,7 @@ function MiMascota() {
             title="Cambiar nombre"
           >
             <span
-              className={`m-titulo font-display text-5xl font-bold tracking-wide drop-shadow-[0_2px_0_rgba(255,255,255,0.8)] sm:text-6xl ${
+              className={`m-titulo text-5xl font-bold tracking-wider drop-shadow-[0_3px_0_rgba(255,255,255,0.85)] sm:text-6xl ${
                 m.durmiendo ? "text-[#c9d6ff]" : "text-[#1f3fa0]"
               }`}
             >
@@ -350,13 +388,17 @@ function MiMascota() {
             <Pencil size={16} className="text-white/80 opacity-60 transition group-hover:opacity-100" />
           </button>
         )}
-        <p className={`-mt-1 text-xl font-extrabold sm:text-2xl ${m.durmiendo ? "text-white/85" : "text-[#26201c]"}`}>
+        <p className={`-mt-1 text-lg font-semibold sm:text-2xl ${m.durmiendo ? "text-white/85" : "text-[#26201c]"}`}>
           Snoopy&apos;s House
+        </p>
+        {/* Lo que dice Snoopy, para lectores de pantalla. */}
+        <p className="sr-only" aria-live="polite">
+          {globo}
         </p>
       </div>
 
       {/* Escena */}
-      <div className="relative z-0 -mt-4 h-[clamp(320px,52svh,580px)] w-full">
+      <div ref={escenaRef} className="relative z-0 -mt-4 h-[clamp(320px,52svh,580px)] w-full">
         <div
           aria-hidden="true"
           className={`pointer-events-none absolute inset-x-0 top-0 z-10 h-24 bg-gradient-to-b to-transparent transition-colors duration-1000 ${
@@ -376,7 +418,30 @@ function MiMascota() {
           bocaRef={bocaRef}
           onTocarSnoopy={tocarSnoopy}
           onTocarLampara={tocarLampara}
+          pausada={!escenaVisible}
         />
+
+        {/* Micrófono flotante: siempre a mano, sin bajar la página. */}
+        {(VozMascota.disponible() || !listo) && (
+          <button
+            type="button"
+            onClick={() => (oido === "inactivo" ? prenderMic() : apagarMic())}
+            disabled={oido === "inactivo" && ocupado}
+            aria-pressed={oido !== "inactivo"}
+            aria-label={oido === "inactivo" ? "Háblale a Snoopy" : "Terminar de hablar"}
+            className={`m-mic absolute left-4 top-6 z-20 flex items-center gap-2 rounded-full border-[3px] border-[#2b211b] py-2 pl-2.5 pr-4 text-sm font-semibold shadow-[0_4px_0_#2b211b] disabled:opacity-60 sm:left-8 sm:top-10 sm:text-base ${
+              oido === "inactivo" ? "bg-[#fff6e3] text-[#2b211b]" : "bg-[#ff6b6b] text-white"
+            }`}
+          >
+            <span className="relative grid h-7 w-7 place-items-center">
+              {oido !== "inactivo" && (
+                <span className="m-mic-onda absolute inset-0 rounded-full bg-white/70" aria-hidden="true" />
+              )}
+              {oido === "inactivo" ? <Mic size={20} /> : <MicOff size={18} />}
+            </span>
+            {oido === "inactivo" ? "Háblale" : oido === "hablando" ? "Te repite…" : "Escuchando"}
+          </button>
+        )}
       </div>
 
       {/* Pasto con barras y botones */}
@@ -385,19 +450,21 @@ function MiMascota() {
           m.durmiendo ? "bg-[#2a4a24]" : "bg-gradient-to-b from-[#4b8a2d] to-[#3f7a26]"
         }`}
       >
-        <div className="mx-auto w-full max-w-xl px-4">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-3xl border border-white/25 bg-black/15 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] backdrop-blur-sm">
-            {barras.map(([icono, label, valor, color], i) => {
+        <div className="mx-auto w-full max-w-xl px-4 pt-1">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 rounded-3xl border border-white/25 bg-black/20 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] backdrop-blur-sm">
+            {barras.map(([icono, label, valor, color]) => {
               const bajo = valor < 25;
               return (
                 <div key={label} className="flex items-center gap-2">
-                  <span className="m-icono-barra text-2xl drop-shadow" style={{ animationDelay: `${-i * 0.6}s` }} aria-hidden="true">
+                  <span className="m-icono-barra text-xl drop-shadow" aria-hidden="true">
                     {icono}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-extrabold uppercase tracking-wide text-white drop-shadow">{label}</p>
+                    <p className="text-[12px] font-semibold uppercase tracking-wider text-white/95 drop-shadow">
+                      {label}
+                    </p>
                     <div
-                      className={`relative h-5 overflow-hidden rounded-full border-2 border-[#2b211b] bg-white/85 ${bajo ? "animate-pulse" : ""}`}
+                      className={`relative h-4 overflow-hidden rounded-full border-2 border-[#2b211b] bg-white/85 ${bajo ? "animate-pulse" : ""}`}
                       role="progressbar"
                       aria-label={label}
                       aria-valuenow={Math.round(valor)}
@@ -405,10 +472,10 @@ function MiMascota() {
                       aria-valuemax={100}
                     >
                       <div
-                        className="m-barra-relleno h-full rounded-full transition-[width] duration-700 ease-out"
+                        className={`m-barra-relleno h-full rounded-full transition-[width] duration-700 ease-out ${cambiando[label] ? "cambiando" : ""}`}
                         style={{ width: `${valor}%`, backgroundColor: bajo ? "#e5484d" : color }}
                       />
-                      <span className="absolute inset-y-0 right-2 flex items-center text-[11px] font-extrabold text-[#2b211b]">
+                      <span className="absolute inset-y-0 right-1.5 flex items-center text-[10px] font-semibold text-[#2b211b]">
                         {Math.round(valor)}%
                       </span>
                     </div>
@@ -425,50 +492,19 @@ function MiMascota() {
                 type="button"
                 onClick={b.fn}
                 disabled={ocupado && !m.durmiendo}
-                className={`m-boton flex aspect-square flex-col items-center justify-center gap-1 rounded-3xl border-[3px] border-[#2b211b] text-[#1d1612] shadow-[0_6px_0_#2b211b] disabled:cursor-wait disabled:opacity-70 sm:aspect-[4/3] ${
+                className={`m-boton flex h-24 flex-col items-center justify-center gap-1 rounded-3xl border-[3px] border-[#2b211b] text-[#1d1612] shadow-[0_6px_0_#2b211b] disabled:cursor-wait disabled:opacity-70 sm:h-28 ${
                   b.necesita ? "necesita" : ""
                 }`}
                 style={{ background: b.color }}
               >
-                <span className="m-boton-icono text-4xl drop-shadow-sm sm:text-5xl" aria-hidden="true">
+                <span className="m-boton-icono text-[2.6rem] leading-none drop-shadow-sm sm:text-5xl" aria-hidden="true">
                   {b.icono}
                 </span>
-                <span className="text-center text-[13px] font-black uppercase leading-tight tracking-wide sm:text-base">
-                  {b.label}
-                </span>
+                <span className="text-[15px] font-bold uppercase tracking-wide sm:text-base">{b.label}</span>
               </button>
             ))}
           </div>
-
-          {VozMascota.disponible() || !listo ? (
-            <button
-              type="button"
-              onClick={() => (oido === "inactivo" ? prenderMic() : apagarMic())}
-              disabled={oido === "inactivo" && ocupado}
-              className={`m-boton mt-5 flex w-full items-center justify-center gap-2 rounded-full border-[3px] border-[#2b211b] px-5 py-3.5 text-base font-black shadow-[0_5px_0_#2b211b] disabled:opacity-70 ${
-                oido === "inactivo" ? "bg-[#fff6e3] text-[#2b211b]" : "bg-[#ff6b6b] text-white"
-              }`}
-            >
-              {oido === "inactivo" ? (
-                <>
-                  <Mic size={20} className="m-boton-icono" /> Háblale a Snoopy
-                </>
-              ) : (
-                <>
-                  <span className="relative flex h-3 w-3">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                    <span className="relative inline-flex h-3 w-3 rounded-full bg-white" />
-                  </span>
-                  {oido === "hablando" ? "Snoopy te repite…" : "Te escucha… toca para terminar"}
-                  <MicOff size={18} className="opacity-80" />
-                </>
-              )}
-            </button>
-          ) : null}
-          {errorMic && <p className="mt-2 text-center text-sm font-semibold text-yellow-100">{errorMic}</p>}
-          <p className="mt-3 text-center text-xs text-white/75">
-            Toca a Snoopy para jugar 🐾 · Toca la lámpara para apagar o encender la luz 💡
-          </p>
+          {errorMic && <p className="mt-3 text-center text-sm font-semibold text-yellow-100">{errorMic}</p>}
         </div>
       </div>
     </section>
