@@ -134,6 +134,7 @@ export async function readStore(): Promise<CloudStore & { configured: boolean }>
       }
       const data = (raw ?? {}) as Partial<CloudStore>;
       return {
+        ...data,
         cartas: data.cartas ?? [],
         fotos: data.fotos ?? [],
         eventos: data.eventos ?? [],
@@ -167,6 +168,18 @@ export async function writeStore(store: CloudStore): Promise<void> {
       if (attempt === 1) throw err;
     }
   }
+}
+
+/**
+ * Cambia solo una parte del store y conserva todo lo demás (cartas, fotos,
+ * ajustes...). Si no se pudo leer la base, NO escribe: guardar encima de una
+ * lectura fallida dejaría todo lo demás vacío. Devuelve el store anterior.
+ */
+export async function patchStore(patch: Partial<CloudStore>): Promise<CloudStore> {
+  const { configured, ...prev } = await readStore();
+  if (!configured) throw new Error("La nube no respondió; no se guarda para no perder datos.");
+  await writeStore({ ...prev, ...patch });
+  return prev;
 }
 
 export async function savePushSub(sub: { endpoint: string }): Promise<void> {
@@ -229,7 +242,7 @@ export async function uploadToSupabaseStorage(
           "Content-Type": contentType,
           "x-upsert": "true",
         },
-        body: bytes,
+        body: bytes as unknown as BodyInit,
       }
     );
     if (!res.ok) {

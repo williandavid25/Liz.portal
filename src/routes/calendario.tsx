@@ -12,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import { loadStore, saveEventos, queuePendingEventos, type CalendarEvent } from "@/lib/cloud";
+import { loadStoreShared, saveEventos, queuePendingEventos, type CalendarEvent } from "@/lib/cloud";
 
 export const Route = createFileRoute("/calendario")({
   head: () => ({
@@ -176,7 +176,7 @@ function CalendarioPage() {
       /* ignore */
     }
 
-    loadStore()
+    loadStoreShared()
       .then((s) => {
         if (!s.configured) {
           setCloudOn(false);

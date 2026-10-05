@@ -434,6 +434,50 @@
   box-shadow: inset 0 0 110px 58px color-mix(in oklab, var(--cosmic-deep) 78%, transparent);
 }
 
+/* ===== Portada en video =====
+   El cuadro toma la proporción del video (--portada-ar). En pantallas anchas
+   queda centrado y sus bordes laterales se funden con el brillo de fondo; en
+   celulares ocupa todo el ancho. */
+.portada-frame {
+  position: relative;
+  height: 100%;
+  aspect-ratio: var(--portada-ar, 0.5625);
+  max-width: 100%;
+}
+@media (min-aspect-ratio: 3/4) {
+  .portada-frame--fade {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent);
+  }
+}
+.portada-fade-bottom {
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: clamp(7rem, 24svh, 14rem);
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgb(2 2 10 / 0.35) 35%,
+    rgb(2 2 10 / 0.8) 70%,
+    #02020a 100%
+  );
+}
+.portada-fade-top {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 7rem;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgb(2 2 10 / 0.55), transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .portada-video {
+    transition: none !important;
+  }
+}
+
 /* Contenteditable placeholder styling */
 [contenteditable]:empty::before {
   content: attr(data-placeholder);

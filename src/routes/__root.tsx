@@ -8,16 +8,19 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { lazy, useEffect, useRef, useState, type ReactNode } from "react";
-import { Menu, Settings, X, Volume2, VolumeX, Play, Pause } from "lucide-react";
+import { lazy, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Menu, Settings, X, Volume2, VolumeX, Play, Pause, Check, Sparkles } from "lucide-react";
 import { upload } from "@vercel/blob/client";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { NotificationBell } from "../components/NotificationBell";
 import { FallingStars } from "../components/FallingStars";
+import { DismissLayer } from "../components/DismissLayer";
+import { useAjustes, setAjustes, hydrateAjustes } from "../lib/ajustes";
+import { PORTADAS } from "../lib/portadas";
 import {
-  loadStore,
+  loadStoreShared,
   saveMusica,
   queuePendingMusica,
   flushPendingSync,
@@ -209,12 +212,16 @@ function AppShell() {
   const [musicUrl, setMusicUrl] = useState("");
   const [draftMusicUrl, setDraftMusicUrl] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
-  const [showNavMenu, setShowNavMenu] = useState(false);
-  const [showMusic, setShowMusic] = useState(false);
+  // Un solo panel abierto a la vez: menú, ajustes o campanita.
+  const [panel, setPanel] = useState<null | "menu" | "ajustes" | "avisos">(null);
+  const showNavMenu = panel === "menu";
+  const showMusic = panel === "ajustes";
+  const closePanel = useCallback(() => setPanel(null), []);
+  const ajustes = useAjustes();
+  const [draftPortadaUrl, setDraftPortadaUrl] = useState("");
   const [uploadingMusic, setUploadingMusic] = useState(false);
   const [musicError, setMusicError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const musicPanelRef = useRef<HTMLDivElement>(null);
   const youtubeId = extractYouTubeId(musicUrl);
   const [ytReady, setYtReady] = useState(false);
   const ytContainerRef = useRef<HTMLDivElement>(null);
@@ -228,15 +235,14 @@ function AppShell() {
     }
   }, []);
 
+  // Al cambiar de página se cierra cualquier panel que haya quedado abierto.
+  const pathname = routerState.location.pathname;
   useEffect(() => {
-    if (!showMusic) return;
-    const closeOnOutsideClick = (event: MouseEvent) => {
-      if (musicPanelRef.current && !musicPanelRef.current.contains(event.target as Node)) {
-        setShowMusic(false);
-      }
-    };
-    document.addEventListener("mousedown", closeOnOutsideClick);
-    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+    setPanel(null);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (showMusic) setDraftPortadaUrl(ajustes.portadaUrl ?? "");
   }, [showMusic]);
 
   // Si guardaste algo (carta, foto, evento, música) sin conexión, esto lo
@@ -306,9 +312,10 @@ function AppShell() {
     setMusicUrl(localMusic);
     setDraftMusicUrl(localMusic);
 
-    loadStore()
+    loadStoreShared()
       .then((s) => {
         if (!s.configured) return;
+        hydrateAjustes(s.ajustes);
         if (s.musica && isValidMusicUrl(s.musica)) {
           setMusicUrl(s.musica);
           setDraftMusicUrl(s.musica);
@@ -437,7 +444,7 @@ function AppShell() {
     }
     setMusicError(null);
     saveMusic(nextUrl);
-    setShowMusic(false);
+    setPanel(null);
     playTrack(nextUrl);
   };
 
@@ -519,10 +526,13 @@ function AppShell() {
         <span className="text-xs font-bold leading-none sm:text-sm">Inicio</span>
       </Link>
 
+      {/* Capa para cerrar cualquier panel abierto tocando fuera de él. */}
+      {panel && <DismissLayer onDismiss={closePanel} />}
+
       {/* Nav */}
       <nav className="fixed top-3 right-3 sm:top-6 sm:right-6 z-50 flex items-center gap-2 text-[11px] sm:text-xs font-bold">
         <button
-          onClick={() => setShowNavMenu((open) => !open)}
+          onClick={() => setPanel((p) => (p === "menu" ? null : "menu"))}
           className={`p-2.5 rounded-full transition-all duration-300 hover:scale-105 flex items-center justify-center border ${
             isHome
               ? "bg-white/5 hover:bg-white/15 text-white border-white/25 drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)]"
@@ -539,7 +549,7 @@ function AppShell() {
               <Link
                 key={to}
                 to={to}
-                onClick={() => setShowNavMenu(false)}
+                onClick={closePanel}
                 className="rounded-xl px-3 py-2 text-popover-foreground transition-colors hover:bg-primary/10"
                 activeProps={{
                   className: "rounded-xl px-3 py-2 text-primary-foreground",
@@ -550,14 +560,11 @@ function AppShell() {
               </Link>
             ))}
             <button
-              onClick={() => {
-                setShowMusic((open) => !open);
-                setShowNavMenu(false);
-              }}
+              onClick={() => setPanel("ajustes")}
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-left text-popover-foreground transition-colors hover:bg-primary/10"
             >
               <Settings size={16} />
-              Configuración
+              Ajustes
             </button>
           </div>
         )}
@@ -581,25 +588,137 @@ function AppShell() {
             <VolumeX size={20} />
           )}
         </button>
-        <NotificationBell isHome={isHome} />
+        <NotificationBell
+          isHome={isHome}
+          open={panel === "avisos"}
+          onOpenChange={(open) => setPanel(open ? "avisos" : null)}
+        />
       </nav>
 
       {showMusic && (
         <div
-          ref={musicPanelRef}
-          className="fixed left-1/2 top-16 z-50 max-h-[calc(100svh-5rem)] w-[calc(100vw-1rem)] max-w-md -translate-x-1/2 overflow-y-auto glass rounded-2xl p-4 shadow-xl sm:top-20"
+          role="dialog"
+          aria-label="Ajustes"
+          className="fixed left-1/2 top-16 z-50 max-h-[calc(100svh-5rem)] w-[calc(100vw-1rem)] max-w-md -translate-x-1/2 overflow-y-auto overscroll-contain glass rounded-2xl p-4 shadow-xl sm:top-20"
         >
-          <div className="mb-2 flex items-center justify-between">
-            <p className="font-display text-lg text-popover-foreground">Música</p>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="font-display text-xl text-popover-foreground">Ajustes</p>
             <button
               type="button"
-              onClick={() => setShowMusic(false)}
+              onClick={closePanel}
               className="rounded-full p-1.5 text-popover-foreground/70 transition hover:bg-black/5 hover:text-popover-foreground"
-              aria-label="Cerrar configuración de música"
+              aria-label="Cerrar ajustes"
             >
               <X size={20} />
             </button>
           </div>
+
+          {/* ===== Portada ===== */}
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-popover-foreground/60">
+            Portada del inicio
+          </p>
+          <div className="grid grid-cols-4 gap-2">
+            {[...PORTADAS, { id: "personalizada", nombre: "Mi video" } as const].map((p) => {
+              const active = ajustes.portada === p.id;
+              const mini = "miniatura" in p ? p.miniatura : undefined;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  // "Mi video" sin link todavía sigue mostrando la flor de loto
+                  // hasta que se pegue uno abajo (ver resolvePortada).
+                  onClick={() => setAjustes({ portada: p.id })}
+                  className={`group flex flex-col items-center gap-1 rounded-xl p-1 text-[10px] font-semibold text-popover-foreground/80 transition ${
+                    active ? "bg-primary/15 ring-2 ring-primary" : "hover:bg-black/5"
+                  }`}
+                  aria-pressed={active}
+                >
+                  <span className="relative block aspect-[3/4] w-full overflow-hidden rounded-lg bg-[#02020a]">
+                    {mini ? (
+                      <img
+                        src={mini}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : p.id === "galaxia" ? (
+                      <span className="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_50%_45%,#fde047_0%,#b45309_22%,#1e1b4b_55%,#02020a_80%)] text-lg">
+                        🌼
+                      </span>
+                    ) : (
+                      <span className="grid h-full w-full place-items-center text-white/70">
+                        <Sparkles size={18} />
+                      </span>
+                    )}
+                    {active && (
+                      <span className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded-full bg-primary text-white">
+                        <Check size={11} />
+                      </span>
+                    )}
+                  </span>
+                  <span className="w-full truncate text-center">{p.nombre}</span>
+                </button>
+              );
+            })}
+          </div>
+          {ajustes.portada === "personalizada" && (
+            <div className="mt-2 flex gap-2">
+              <input
+                type="url"
+                placeholder="https://... (link directo a un .mp4)"
+                value={draftPortadaUrl}
+                onChange={(e) => setDraftPortadaUrl(e.target.value)}
+                className="min-w-0 flex-1 rounded-full border border-primary/20 bg-white/60 px-4 py-2 text-sm text-popover-foreground outline-none focus:border-primary"
+              />
+              <button
+                type="button"
+                disabled={!/^https?:\/\/\S+$/i.test(draftPortadaUrl.trim())}
+                onClick={() =>
+                  setAjustes({ portada: "personalizada", portadaUrl: draftPortadaUrl.trim() })
+                }
+                className="shrink-0 rounded-full px-4 py-2 text-sm font-semibold text-white disabled:opacity-45"
+                style={{ background: "var(--gradient-rose)" }}
+              >
+                Usar
+              </button>
+            </div>
+          )}
+
+          {/* ===== Secciones ===== */}
+          <p className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-popover-foreground/60">
+            Secciones del inicio
+          </p>
+          <div className="flex flex-col gap-1.5">
+            {(
+              [
+                ["mostrarGalaxia", "Universo de las rosas amarillas"],
+                ["mostrarOceano", "Océano del delfín"],
+              ] as const
+            ).map(([key, text]) => (
+              <label
+                key={key}
+                className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-black/5 bg-white/40 px-3 py-2 text-sm text-popover-foreground/85"
+              >
+                {text}
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={ajustes[key]}
+                  onChange={(e) => setAjustes({ [key]: e.target.checked })}
+                  className="peer sr-only"
+                />
+                <span
+                  aria-hidden="true"
+                  className="relative h-6 w-11 shrink-0 rounded-full bg-black/15 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:bg-primary peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-primary"
+                />
+              </label>
+            ))}
+          </div>
+
+          {/* ===== Música ===== */}
+          <p className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-popover-foreground/60">
+            Música de fondo
+          </p>
           <div className="flex flex-col gap-2.5">
             {/* Estado y control rápido */}
             <div className="flex items-center justify-between rounded-xl bg-white/40 px-3 py-2 border border-black/5">

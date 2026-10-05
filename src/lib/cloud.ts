@@ -43,11 +43,19 @@ export interface CalendarEvent {
   special?: boolean;
   createdAt: number;
 }
+// Ajustes del inicio: qué portada se proyecta y qué secciones se muestran.
+export interface Ajustes {
+  portada: string; // id de la plantilla (ver src/lib/portadas.ts)
+  portadaUrl?: string; // video propio cuando portada === "personalizada"
+  mostrarGalaxia: boolean;
+  mostrarOceano: boolean;
+}
 export interface CloudStore {
   cartas: SavedLetter[];
   fotos: PhotoMeta[];
   eventos: CalendarEvent[];
   musica?: string; // única canción de fondo elegida ahora mismo (opcional); subir una nueva reemplaza esta
+  ajustes?: Ajustes;
 }
 
 /** Carga cartas + fotos desde la nube. */
@@ -55,6 +63,25 @@ export const loadStore = createServerFn({ method: "GET" }).handler(async () => {
   const { readStore } = await import("./cloud.server");
   return await readStore();
 });
+
+type LoadedStore = Awaited<ReturnType<typeof loadStore>>;
+let sharedLoad: { at: number; p: Promise<LoadedStore> } | null = null;
+
+/**
+ * Igual que loadStore, pero si varias partes de la página la piden casi al
+ * mismo tiempo (menú, campanita, la página abierta) se hace una sola consulta
+ * a la base en vez de tres.
+ */
+export function loadStoreShared(maxAgeMs = 4000): Promise<LoadedStore> {
+  const now = Date.now();
+  if (sharedLoad && now - sharedLoad.at < maxAgeMs) return sharedLoad.p;
+  const p = loadStore();
+  sharedLoad = { at: now, p };
+  p.catch(() => {
+    if (sharedLoad?.p === p) sharedLoad = null;
+  });
+  return p;
+}
 
 /**
  * Lee la miniatura de vista previa (og:image) de un enlace (ej. álbum de Google
@@ -115,10 +142,9 @@ export const savePushSubscription = createServerFn({ method: "POST" })
 export const saveCartas = createServerFn({ method: "POST" })
   .validator((cartas: SavedLetter[]) => cartas)
   .handler(async ({ data }) => {
-    const { readStore, writeStore } = await import("./cloud.server");
-    const { cartas: previas, fotos, eventos, musica } = await readStore();
+    const { patchStore } = await import("./cloud.server");
     try {
-      await writeStore({ cartas: data, fotos, eventos, musica });
+      const { cartas: previas } = await patchStore({ cartas: data });
       // Aviso al otro celular solo por cartas realmente nuevas.
       const antes = new Set(previas.map((c) => c.id));
       const nuevas = data.filter((c) => !antes.has(c.id));
@@ -144,10 +170,9 @@ export const saveCartas = createServerFn({ method: "POST" })
 export const saveFotos = createServerFn({ method: "POST" })
   .validator((fotos: PhotoMeta[]) => fotos)
   .handler(async ({ data }) => {
-    const { readStore, writeStore } = await import("./cloud.server");
-    const { cartas, eventos, musica } = await readStore();
+    const { patchStore } = await import("./cloud.server");
     try {
-      await writeStore({ cartas, fotos: data, eventos, musica });
+      await patchStore({ fotos: data });
       return { ok: true };
     } catch {
       return { ok: false };
@@ -158,10 +183,9 @@ export const saveFotos = createServerFn({ method: "POST" })
 export const saveEventos = createServerFn({ method: "POST" })
   .validator((eventos: CalendarEvent[]) => eventos)
   .handler(async ({ data }) => {
-    const { readStore, writeStore } = await import("./cloud.server");
-    const { cartas, fotos, musica } = await readStore();
+    const { patchStore } = await import("./cloud.server");
     try {
-      await writeStore({ cartas, fotos, eventos: data, musica });
+      await patchStore({ eventos: data });
       return { ok: true };
     } catch {
       return { ok: false };
@@ -172,10 +196,22 @@ export const saveEventos = createServerFn({ method: "POST" })
 export const saveMusica = createServerFn({ method: "POST" })
   .validator((musica: string) => musica)
   .handler(async ({ data }) => {
-    const { readStore, writeStore } = await import("./cloud.server");
-    const { cartas, fotos, eventos } = await readStore();
+    const { patchStore } = await import("./cloud.server");
     try {
-      await writeStore({ cartas, fotos, eventos, musica: data });
+      await patchStore({ musica: data });
+      return { ok: true };
+    } catch {
+      return { ok: false };
+    }
+  });
+
+/** Guarda los ajustes del inicio (portada y secciones visibles). */
+export const saveAjustes = createServerFn({ method: "POST" })
+  .validator((ajustes: Ajustes) => ajustes)
+  .handler(async ({ data }) => {
+    const { patchStore } = await import("./cloud.server");
+    try {
+      await patchStore({ ajustes: data });
       return { ok: true };
     } catch {
       return { ok: false };
@@ -256,6 +292,7 @@ interface PendingSync {
   fotos?: PhotoMeta[];
   eventos?: CalendarEvent[];
   musica?: string;
+  ajustes?: Ajustes;
 }
 
 function readPending(): PendingSync {
@@ -282,6 +319,9 @@ export function queuePendingEventos(eventos: CalendarEvent[]) {
 export function queuePendingMusica(musica: string) {
   writePending({ ...readPending(), musica });
 }
+export function queuePendingAjustes(ajustes: Ajustes) {
+  writePending({ ...readPending(), ajustes });
+}
 
 /** Reintenta subir a la nube lo que quedó pendiente por falta de conexión. */
 export async function flushPendingSync(): Promise<void> {
@@ -301,6 +341,10 @@ export async function flushPendingSync(): Promise<void> {
   if (pending.musica !== undefined) {
     const r = await saveMusica({ data: pending.musica }).catch(() => ({ ok: false }));
     if (r.ok) delete pending.musica;
+  }
+  if (pending.ajustes) {
+    const r = await saveAjustes({ data: pending.ajustes }).catch(() => ({ ok: false }));
+    if (r.ok) delete pending.ajustes;
   }
   writePending(pending);
 }

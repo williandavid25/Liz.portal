@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Printer, Trash2, Plus, Save, Check, Pencil, Cloud, CloudOff } from "lucide-react";
-import { loadStore, saveCartas, queuePendingCartas, type SavedLetter } from "@/lib/cloud";
+import { loadStoreShared, saveCartas, queuePendingCartas, type SavedLetter } from "@/lib/cloud";
 
 export const Route = createFileRoute("/bienvenida")({
   validateSearch: (search: Record<string, unknown>): { open?: string } => ({
@@ -171,7 +171,7 @@ function Bienvenida() {
         console.error("Error al leer cartas:", e);
       }
     }
-    loadStore()
+    loadStoreShared()
       .then((s) => {
         if (!s.configured) {
           setCloudOn(false);

@@ -1,6 +1,6 @@
 // Service worker: permite "instalar" el sitio, abrirlo sin internet una vez
 // visitado, y recibir avisos de cartas nuevas con la app cerrada.
-const CACHE_NAME = "liz-portal-v2";
+const CACHE_NAME = "liz-portal-v3";
 
 self.addEventListener("install", () => {
   self.skipWaiting();

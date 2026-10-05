@@ -14,7 +14,7 @@ import {
   Images,
 } from "lucide-react";
 import {
-  loadStore,
+  loadStoreShared,
   saveFotos,
   queuePendingFotos,
   uploadImage,
@@ -81,7 +81,7 @@ function Recuerdos() {
     } catch {
       /* ignore */
     }
-    loadStore()
+    loadStoreShared()
       .then((s) => {
         if (!s.configured) {
           setCloudOn(false);
@@ -199,6 +199,15 @@ function Recuerdos() {
   }, [sorted]);
 
   const lightboxSrc = fotos.find((f) => f.id === lightbox)?.url;
+
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightbox(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox]);
 
   return (
     <section className="relative py-28 px-4 sm:px-6 min-h-screen">

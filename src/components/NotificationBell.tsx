@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bell } from "lucide-react";
-import { loadStore, type SavedLetter } from "@/lib/cloud";
+import { loadStoreShared, type SavedLetter } from "@/lib/cloud";
 import { enablePush } from "@/lib/push-client";
 
 // Cada dispositivo recuerda hasta qué momento ya revisó las cartas. Como no hay
@@ -28,14 +28,23 @@ function timeAgo(ts: number) {
   return `hace ${days} d`;
 }
 
-export function NotificationBell({ isHome }: { isHome: boolean }) {
+// El panel se abre/cierra desde AppShell (__root.tsx), que se encarga de que
+// solo haya un panel abierto a la vez y de cerrarlo al tocar fuera.
+export function NotificationBell({
+  isHome,
+  open,
+  onOpenChange,
+}: {
+  isHome: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const navigate = useNavigate();
   const [letters, setLetters] = useState<SavedLetter[]>([]);
   const [lastSeen, setLastSeen] = useState(0);
-  const [open, setOpen] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | null>(null);
   const notifiedIds = useRef<Set<string>>(new Set());
-  const panelRef = useRef<HTMLDivElement>(null);
+  const setOpen = onOpenChange;
 
   useEffect(() => {
     setLastSeen(getLastSeen());
@@ -43,7 +52,9 @@ export function NotificationBell({ isHome }: { isHome: boolean }) {
 
     let cancelled = false;
     const poll = () => {
-      loadStore()
+      // Con la app en segundo plano no se consulta: ahorra batería y datos.
+      if (document.hidden) return;
+      loadStoreShared()
         .then((s) => {
           if (cancelled || !s.configured) return;
           setLetters(s.cartas);
@@ -83,20 +94,14 @@ export function NotificationBell({ isHome }: { isHome: boolean }) {
 
     poll();
     const interval = setInterval(poll, POLL_MS);
+    // Al volver a la app se revisa de inmediato, sin esperar el intervalo.
+    document.addEventListener("visibilitychange", poll);
     return () => {
       cancelled = true;
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", poll);
     };
   }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    const onClickOutside = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, [open]);
 
   const unseen = letters
     .filter((l) => (l.updatedAt ?? l.createdAt ?? 0) > lastSeen)
@@ -115,17 +120,15 @@ export function NotificationBell({ isHome }: { isHome: boolean }) {
   };
 
   const toggleOpen = () => {
-    setOpen((o) => {
-      const next = !o;
-      if (next) {
-        if (typeof Notification !== "undefined" && Notification.permission === "default") {
-          askPush();
-        }
-        // Abrir la campanita ya cuenta como "leídas": se limpia el aviso.
-        markAllSeen();
+    const next = !open;
+    if (next) {
+      if (typeof Notification !== "undefined" && Notification.permission === "default") {
+        askPush();
       }
-      return next;
-    });
+      // Abrir la campanita ya cuenta como "leídas": se limpia el aviso.
+      markAllSeen();
+    }
+    setOpen(next);
   };
 
   const markAllSeen = () => {
@@ -145,9 +148,10 @@ export function NotificationBell({ isHome }: { isHome: boolean }) {
     : "bg-white/60 hover:bg-white/80 text-popover-foreground/80 hover:text-popover-foreground border-black/5";
 
   return (
-    <div className="relative" ref={panelRef}>
+    <div className="relative">
       <button
         onClick={toggleOpen}
+        aria-expanded={open}
         className={`relative p-2 sm:p-3 rounded-full transition-all duration-300 hover:scale-105 flex items-center justify-center border ${btnClasses}`}
         aria-label="Notificaciones de cartas"
       >
