@@ -8,6 +8,9 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
   nitro: { preset: "vercel" },
+  // three.js (galaxia/océano) pesa ~1.6 MB por sí solo; se carga solo al bajar
+  // a esas secciones, así que el aviso de "chunk grande" no aplica aquí.
+  vite: { build: { chunkSizeWarningLimit: 2000 } },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
