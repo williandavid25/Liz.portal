@@ -35,7 +35,6 @@ export function Splash() {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    const inicio = performance.now();
     let cancelado = false;
     const listo = Promise.all([
       document.fonts?.load ? document.fonts.load('64px "Great Vibes"').catch(() => {}) : null,
@@ -45,7 +44,9 @@ export function Splash() {
     const tope = new Promise((r) => setTimeout(r, MAX_MS));
 
     Promise.race([listo, tope]).then(() => {
-      const falta = Math.max(0, MIN_MS - (performance.now() - inicio));
+      // performance.now() cuenta desde que se abrió la página: el mínimo se
+      // mide desde ahí, no desde que arrancó el JavaScript.
+      const falta = Math.max(0, MIN_MS - performance.now());
       setTimeout(() => {
         if (cancelado) return;
         setSaliendo(true);
