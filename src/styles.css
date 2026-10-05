@@ -630,6 +630,392 @@
   }
 }
 
+/* ===== Mi mascota (escena SVG) ===== */
+.escena-mascota * {
+  transform-box: fill-box;
+}
+/* Nubes que cruzan el cielo despacio */
+.m-nube {
+  animation: m-nube 70s linear infinite;
+}
+.m-nube.n2 {
+  animation-duration: 95s;
+  animation-delay: -30s;
+}
+.m-nube.n3 {
+  animation-duration: 120s;
+  animation-delay: -70s;
+}
+.m-nube.n4 {
+  animation-duration: 85s;
+  animation-delay: -20s;
+}
+@keyframes m-nube {
+  from {
+    transform: translateX(-1500px);
+  }
+  to {
+    transform: translateX(1700px);
+  }
+}
+/* Noche */
+.m-noche {
+  opacity: 0;
+  transition: opacity 1.4s ease;
+}
+.es-noche .m-noche {
+  opacity: 0.72;
+}
+.es-noche .m-sol {
+  opacity: 0;
+}
+.m-sol {
+  transition: opacity 1.4s ease;
+}
+.m-estrella {
+  animation: m-titilar 2.6s ease-in-out infinite;
+}
+@keyframes m-titilar {
+  50% {
+    opacity: 0.25;
+  }
+}
+/* Snoopy: respira */
+.m-cuerpo {
+  transform-origin: 50% 100%;
+  animation: m-respirar 3.2s ease-in-out infinite;
+}
+.es-noche .m-cuerpo {
+  animation-duration: 4.8s;
+}
+@keyframes m-respirar {
+  50% {
+    transform: scaleY(1.06) scaleX(1.01);
+  }
+}
+.m-cabeza-anim {
+  transform-origin: 85% 70%;
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: m-cabeza 3.2s ease-in-out infinite;
+}
+@keyframes m-cabeza {
+  50% {
+    transform: translateY(1.5px);
+  }
+}
+/* Parpadeo */
+.m-ojo {
+  transform-origin: 50% 50%;
+  animation: m-parpadeo 4.5s infinite;
+}
+@keyframes m-parpadeo {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+/* Cola */
+.m-cola {
+  transform-origin: 10% 90%;
+  animation: m-cola 1.6s ease-in-out infinite;
+}
+.contento .m-cola,
+.accion-feliz .m-cola {
+  animation-duration: 0.45s;
+}
+.es-noche .m-cola {
+  animation: none;
+}
+@keyframes m-cola {
+  0%,
+  100% {
+    transform: rotate(-8deg);
+  }
+  50% {
+    transform: rotate(14deg);
+  }
+}
+/* Oreja: cuelga y se mece; al escuchar se levanta */
+.m-oreja {
+  transform-origin: 50% 4%;
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: m-oreja 3.2s ease-in-out infinite;
+}
+@keyframes m-oreja {
+  50% {
+    transform: rotate(4deg);
+  }
+}
+.escuchando .m-oreja {
+  animation: none;
+  transform: rotate(-150deg);
+}
+.oyendo .m-oreja {
+  animation: m-oreja-oye 0.5s ease-in-out infinite;
+}
+@keyframes m-oreja-oye {
+  0%,
+  100% {
+    transform: rotate(-150deg);
+  }
+  50% {
+    transform: rotate(-138deg);
+  }
+}
+.escuchando .m-cabeza-anim,
+.hablando .m-cabeza-anim {
+  animation: none;
+  transform: rotate(-9deg) translateY(-6px);
+}
+/* Boca: sonrisa normal, se abre al hablar */
+.m-boca {
+  opacity: 0;
+}
+.hablando .m-boca {
+  opacity: 1;
+}
+.hablando .m-sonrisa {
+  opacity: 0;
+}
+.hablando .m-snoopy-salto {
+  animation: m-hablar 0.35s ease-in-out infinite;
+}
+@keyframes m-hablar {
+  50% {
+    transform: translateY(-2px);
+  }
+}
+/* Salto de alegría al tocarlo */
+.accion-feliz .m-snoopy-salto {
+  animation: m-salto 0.6s cubic-bezier(0.3, 0, 0.4, 1) 2;
+}
+@keyframes m-salto {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-34px) rotate(-3deg);
+  }
+  70% {
+    transform: translateY(0) scaleY(0.94);
+  }
+}
+/* Comer */
+.m-plato {
+  transform-origin: 50% 100%;
+  transform: scale(0);
+  opacity: 0;
+  transition:
+    transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.3s;
+}
+.accion-comiendo .m-plato {
+  transform: scale(1);
+  opacity: 1;
+}
+.accion-comiendo .m-cabeza-anim {
+  animation: m-masticar 0.32s ease-in-out infinite;
+}
+@keyframes m-masticar {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  50% {
+    transform: rotate(7deg) translateY(2px);
+  }
+}
+/* Baño */
+.m-bano,
+.m-espuma {
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.accion-banando .m-bano,
+.accion-banando .m-espuma {
+  opacity: 1;
+}
+.m-gota {
+  animation: m-gota 0.55s linear infinite;
+}
+@keyframes m-gota {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(95px);
+    opacity: 0;
+  }
+}
+.m-burbuja {
+  animation: m-burbuja 1.8s ease-out infinite;
+}
+@keyframes m-burbuja {
+  from {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-120px) scale(1.15);
+    opacity: 0;
+  }
+}
+.accion-banando .m-snoopy-salto {
+  animation: m-sacudir 0.25s ease-in-out infinite;
+}
+@keyframes m-sacudir {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+/* Woodstock vuela y aletea */
+.m-woodstock {
+  animation: m-volar 3s ease-in-out infinite;
+}
+@keyframes m-volar {
+  50% {
+    transform: translate(6px, -12px);
+  }
+}
+.m-ala {
+  transform-origin: 70% 80%;
+  animation: m-aletear 0.28s ease-in-out infinite alternate;
+}
+.es-noche .m-ala {
+  animation-duration: 0.6s;
+}
+@keyframes m-aletear {
+  to {
+    transform: rotate(-38deg);
+  }
+}
+/* Corazones */
+.m-corazon {
+  opacity: 0;
+}
+.contento .m-corazon,
+.accion-feliz .m-corazon {
+  animation: m-corazon 2.6s ease-out infinite;
+}
+.m-corazon.c2 {
+  animation-delay: 0.8s !important;
+}
+.m-corazon.c3 {
+  animation-delay: 1.6s !important;
+}
+.es-noche .m-corazon {
+  animation: none !important;
+  opacity: 0;
+}
+@keyframes m-corazon {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.6);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50px) scale(1.1);
+  }
+}
+/* Zzz */
+.m-zzz .z {
+  opacity: 0;
+}
+.es-noche .m-zzz .z {
+  animation: m-zzz 2.7s ease-out infinite;
+}
+.es-noche .m-zzz .z2 {
+  animation-delay: 0.9s;
+}
+.es-noche .m-zzz .z3 {
+  animation-delay: 1.8s;
+}
+@keyframes m-zzz {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(26px, -46px);
+  }
+}
+/* Globo de diálogo */
+.m-globo-caja {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding-bottom: 18px;
+}
+.m-globo-texto {
+  position: relative;
+  max-width: 228px;
+  border-radius: 22px;
+  border: 2.5px solid #4a3426;
+  background: #fffaf2;
+  padding: 8px 14px;
+  font-family: Karla, sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #3b2a20;
+  box-shadow: 0 4px 0 rgb(74 52 38 / 0.25);
+  animation: m-globo 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.m-globo-texto::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  bottom: -14px;
+  border-width: 14px 12px 0 0;
+  border-style: solid;
+  border-color: #4a3426 transparent transparent transparent;
+}
+.m-globo-texto::before {
+  content: "";
+  position: absolute;
+  left: 20.5px;
+  bottom: -9.5px;
+  z-index: 1;
+  border-width: 10px 8.5px 0 0;
+  border-style: solid;
+  border-color: #fffaf2 transparent transparent transparent;
+}
+@keyframes m-globo {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .escena-mascota *,
+  .escena-mascota {
+    animation-duration: 0.01s !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
 /* ===== Sobres de las cartas guardadas ===== */
 .sobre-flotar {
   animation: sobre-flotar 5s ease-in-out infinite;

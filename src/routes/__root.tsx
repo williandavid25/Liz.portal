@@ -318,6 +318,31 @@ function AppShell() {
     setIsPlaying(false);
   };
 
+  // Otras páginas (Mi mascota, al usar el micrófono) piden pausar la música y
+  // luego reanudarla. Mientras está suspendida, ningún toque la vuelve a
+  // prender (ver "desbloqueo pasivo" más abajo).
+  const musicaSuspendida = useRef(false);
+  const sonabaAntes = useRef(false);
+  const isPlayingRef = useRef(false);
+  isPlayingRef.current = isPlaying;
+  const controlRef = useRef({ playTrack, pauseTrack });
+  controlRef.current = { playTrack, pauseTrack };
+  useEffect(() => {
+    const onMusica = (e: Event) => {
+      const accion = (e as CustomEvent<"pausar" | "reanudar">).detail;
+      if (accion === "pausar" && !musicaSuspendida.current) {
+        musicaSuspendida.current = true;
+        sonabaAntes.current = isPlayingRef.current;
+        controlRef.current.pauseTrack();
+      } else if (accion === "reanudar" && musicaSuspendida.current) {
+        musicaSuspendida.current = false;
+        if (sonabaAntes.current) controlRef.current.playTrack();
+      }
+    };
+    window.addEventListener("liz:musica", onMusica);
+    return () => window.removeEventListener("liz:musica", onMusica);
+  }, []);
+
   // Carga inicial: espejo local primero, luego la nube verificando validez
   useEffect(() => {
     const rawLocal = localStorage.getItem(MUSIC_KEY);
@@ -450,6 +475,7 @@ function AppShell() {
   // Desbloqueo pasivo de autoplay al primer toque/tecla del usuario
   useEffect(() => {
     const handleFirstInteraction = () => {
+      if (musicaSuspendida.current) return;
       if (youtubeId) {
         if (ytPlayerRef.current && typeof ytPlayerRef.current.getPlayerState === "function") {
           try {
@@ -543,6 +569,7 @@ function AppShell() {
     ["/bienvenida", "Carta"],
     ["/recuerdos", "Recuerdos"],
     ["/calendario", "Calendario"],
+    ["/mascota", "Mi mascota 🐶"],
   ];
 
   return (

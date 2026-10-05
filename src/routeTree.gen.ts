@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as BienvenidaRouteImport } from './routes/bienvenida'
 import { Route as CalendarioRouteImport } from './routes/calendario'
 import { Route as CartasRouteImport } from './routes/cartas'
+import { Route as MascotaRouteImport } from './routes/mascota'
 import { Route as RecuerdosRouteImport } from './routes/recuerdos'
 import { Route as ApiBlobUploadRouteImport } from './routes/api/blob-upload'
 import { Route as ApiFilesIdRouteImport } from './routes/api/files/$id'
@@ -37,6 +38,11 @@ const CartasRoute = CartasRouteImport.update({
   path: '/cartas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MascotaRoute = MascotaRouteImport.update({
+  id: '/mascota',
+  path: '/mascota',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RecuerdosRoute = RecuerdosRouteImport.update({
   id: '/recuerdos',
   path: '/recuerdos',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/bienvenida': typeof BienvenidaRoute
   '/calendario': typeof CalendarioRoute
   '/cartas': typeof CartasRoute
+  '/mascota': typeof MascotaRoute
   '/recuerdos': typeof RecuerdosRoute
   '/api/blob-upload': typeof ApiBlobUploadRoute
   '/api/files/$id': typeof ApiFilesIdRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/bienvenida': typeof BienvenidaRoute
   '/calendario': typeof CalendarioRoute
   '/cartas': typeof CartasRoute
+  '/mascota': typeof MascotaRoute
   '/recuerdos': typeof RecuerdosRoute
   '/api/blob-upload': typeof ApiBlobUploadRoute
   '/api/files/$id': typeof ApiFilesIdRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/bienvenida': typeof BienvenidaRoute
   '/calendario': typeof CalendarioRoute
   '/cartas': typeof CartasRoute
+  '/mascota': typeof MascotaRoute
   '/recuerdos': typeof RecuerdosRoute
   '/api/blob-upload': typeof ApiBlobUploadRoute
   '/api/files/$id': typeof ApiFilesIdRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/bienvenida'
     | '/calendario'
     | '/cartas'
+    | '/mascota'
     | '/recuerdos'
     | '/api/blob-upload'
     | '/api/files/$id'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/bienvenida'
     | '/calendario'
     | '/cartas'
+    | '/mascota'
     | '/recuerdos'
     | '/api/blob-upload'
     | '/api/files/$id'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/bienvenida'
     | '/calendario'
     | '/cartas'
+    | '/mascota'
     | '/recuerdos'
     | '/api/blob-upload'
     | '/api/files/$id'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   BienvenidaRoute: typeof BienvenidaRoute
   CalendarioRoute: typeof CalendarioRoute
   CartasRoute: typeof CartasRoute
+  MascotaRoute: typeof MascotaRoute
   RecuerdosRoute: typeof RecuerdosRoute
   ApiBlobUploadRoute: typeof ApiBlobUploadRoute
   ApiFilesIdRoute: typeof ApiFilesIdRoute
@@ -151,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CartasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mascota': {
+      id: '/mascota'
+      path: '/mascota'
+      fullPath: '/mascota'
+      preLoaderRoute: typeof MascotaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/recuerdos': {
       id: '/recuerdos'
       path: '/recuerdos'
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   BienvenidaRoute: BienvenidaRoute,
   CalendarioRoute: CalendarioRoute,
   CartasRoute: CartasRoute,
+  MascotaRoute: MascotaRoute,
   RecuerdosRoute: RecuerdosRoute,
   ApiBlobUploadRoute: ApiBlobUploadRoute,
   ApiFilesIdRoute: ApiFilesIdRoute,
