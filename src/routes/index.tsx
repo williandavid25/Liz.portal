@@ -165,18 +165,6 @@ function Inicio() {
         {!portadaEsGalaxia && <Bienvenida />}
         <div className="absolute inset-x-0 bottom-5 z-20 flex items-end gap-3 px-4 sm:bottom-8 sm:justify-center">
           <CartasButton />
-          <Link to="/mascota" className={roundBtn} aria-label="Ir a Mi mascota">
-            <span className="block h-5 w-5 overflow-hidden rounded-full bg-white/90">
-              <img
-                src="/mascota/frente.webp"
-                alt=""
-                width={20}
-                height={20}
-                className="h-full w-full scale-[2] object-cover object-[50%_20%]"
-              />
-            </span>
-            <span className="text-[10px] font-bold">Mascota</span>
-          </Link>
           {nextPortada && (
             <button
               type="button"

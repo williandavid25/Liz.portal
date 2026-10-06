@@ -47,10 +47,10 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
-  const err = error instanceof Error ? error : new Error(String(error));
-  console.error(err);
   const router = useRouter();
   useEffect(() => {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error(err);
     reportLovableError(err, { boundary: "tanstack_root_error_component" });
   }, [error]);
   return (
@@ -244,10 +244,18 @@ function AppShell() {
       // updateViaCache "none" + update(): cada vez que se abre la app se
       // revisa si hay versión nueva (portada, íconos, fotos) sin esperar al
       // caché del navegador.
-      navigator.serviceWorker
-        .register("/sw.js", { updateViaCache: "none" })
-        .then((reg) => reg.update())
-        .catch(() => {});
+      const register = () => {
+        navigator.serviceWorker
+          .register("/sw.js", { updateViaCache: "none" })
+          .then((reg) => reg.update())
+          .catch(() => {});
+      };
+      if (typeof window.requestIdleCallback === "function") {
+        const idleId = window.requestIdleCallback(register, { timeout: 2000 });
+        return () => window.cancelIdleCallback(idleId);
+      }
+      const timeoutId = window.setTimeout(register, 1000);
+      return () => window.clearTimeout(timeoutId);
     }
   }, []);
 
@@ -259,7 +267,7 @@ function AppShell() {
 
   useEffect(() => {
     if (showMusic) setDraftPortadaUrl(ajustes.portadaUrl ?? "");
-  }, [showMusic]);
+  }, [ajustes.portadaUrl, showMusic]);
 
   // Si guardaste algo (carta, foto, evento, música) sin conexión, esto lo
   // reintenta solo apenas vuelve el internet.
@@ -283,13 +291,17 @@ function AppShell() {
           ytPlayerRef.current.loadVideoById(ytId);
           ytPlayerRef.current.playVideo();
           setIsPlaying(true);
-        } catch {}
+        } catch (error) {
+          console.warn("No se pudo reproducir la música de YouTube:", error);
+        }
       }
     } else {
       if (ytPlayerRef.current) {
         try {
           ytPlayerRef.current.pauseVideo();
-        } catch {}
+        } catch (error) {
+          console.warn("No se pudo pausar la música de YouTube:", error);
+        }
       }
       const a = audioRef.current;
       if (a) {
@@ -313,7 +325,9 @@ function AppShell() {
     if (ytPlayerRef.current) {
       try {
         ytPlayerRef.current.pauseVideo();
-      } catch {}
+      } catch (error) {
+        console.warn("No se pudo actualizar el reproductor de YouTube:", error);
+      }
     }
     setIsPlaying(false);
   };
@@ -357,34 +371,45 @@ function AppShell() {
       setMusicUrl(rawLocal!);
       setDraftMusicUrl(rawLocal!);
     }
-    const useDefault = () => {
+    const setDefaultMusic = () => {
       if (hasLocal) return;
       setMusicUrl(DEFAULT_MUSIC);
       setDraftMusicUrl(DEFAULT_MUSIC);
     };
 
-    loadStoreShared()
-      .then((s) => {
-        if (!s.configured) return useDefault();
-        hydrateAjustes(s.ajustes);
-        if (!s.musica) return useDefault();
-        if (s.musica && isValidMusicUrl(s.musica)) {
-          setMusicUrl(s.musica);
-          setDraftMusicUrl(s.musica);
-          localStorage.setItem(MUSIC_KEY, s.musica);
-        } else if (s.musica && !isValidMusicUrl(s.musica)) {
-          setMusicUrl(DEFAULT_MUSIC);
-          setDraftMusicUrl(DEFAULT_MUSIC);
-          localStorage.setItem(MUSIC_KEY, DEFAULT_MUSIC);
-        }
-      })
-      .catch(useDefault);
+    const loadCloud = () => {
+      loadStoreShared()
+        .then((s) => {
+          if (!s.configured) return setDefaultMusic();
+          hydrateAjustes(s.ajustes);
+          if (!s.musica) return setDefaultMusic();
+          if (s.musica && isValidMusicUrl(s.musica)) {
+            setMusicUrl(s.musica);
+            setDraftMusicUrl(s.musica);
+            localStorage.setItem(MUSIC_KEY, s.musica);
+          } else if (s.musica && !isValidMusicUrl(s.musica)) {
+            setMusicUrl(DEFAULT_MUSIC);
+            setDraftMusicUrl(DEFAULT_MUSIC);
+            localStorage.setItem(MUSIC_KEY, DEFAULT_MUSIC);
+          }
+        })
+        .catch((error) => {
+          console.warn("No se pudo cargar la configuración remota:", error);
+          setDefaultMusic();
+        });
+    };
+    if (typeof window.requestIdleCallback === "function") {
+      const idleId = window.requestIdleCallback(loadCloud, { timeout: 1200 });
+      return () => window.cancelIdleCallback(idleId);
+    }
+    const timeoutId = window.setTimeout(loadCloud, 0);
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   // Iniciar reproducción cuando se define la música
   useEffect(() => {
     if (!musicUrl) return;
-    playTrack(musicUrl);
+    controlRef.current.playTrack(musicUrl);
   }, [musicUrl, youtubeId]);
 
   // Carga la API de YouTube solo cuando hace falta
@@ -438,7 +463,9 @@ function AppShell() {
         ytPlayerRef.current.loadVideoById(youtubeId);
         ytPlayerRef.current.playVideo();
         setIsPlaying(true);
-      } catch {}
+      } catch (error) {
+        console.warn("No se pudo iniciar el reproductor de YouTube:", error);
+      }
       return;
     }
     ytPlayerRef.current = new window.YT!.Player(ytContainerRef.current, {
@@ -455,7 +482,9 @@ function AppShell() {
           try {
             e.target.playVideo();
             setIsPlaying(true);
-          } catch {}
+          } catch (error) {
+            console.warn("No se pudo reanudar la música de YouTube:", error);
+          }
         },
         onStateChange: (e: { data: number; target: YTPlayer }) => {
           const YT = window.YT!;
@@ -483,13 +512,17 @@ function AppShell() {
               ytPlayerRef.current.playVideo();
               setIsPlaying(true);
             }
-          } catch {}
+          } catch (error) {
+            console.warn("No se pudo reanudar la música de YouTube:", error);
+          }
         }
       } else if (audioRef.current && audioRef.current.paused && musicUrl) {
         audioRef.current
           .play()
           .then(() => setIsPlaying(true))
-          .catch(() => {});
+          .catch((error) => {
+            console.warn("No se pudo reanudar la música:", error);
+          });
       }
     };
     window.addEventListener("pointerdown", handleFirstInteraction, { passive: true });
@@ -628,6 +661,26 @@ function AppShell() {
 
       {/* Nav */}
       <nav className="fixed top-[calc(env(safe-area-inset-top)+17px)] right-4 sm:top-[calc(env(safe-area-inset-top)+27px)] sm:right-7 z-50 flex items-center gap-2 text-[11px] sm:text-xs font-bold">
+        <Link
+          to="/mascota"
+          className={`flex items-center gap-1.5 rounded-full border px-3 py-2.5 transition-all duration-300 hover:scale-105 ${
+            isHome
+              ? "border-white/25 bg-white/5 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] hover:bg-white/15"
+              : "border-black/5 bg-white/60 text-popover-foreground/80 hover:bg-white/80 hover:text-popover-foreground"
+          }`}
+          aria-label="Ir a Mi mascota"
+        >
+          <span className="block h-5 w-5 overflow-hidden rounded-full bg-white/90">
+            <img
+              src="/mascota/frente.webp"
+              alt=""
+              width={20}
+              height={20}
+              className="h-full w-full scale-[2] object-cover object-[50%_20%]"
+            />
+          </span>
+          <span className="hidden sm:inline">Mascota</span>
+        </Link>
         <button
           onClick={() => setPanel((p) => (p === "menu" ? null : "menu"))}
           className={`p-2.5 rounded-full transition-all duration-300 hover:scale-105 flex items-center justify-center border ${
@@ -893,7 +946,8 @@ function AppShell() {
               Guardar y Reproducir
             </button>
             <p className="text-xs text-popover-foreground/60 text-center">
-              Pega un enlace de YouTube o archivo mp3. Se guardará en la nube y seguirá reproduciéndose de fondo sin interrupción.
+              Pega un enlace de YouTube o archivo mp3. Se guardará en la nube y seguirá
+              reproduciéndose de fondo sin interrupción.
             </p>
             {musicError && (
               <p className="text-xs text-destructive text-center font-semibold">{musicError}</p>
