@@ -230,7 +230,7 @@ export function SnoopyVivo({
   bocaRef,
 }: {
   pose: Pose;
-  animo: "feliz" | "triste" | "normal";
+  animo: "feliz" | "triste" | "enojado" | "normal";
   boca: Boca;
   /** Cambia este número para que ladre (abre la boca dos veces). */
   ladrido: number;
@@ -409,6 +409,20 @@ export const SNOOPY_CSS = `
 .sv-triste .sv-cabeza { animation: sv-cabeza-triste 4s ease-in-out infinite; }
 .sv-triste .sv-pata-i, .sv-triste .sv-pata-d { animation: none; }
 .sv-feliz .sv-cola { animation-duration: 0.32s; }
+.sv-enojado .sv-cabeza { animation: sv-cabeza-enojada 0.7s ease-in-out infinite; }
+.sv-enojado .sv-mira::before,
+.sv-enojado .sv-mira::after {
+  content: "";
+  position: absolute;
+  top: 18%;
+  width: 15%;
+  height: 3%;
+  border-radius: 999px;
+  background: #30202f;
+  z-index: 4;
+}
+.sv-enojado .sv-mira::before { left: 39%; transform: rotate(16deg); }
+.sv-enojado .sv-mira::after { left: 55%; transform: rotate(-16deg); }
 
 @keyframes sv-balanceo { 0%, 100% { transform: rotateY(-5deg); } 50% { transform: rotateY(5deg); } }
 @keyframes sv-caminar-balanceo {
@@ -449,6 +463,10 @@ export const SNOOPY_CSS = `
   80% { transform: rotate(-1deg); }
 }
 @keyframes sv-cabeza-triste { 0%, 100% { transform: rotate(-2deg) translateY(1.2%); } 50% { transform: rotate(2deg) translateY(1.8%); } }
+@keyframes sv-cabeza-enojada {
+  0%, 100% { transform: rotate(-2deg) translateX(-0.5%); }
+  50% { transform: rotate(2deg) translateX(0.5%); }
+}
 @keyframes sv-parpadeo { 0%, 91%, 100% { transform: scaleY(0); } 94% { transform: scaleY(1); } 97% { transform: scaleY(0); } }
 @keyframes sv-jadeo {
   0%, 62%, 100% { transform: scaleY(0); }

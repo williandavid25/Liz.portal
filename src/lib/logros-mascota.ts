@@ -138,6 +138,15 @@ export const LOGROS: Logro[] = [
     meta: 30,
     valor: (p) => p.mejorRacha,
   },
+  {
+    id: "temperamento",
+    emoji: "😤",
+    titulo: "Tiene carácter",
+    desc: "Descubre la expresión enojada de Snoopy",
+    mensaje: "¡Me puse un poquito enojado! Cuídame y se me pasa 😤",
+    meta: 1,
+    valor: (_p, bienestar) => (bienestar <= 18 ? 1 : 0),
+  },
 ];
 
 export const diaLocal = (d = new Date()) =>

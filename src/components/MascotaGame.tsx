@@ -81,6 +81,12 @@ interface Guardado {
   dormido?: boolean;
 }
 
+interface CartaPendiente {
+  title: string;
+  text: string;
+  format?: string;
+}
+
 /** Punto de apoyo en la imagen: x, y (fracciones) y lado del cuadro de Snoopy. */
 interface Ancla {
   x: number;
@@ -283,6 +289,7 @@ export function MascotaGame() {
   const [borrador, setBorrador] = useState("");
   const [panelLogros, setPanelLogros] = useState(false);
   const [cola, setCola] = useState<string[]>([]);
+  const [cartaPendiente, setCartaPendiente] = useState<CartaPendiente | null>(null);
 
   const raizRef = useRef<HTMLElement>(null);
   const idRef = useRef(0);
@@ -435,7 +442,27 @@ export function MascotaGame() {
       i.decoding = "async";
       i.src = imgPose(p);
     }
+    const rawCarta = localStorage.getItem("liz-carta-pendiente");
+    if (rawCarta) {
+      try {
+        const carta = JSON.parse(rawCarta) as CartaPendiente;
+        if (carta.title || carta.text) {
+          setCartaPendiente(carta);
+          localStorage.removeItem("liz-carta-pendiente");
+          decir("Tengo una carta para ti 💌", 4500);
+        }
+      } catch (error) {
+        console.warn("No se pudo leer la carta pendiente:", error);
+        localStorage.removeItem("liz-carta-pendiente");
+      }
+    }
   }, [decir]);
+
+  useEffect(() => {
+    if (!cartaPendiente) return;
+    const id = window.setTimeout(() => setCartaPendiente(null), 9000);
+    return () => window.clearTimeout(id);
+  }, [cartaPendiente]);
 
   // Fondo vertical en celulares, horizontal en pantallas anchas.
   useEffect(() => {
@@ -542,7 +569,14 @@ export function MascotaGame() {
   } else if (mirada) {
     pose = mirada;
   }
-  const animo = pose === "triste" ? "triste" : bienestar > 70 ? "feliz" : "normal";
+  const animo =
+    bienestar <= 18
+      ? "enojado"
+      : pose === "triste"
+        ? "triste"
+        : bienestar > 70
+          ? "feliz"
+          : "normal";
 
   // Mantiene un ciclo diario amable: actividad de 7:00 a 19:00 y descanso
   // nocturno de 12 horas, sin forzar a despertar un descanso manual.
@@ -1033,6 +1067,19 @@ export function MascotaGame() {
           aria-hidden="true"
         />
         <div className="mg-vineta pointer-events-none absolute inset-0" aria-hidden="true" />
+        {cartaPendiente && (
+          <div
+            className="mg-carta-aviso absolute left-[62%] top-[38%] z-20 w-[min(150px,28vw)] -rotate-3 rounded-sm bg-cover bg-center p-2 text-slate-800 shadow-2xl sm:left-[61%] sm:w-44"
+            style={{
+              backgroundImage: `url(${cartaPendiente.format === "pergamino" ? "/pergamino.jpeg" : `/formatos/formato-${cartaPendiente.format ?? "cumpleanos"}.jpeg`})`,
+            }}
+          >
+            <p className="relative truncate text-[11px] font-bold">{cartaPendiente.title}</p>
+            <p className="relative mt-1 line-clamp-4 text-[10px] leading-tight">
+              {cartaPendiente.text}
+            </p>
+          </div>
+        )}
         <div className="pointer-events-none absolute inset-0" aria-hidden="true">
           {MOTAS.map(([x, y, delay, dur], i) => (
             <span
@@ -1500,6 +1547,10 @@ const CSS = `
 .mg-particula { opacity: 0; animation: mg-goUp 2.6s ease-out both; text-shadow: 0 2px 6px rgba(0,0,0,0.3); }
 .mg-toast { animation: mg-toast 0.35s cubic-bezier(.2,.9,.3,1.3) both; }
 .mg-globo { animation: mg-popIn 0.35s ease both; }
+.mg-carta-aviso {
+  animation: mg-carta-aviso 0.55s cubic-bezier(.2,.9,.3,1.2) both;
+  transform-origin: 50% 100%;
+}
 
 /* Barras */
 .mg-barra { transition: width 0.7s cubic-bezier(.22,1,.36,1), background-color 0.5s ease, box-shadow 0.5s ease; }
@@ -1586,6 +1637,11 @@ const CSS = `
   0% { transform: scale(0.8); opacity: 0; }
   60% { transform: scale(1.08); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
+}
+@keyframes mg-carta-aviso {
+  0% { opacity: 0; transform: translateY(18px) rotate(-8deg) scale(0.72); }
+  70% { opacity: 1; transform: translateY(-4px) rotate(-2deg) scale(1.05); }
+  100% { opacity: 1; transform: translateY(0) rotate(-3deg) scale(1); }
 }
 @keyframes mg-toast {
   0% { transform: translateY(8px) scale(0.8); opacity: 0; }

@@ -226,6 +226,10 @@ function Bienvenida() {
         updatedAt: now,
       };
       persist([nueva, ...letters]); // las más nuevas arriba
+      localStorage.setItem(
+        "liz-carta-pendiente",
+        JSON.stringify({ title: nueva.title, text: nueva.text, format: nueva.format }),
+      );
       setEditingId(nueva.id);
       setTitle(nueva.title);
     }
@@ -589,7 +593,9 @@ function Bienvenida() {
                           draggable={false}
                           className="absolute inset-0 z-10 h-full w-full select-none rounded-lg object-cover shadow-[0_10px_24px_-10px_rgba(70,40,15,0.55)]"
                           initial={false}
-                          animate={isOpening ? { opacity: 0.55, y: "6%" } : { opacity: 0.9, y: "0%" }}
+                          animate={
+                            isOpening ? { opacity: 0.55, y: "6%" } : { opacity: 0.9, y: "0%" }
+                          }
                           transition={{ duration: 0.55, delay: isOpening ? 0.25 : 0 }}
                         />
 
