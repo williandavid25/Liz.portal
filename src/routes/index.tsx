@@ -35,6 +35,13 @@ export const Route = createFileRoute("/")({
         crossOrigin: "anonymous",
       },
       { rel: "preload", as: "image", href: "/portadas/flor-de-loto.jpg", fetchPriority: "high" },
+      {
+        rel: "preload",
+        as: "video",
+        href: "https://qgucscghlnjlikvvuxpe.supabase.co/storage/v1/object/public/portada/flor-de-loto.mp4",
+        type: "video/mp4",
+        fetchPriority: "high",
+      },
     ],
   }),
   component: Inicio,

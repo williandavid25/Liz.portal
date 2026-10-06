@@ -32,6 +32,7 @@ export function PortadaVideo({ src, poster }: { src: string; poster?: string }) 
   const sectionRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const ambientRef = useRef<HTMLCanvasElement>(null);
+  const ambientReadyRef = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [ambientOn, setAmbientOn] = useState(false);
   const [ratio, setRatio] = useState(9 / 16);
@@ -40,6 +41,7 @@ export function PortadaVideo({ src, poster }: { src: string; poster?: string }) 
   useEffect(() => {
     setPlaying(false);
     setAmbientOn(false);
+    ambientReadyRef.current = false;
   }, [src]);
 
   useEffect(() => {
@@ -111,7 +113,10 @@ export function PortadaVideo({ src, poster }: { src: string; poster?: string }) 
         const ch = H / scale;
         ctx.filter = "blur(3px)";
         ctx.drawImage(video, (vw - cw) / 2, (vh - ch) / 2, cw, ch, 0, 0, W, H);
-        setAmbientOn(true);
+        if (!ambientReadyRef.current) {
+          ambientReadyRef.current = true;
+          setAmbientOn(true);
+        }
       }
       schedule();
     };
