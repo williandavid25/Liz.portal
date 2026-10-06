@@ -475,30 +475,6 @@ export function MascotaGame() {
     return () => window.clearInterval(id);
   }, []);
 
-  // Mantiene un ciclo diario amable: actividad de 7:00 a 19:00 y descanso
-  // nocturno de 12 horas, sin forzar a despertar un descanso manual.
-  useEffect(() => {
-    if (!listo) return;
-    const revisarHorario = () => {
-      const debeDormir = esHorarioDescanso();
-      if (debeDormir && !durmiendoRef.current && !accion && !escuchando) {
-        descansoAutomaticoRef.current = true;
-        setEscena("dormitorio");
-        setDormido(true);
-        decir("Es hora de descansar… 🌙", 2600);
-        sonar("aviso-sueno");
-      } else if (!debeDormir && durmiendoRef.current && descansoAutomaticoRef.current) {
-        descansoAutomaticoRef.current = false;
-        setDormido(false);
-        decir("¡Buenos días! ☀️", 2400);
-        sonar("despertar");
-      }
-    };
-    revisarHorario();
-    const id = window.setInterval(revisarHorario, 60_000);
-    return () => window.clearInterval(id);
-  }, [listo, accion, escuchando, decir, sonar]);
-
   // Al salir: cortar temporizadores y micrófono, y devolver la música.
   useEffect(() => {
     const pendientes = timers.current;
@@ -564,6 +540,30 @@ export function MascotaGame() {
     pose = mirada;
   }
   const animo = pose === "triste" ? "triste" : bienestar > 70 ? "feliz" : "normal";
+
+  // Mantiene un ciclo diario amable: actividad de 7:00 a 19:00 y descanso
+  // nocturno de 12 horas, sin forzar a despertar un descanso manual.
+  useEffect(() => {
+    if (!listo) return;
+    const revisarHorario = () => {
+      const debeDormir = esHorarioDescanso();
+      if (debeDormir && !durmiendoRef.current && !accion && !escuchando) {
+        descansoAutomaticoRef.current = true;
+        setEscena("dormitorio");
+        setDormido(true);
+        decir("Es hora de descansar… 🌙", 2600);
+        sonar("aviso-sueno");
+      } else if (!debeDormir && durmiendoRef.current && descansoAutomaticoRef.current) {
+        descansoAutomaticoRef.current = false;
+        setDormido(false);
+        decir("¡Buenos días! ☀️", 2400);
+        sonar("despertar");
+      }
+    };
+    revisarHorario();
+    const id = window.setInterval(revisarHorario, 60_000);
+    return () => window.clearInterval(id);
+  }, [listo, accion, escuchando, decir, sonar]);
 
   // Avisa una vez al ponerse triste (y al celular si la app está de fondo).
   const avisoTriste = useRef(false);

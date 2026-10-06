@@ -53,10 +53,11 @@ export function PortadaVideo({ src, poster }: { src: string; poster?: string }) 
       });
     };
 
-    if (!("IntersectionObserver" in window)) {
-      tryPlay();
-      return;
-    }
+    // La portada ya está montada dentro del primer viewport: iniciar aquí
+    // evita esperar al primer callback del observer y conserva el poster
+    // visible mientras el navegador prepara el primer cuadro.
+    tryPlay();
+    if (!("IntersectionObserver" in window)) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry?.isIntersecting) tryPlay();
