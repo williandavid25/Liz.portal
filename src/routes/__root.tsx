@@ -687,15 +687,13 @@ function AppShell() {
           }`}
           aria-label="Ir a Mi mascota"
         >
-          <span className="block h-5 w-5 overflow-hidden rounded-full bg-white/90">
-            <img
-              src="/mascota/frente.webp"
-              alt=""
-              width={20}
-              height={20}
-              className="h-full w-full scale-[1.25] object-cover object-[50%_12%]"
-            />
-          </span>
+          <img
+            src="/mascota/frente.webp"
+            alt=""
+            width={28}
+            height={28}
+            className="h-7 w-7 scale-[1.18] object-contain"
+          />
           <span className="hidden sm:inline">Mascota</span>
         </Link>
         <button

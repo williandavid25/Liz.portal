@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Snowflake,
   Sun,
+  X,
 } from "lucide-react";
 
 interface WeatherData {
@@ -87,6 +88,7 @@ export function WeatherPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [usingFallback, setUsingFallback] = useState(false);
+  const [visible, setVisible] = useState(true);
 
   const loadWeather = useCallback(() => {
     const controller = new AbortController();
@@ -153,9 +155,26 @@ export function WeatherPanel() {
     };
   }, [loadWeather]);
 
+  const position =
+    "absolute right-4 top-[calc(env(safe-area-inset-top)+300px)] z-10 sm:right-6 sm:top-[calc(env(safe-area-inset-top)+326px)]";
+
+  if (!visible) {
+    return (
+      <button
+        type="button"
+        onClick={() => setVisible(true)}
+        className={`${position} rounded-full bg-black/35 p-2 text-white/80 shadow-lg backdrop-blur-md transition hover:bg-black/50 hover:text-white`}
+        aria-label="Mostrar pronóstico del clima"
+        title="Mostrar clima"
+      >
+        <CloudSun size={18} aria-hidden="true" />
+      </button>
+    );
+  }
+
   return (
     <aside
-      className="mg-clima mg-vidrio absolute right-4 top-[calc(env(safe-area-inset-top)+300px)] z-10 w-[min(220px,calc(100%-2rem))] rounded-2xl px-3 py-2.5 text-white sm:right-6 sm:top-[calc(env(safe-area-inset-top)+326px)]"
+      className={`mg-clima mg-vidrio ${position} w-[min(220px,calc(100%-2rem))] rounded-2xl px-3 py-2.5 text-white`}
       aria-live="polite"
       aria-label="Pronóstico del clima"
     >
@@ -164,16 +183,27 @@ export function WeatherPanel() {
           <MapPin size={13} aria-hidden="true" />
           Clima
         </p>
-        <button
-          type="button"
-          onClick={loadWeather}
-          disabled={loading}
-          aria-label="Actualizar clima"
-          title="Actualizar clima"
-          className="rounded-full p-1 text-white/70 transition hover:bg-white/20 hover:text-white disabled:opacity-50"
-        >
-          <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={loadWeather}
+            disabled={loading}
+            aria-label="Actualizar clima"
+            title="Actualizar clima"
+            className="rounded-full p-1 text-white/70 transition hover:bg-white/20 hover:text-white disabled:opacity-50"
+          >
+            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setVisible(false)}
+            aria-label="Ocultar panel del clima"
+            title="Ocultar clima"
+            className="rounded-full p-1 text-white/70 transition hover:bg-white/20 hover:text-white"
+          >
+            <X size={13} aria-hidden="true" />
+          </button>
+        </div>
       </div>
       {loading && !weather ? (
         <p className="mt-2 flex items-center gap-2 text-xs text-white/75">
