@@ -95,7 +95,7 @@ export function Bienvenida() {
       </div>
       {/* px extra + text-balance: en celular el texto queda bien dentro del
           margen (no pegado a los bordes) y las líneas salen parejas. */}
-      <p className="bienvenida-texto mt-1 w-full max-w-[26rem] px-5 font-display text-[1rem] italic leading-snug [text-wrap:balance] sm:mt-2 sm:max-w-[30rem] sm:px-0 sm:text-[1.35rem]">
+      <p className="bienvenida-texto mt-1 w-full max-w-[26rem] px-5 text-center font-sans text-[1rem] font-semibold leading-snug [text-wrap:balance] sm:mt-2 sm:max-w-[30rem] sm:px-0 sm:text-[1.35rem]">
         {DESCRIPCION}
       </p>
     </div>
