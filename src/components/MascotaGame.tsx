@@ -114,7 +114,7 @@ const DECAY_OFFSETS_MS: Record<StatKey, number> = {
   higiene: 54_000,
   energia: 81_000,
 };
-const RECOVERY_STEP_MS = 5 * 60_000;
+const RECOVERY_STEP_MS = 3_000;
 const UMBRAL_TRISTE = 20;
 const INICIAL: Stats = { hambre: 80, felicidad: 85, higiene: 75, energia: 80 };
 const COMIDAS = [
@@ -199,7 +199,7 @@ const ACCIONES: Record<
     pose: "comiendo",
     anim: "bounce",
     dur: 2600,
-    delta: { hambre: 5, felicidad: 5 },
+    delta: { hambre: 2, felicidad: 2 },
     particulas: ["🍖", "🦴", "✨", "⭐", "🍗"],
     frases: ["¡Qué rico! 😋", "¡Ñam, ñam! 🍖", "¡Mi favorito! 🦴"],
     sonido: "comer",
@@ -208,7 +208,7 @@ const ACCIONES: Record<
     pose: "banando",
     anim: "wiggle",
     dur: 2800,
-    delta: { higiene: 5, felicidad: 5 },
+    delta: { higiene: 2, felicidad: 2 },
     particulas: ["💧", "🫧", "💦"],
     frases: ["¡Splash! 💦", "¡Burbujas! 🫧", "¡Quedé brillante! ✨"],
     sonido: "banar",
