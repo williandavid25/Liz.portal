@@ -37,6 +37,7 @@ import {
 } from "@/lib/logros-mascota";
 import { enablePush } from "@/lib/push-client";
 import { SNOOPY_CSS, SnoopyVivo, imgPose, type Pose } from "@/components/SnoopyVivo";
+import { WeatherPanel } from "@/components/WeatherPanel";
 
 // Mascota virtual tipo Tamagotchi. Snoopy vive "dentro" del fondo: se ubica en
 // coordenadas de la imagen (sobre la cama o el pasto), así siempre toca el piso
@@ -931,6 +932,7 @@ export function MascotaGame() {
       onPointerLeave={soltarMirada}
     >
       <style>{CSS + SNOOPY_CSS}</style>
+      <WeatherPanel />
 
       {/* Fondo difuminado de pantalla completa (se ve detrás de los controles). */}
       <div className="absolute inset-0" aria-hidden="true">
