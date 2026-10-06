@@ -1348,9 +1348,7 @@ export function MascotaGame() {
                   onClick={() => ejecutar(b.tipo)}
                   disabled={!b.habilitado}
                   aria-pressed={b.tipo === "dormir" ? dormido : undefined}
-                  className={`mg-boton relative flex h-[62px] items-center justify-center gap-2.5 overflow-hidden rounded-2xl ${
-                    b.tipo === "pasear" ? "mg-vidrio" : "mg-boton-transparente"
-                  } ${
+                  className={`mg-boton mg-boton-transparente relative flex h-[62px] items-center justify-center gap-2.5 overflow-hidden rounded-2xl ${
                     activo ? "mg-boton-activo" : ""
                   } ${b.necesita && b.habilitado && !activo ? "mg-boton-necesita" : ""}`}
                 >
