@@ -84,11 +84,17 @@ async function readWeather(
 }
 
 export function WeatherPanel() {
+  const VISIBILITY_KEY = "liz-weather-panel-visible";
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [usingFallback, setUsingFallback] = useState(false);
   const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(VISIBILITY_KEY);
+    if (saved !== null) setVisible(saved === "true");
+  }, []);
 
   const loadWeather = useCallback(() => {
     const controller = new AbortController();
@@ -155,19 +161,17 @@ export function WeatherPanel() {
     };
   }, [loadWeather]);
 
-  useEffect(() => {
-    const toggle = window.setInterval(() => setVisible((current) => !current), 5000);
-    return () => window.clearInterval(toggle);
-  }, []);
-
   const position =
-    "absolute right-4 top-[calc(env(safe-area-inset-top)+300px)] z-10 sm:right-6 sm:top-[calc(env(safe-area-inset-top)+326px)]";
+    "absolute right-4 top-[calc(env(safe-area-inset-top)+260px)] z-10 sm:right-6 sm:top-[calc(env(safe-area-inset-top)+286px)]";
 
   if (!visible) {
     return (
       <button
         type="button"
-        onClick={() => setVisible(true)}
+        onClick={() => {
+          setVisible(true);
+          window.localStorage.setItem(VISIBILITY_KEY, "true");
+        }}
         className={`${position} rounded-full bg-black/35 p-2 text-white/80 shadow-lg backdrop-blur-md transition hover:bg-black/50 hover:text-white`}
         aria-label="Mostrar pronóstico del clima"
         title="Mostrar clima"
@@ -201,7 +205,10 @@ export function WeatherPanel() {
           </button>
           <button
             type="button"
-            onClick={() => setVisible(false)}
+            onClick={() => {
+              setVisible(false);
+              window.localStorage.setItem(VISIBILITY_KEY, "false");
+            }}
             aria-label="Ocultar panel del clima"
             title="Ocultar clima"
             className="rounded-full p-1 text-white/70 transition hover:bg-white/20 hover:text-white"
