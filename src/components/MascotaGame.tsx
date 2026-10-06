@@ -98,11 +98,15 @@ interface Ancla {
 
 const KEY = "liz-mascota-juego";
 const GUARDADO_VERSION = 2;
-const DECAY_MS = 5 * 60_000;
+const DECAY_DURATION_MS = 3 * 60 * 60_000;
+const DECAY_STEP_MS = DECAY_DURATION_MS / 100;
+const DECAY_OFFSETS_MS: Record<StatKey, number> = {
+  hambre: 0,
+  felicidad: 27_000,
+  higiene: 54_000,
+  energia: 81_000,
+};
 const UMBRAL_TRISTE = 20;
-/** Con la app cerrada baja más lento, pero sí puede llegar a ponerse triste. */
-const OFFLINE_POR_HORA = 3;
-const OFFLINE_MAX = 85;
 const INICIAL: Stats = { hambre: 80, felicidad: 85, higiene: 75, energia: 80 };
 const COMIDAS = [
   { hora: 8, nombre: "desayuno" },
@@ -241,8 +245,6 @@ const MOTAS = [
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 const colorNivel = (v: number) => (v > 60 ? "#4ade80" : v > 30 ? "#facc15" : "#f87171");
 const elegir = <T,>(xs: readonly T[]): T => xs[Math.floor(Math.random() * xs.length)]!;
-const baja = () => 5 + Math.round(Math.random()); // 5 o 6 puntos
-
 function aplicar(s: Stats, delta: Partial<Stats>): Stats {
   return {
     hambre: clamp(s.hambre + (delta.hambre ?? 0)),
@@ -394,7 +396,7 @@ export function MascotaGame() {
       const g: Guardado = raw ? (JSON.parse(raw) as Guardado) : {};
       volvio = !!raw;
       const ahora = Date.now();
-      if (g.ts) perdida = Math.min(OFFLINE_MAX, ((ahora - g.ts) / 3_600_000) * OFFLINE_POR_HORA);
+      if (g.ts) perdida = Math.min(100, ((ahora - g.ts) / DECAY_DURATION_MS) * 100);
       setStats(
         aplicar(
           { ...INICIAL, ...g.stats },
@@ -491,15 +493,20 @@ export function MascotaGame() {
   }, [listo, stats, escena, nombre, progreso, sonido, avisos, dormido]);
 
   useEffect(() => {
-    const id = window.setInterval(() => {
-      setStats((s) => ({
-        hambre: clamp(s.hambre - baja()),
-        felicidad: clamp(s.felicidad - baja()),
-        higiene: clamp(s.higiene - baja()),
-        energia: durmiendoRef.current ? clamp(s.energia + 1) : clamp(s.energia - baja()),
-      }));
-    }, DECAY_MS);
-    return () => window.clearInterval(id);
+    const ids = (Object.keys(DECAY_OFFSETS_MS) as StatKey[]).map((key) => {
+      const id = window.setTimeout(() => {
+        const intervalId = window.setInterval(() => {
+          setStats((s) => {
+            if (key === "energia" && durmiendoRef.current) return s;
+            if (s[key] <= 0) return s;
+            return { ...s, [key]: clamp(s[key] - 1) };
+          });
+        }, DECAY_STEP_MS);
+        ids.push(intervalId);
+      }, DECAY_OFFSETS_MS[key]);
+      return id;
+    });
+    return () => ids.forEach((id) => window.clearTimeout(id));
   }, []);
 
   // Al salir: cortar temporizadores y micrófono, y devolver la música.
