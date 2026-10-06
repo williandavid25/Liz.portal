@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   Bath,
   Bell,
@@ -82,6 +83,7 @@ interface Guardado {
 }
 
 interface CartaPendiente {
+  id?: string;
   title: string;
   text: string;
   format?: string;
@@ -267,6 +269,7 @@ const anclaEstilo = (a: Ancla): CSSProperties => ({
 });
 
 export function MascotaGame() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<Stats>(INICIAL);
   const [escena, setEscena] = useState<Escena>("dormitorio");
   const [orient, setOrient] = useState<Orientacion>("v");
@@ -1068,17 +1071,28 @@ export function MascotaGame() {
         />
         <div className="mg-vineta pointer-events-none absolute inset-0" aria-hidden="true" />
         {cartaPendiente && (
-          <div
-            className="mg-carta-aviso absolute left-[62%] top-[38%] z-20 w-[min(150px,28vw)] -rotate-3 rounded-sm bg-cover bg-center p-2 text-slate-800 shadow-2xl sm:left-[61%] sm:w-44"
+          <button
+            type="button"
+            onClick={() => {
+              setCartaPendiente(null);
+              if (cartaPendiente.id) {
+                void navigate({
+                  to: "/bienvenida",
+                  search: { open: cartaPendiente.id },
+                });
+              }
+            }}
+            aria-label={`Abrir carta: ${cartaPendiente.title}`}
+            className="mg-carta-aviso absolute z-20 w-[min(92px,22vw)] -translate-x-1/2 translate-y-[-105%] rounded-sm bg-cover bg-center p-1.5 text-left text-slate-800 shadow-2xl transition-transform hover:scale-105 sm:w-28"
             style={{
+              left: `${ancla.x * 100 - 14}%`,
+              top: `${ancla.y * 100}%`,
               backgroundImage: `url(${cartaPendiente.format === "pergamino" ? "/pergamino.jpeg" : `/formatos/formato-${cartaPendiente.format ?? "cumpleanos"}.jpeg`})`,
             }}
           >
             <p className="relative truncate text-[11px] font-bold">{cartaPendiente.title}</p>
-            <p className="relative mt-1 line-clamp-4 text-[10px] leading-tight">
-              {cartaPendiente.text}
-            </p>
-          </div>
+            <span className="relative mt-0.5 block text-[9px] font-semibold">Abrir 💌</span>
+          </button>
         )}
         <div className="pointer-events-none absolute inset-0" aria-hidden="true">
           {MOTAS.map(([x, y, delay, dur], i) => (

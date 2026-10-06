@@ -228,7 +228,12 @@ function Bienvenida() {
       persist([nueva, ...letters]); // las más nuevas arriba
       localStorage.setItem(
         "liz-carta-pendiente",
-        JSON.stringify({ title: nueva.title, text: nueva.text, format: nueva.format }),
+        JSON.stringify({
+          id: nueva.id,
+          title: nueva.title,
+          text: nueva.text,
+          format: nueva.format,
+        }),
       );
       setEditingId(nueva.id);
       setTitle(nueva.title);
