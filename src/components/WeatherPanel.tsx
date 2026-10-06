@@ -31,12 +31,6 @@ interface OpenMeteoResponse {
   };
 }
 
-const FALLBACK_LOCATION = {
-  latitude: -0.1807,
-  longitude: -78.4678,
-  label: "Quito",
-};
-
 function weatherDescription(code: number) {
   if (code === 0) return "Soleado";
   if (code <= 3) return "Parcialmente nublado";
@@ -99,11 +93,11 @@ export function WeatherPanel() {
     setLoading(true);
     setError(null);
 
-    const fetchFor = (location: typeof FALLBACK_LOCATION) =>
+    const fetchFor = (location: { latitude: number; longitude: number; label: string }) =>
       readWeather(location.latitude, location.longitude, location.label, controller.signal)
         .then((next) => {
           setWeather(next);
-          setUsingFallback(location === FALLBACK_LOCATION);
+          setUsingFallback(false);
         })
         .catch((reason: unknown) => {
           if (reason instanceof DOMException && reason.name === "AbortError") return;
@@ -113,32 +107,37 @@ export function WeatherPanel() {
         .finally(() => setLoading(false));
 
     let locationChosen = false;
-    const chooseLocation = (location: typeof FALLBACK_LOCATION) => {
+    const chooseLocation = (location: { latitude: number; longitude: number; label: string }) => {
       if (locationChosen) return;
       locationChosen = true;
       window.clearTimeout(fallbackTimer);
       void fetchFor(location);
     };
-    const fallbackTimer = window.setTimeout(() => chooseLocation(FALLBACK_LOCATION), 5000);
+    const fallbackTimer = window.setTimeout(() => {
+      locationChosen = true;
+      setLoading(false);
+      setError("Activa la ubicación del móvil para consultar el clima de tu zona.");
+    }, 5000);
 
     if (!("geolocation" in navigator)) {
-      chooseLocation(FALLBACK_LOCATION);
-      return () => {
-        controller.abort();
-        window.clearTimeout(fallbackTimer);
-      };
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) =>
-        chooseLocation({
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          label: "Tu ubicación",
-        }),
-      () => chooseLocation(FALLBACK_LOCATION),
-      { enableHighAccuracy: false, maximumAge: 15 * 60_000, timeout: 5000 },
-    );
+      setLoading(false);
+      setError("Este dispositivo no permite consultar su ubicación.");
+    } else
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) =>
+          chooseLocation({
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            label: "Tu ubicación",
+          }),
+        () => {
+          locationChosen = true;
+          window.clearTimeout(fallbackTimer);
+          setLoading(false);
+          setError("Permite la ubicación para mostrar el clima de tu zona.");
+        },
+        { enableHighAccuracy: false, maximumAge: 15 * 60_000, timeout: 5000 },
+      );
     return () => {
       controller.abort();
       window.clearTimeout(fallbackTimer);
@@ -195,9 +194,7 @@ export function WeatherPanel() {
             Lluvia: {weather.precipitationProbability}% · Sensación {weather.apparentTemperature}°C
           </p>
           <p className="mt-1 flex items-center justify-between gap-2 text-[10px] text-white/50">
-            <span>
-              {usingFallback ? `${weather.location} · ubicación predeterminada` : weather.location}
-            </span>
+            <span>{usingFallback ? "Ubicación del móvil" : weather.location}</span>
             <span>{weather.updatedAt}</span>
           </p>
         </>

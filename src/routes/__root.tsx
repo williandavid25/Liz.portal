@@ -341,6 +341,23 @@ function AppShell() {
   isPlayingRef.current = isPlaying;
   const controlRef = useRef({ playTrack, pauseTrack });
   controlRef.current = { playTrack, pauseTrack };
+
+  // La página de Mascota tiene sus propios efectos de sonido: la música
+  // principal se detiene al entrar y solo vuelve si estaba sonando antes.
+  useEffect(() => {
+    if (pathname !== "/mascota") return;
+    if (!musicaSuspendida.current) {
+      musicaSuspendida.current = true;
+      sonabaAntes.current = isPlayingRef.current;
+      controlRef.current.pauseTrack();
+    }
+    return () => {
+      if (!musicaSuspendida.current) return;
+      musicaSuspendida.current = false;
+      if (sonabaAntes.current) controlRef.current.playTrack();
+    };
+  }, [pathname]);
+
   useEffect(() => {
     const onMusica = (e: Event) => {
       const accion = (e as CustomEvent<"pausar" | "reanudar">).detail;

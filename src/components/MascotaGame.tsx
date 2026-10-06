@@ -660,6 +660,29 @@ export function MascotaGame() {
     };
   }, [enReposo]);
 
+  // Ladridos ocasionales para que Snoopy se sienta vivo, sin interrumpir
+  // acciones, sueño, voz ni otros sonidos del juego.
+  useEffect(() => {
+    if (!enReposo) return;
+    let id = 0;
+    const programarLadrido = () => {
+      id = window.setTimeout(
+        () => {
+          if (interactuo.current && sonidoRef.current) {
+            setLadrando(true);
+            sonar("ladrido");
+            decir(Math.random() < 0.5 ? "¡Guau! 🐶" : "¡Guau, guau! 🐾", 1500);
+            window.setTimeout(() => setLadrando(false), 520);
+          }
+          programarLadrido();
+        },
+        25_000 + Math.random() * 20_000,
+      );
+    };
+    programarLadrido();
+    return () => window.clearTimeout(id);
+  }, [enReposo, sonar, decir]);
+
   // Celebra cuando la racha sube a un nuevo día.
   const rachaPrevia = useRef<number | null>(null);
   useEffect(() => {
