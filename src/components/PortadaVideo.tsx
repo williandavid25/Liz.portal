@@ -48,12 +48,14 @@ export function PortadaVideo({ src, poster }: { src: string; poster?: string }) 
     const video = videoRef.current;
     const section = sectionRef.current;
     if (!video || !section) return;
+    video.setAttribute("fetchpriority", "high");
 
     const tryPlay = () => {
       video.play().catch(() => {
         /* el navegador lo intentará de nuevo con el primer toque */
       });
     };
+    video.load();
 
     // La portada ya está montada dentro del primer viewport: iniciar aquí
     // evita esperar al primer callback del observer y conserva el poster
@@ -189,6 +191,7 @@ export function PortadaVideo({ src, poster }: { src: string; poster?: string }) 
           ref={videoRef}
           src={src}
           poster={poster}
+          crossOrigin="anonymous"
           autoPlay
           muted
           loop
