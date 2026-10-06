@@ -1334,35 +1334,40 @@ export function MascotaGame() {
                 (b.tipo === "dormir" && dormido) || (accion !== null && accion.tipo === b.tipo);
               const lamparaEncendida = b.tipo === "dormir" && !dormido;
               return (
-                <button
+                <div
                   key={b.tipo}
-                  type="button"
-                  onClick={() => ejecutar(b.tipo)}
-                  disabled={!b.habilitado}
-                  aria-pressed={b.tipo === "dormir" ? dormido : undefined}
-                  className={`mg-boton mg-boton-transparente relative flex h-[62px] items-center justify-center gap-2.5 overflow-hidden rounded-full ${
-                    activo ? "mg-boton-activo" : ""
-                  } ${b.necesita && b.habilitado && !activo ? "mg-boton-necesita" : ""}`}
+                  className="flex min-h-[86px] flex-col items-center justify-start gap-1"
                 >
-                  <b.Icono
-                    size={24}
-                    strokeWidth={1.7}
-                    aria-hidden="true"
-                    className={
-                      lamparaEncendida ? "mg-lampara-on" : b.tipo === "dormir" ? "opacity-60" : ""
-                    }
-                  />
-                  <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-white/60">
+                  <button
+                    type="button"
+                    onClick={() => ejecutar(b.tipo)}
+                    disabled={!b.habilitado}
+                    aria-label={b.label}
+                    aria-pressed={b.tipo === "dormir" ? dormido : undefined}
+                    className={`mg-boton mg-boton-transparente relative grid h-16 w-16 place-items-center overflow-hidden rounded-full ${
+                      activo ? "mg-boton-activo" : ""
+                    } ${b.necesita && b.habilitado && !activo ? "mg-boton-necesita" : ""}`}
+                  >
+                    <b.Icono
+                      size={26}
+                      strokeWidth={1.7}
+                      aria-hidden="true"
+                      className={
+                        lamparaEncendida ? "mg-lampara-on" : b.tipo === "dormir" ? "opacity-60" : ""
+                      }
+                    />
+                    {accion !== null && accion.tipo === b.tipo && (
+                      <span
+                        className="mg-progreso absolute bottom-0 left-0 h-[2px] bg-white/80"
+                        style={{ animationDuration: `${accion.dur}ms` }}
+                        aria-hidden="true"
+                      />
+                    )}
+                  </button>
+                  <span className="text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-white/75">
                     {b.label}
                   </span>
-                  {accion !== null && accion.tipo === b.tipo && (
-                    <span
-                      className="mg-progreso absolute bottom-0 left-0 h-[2px] bg-white/80"
-                      style={{ animationDuration: `${accion.dur}ms` }}
-                      aria-hidden="true"
-                    />
-                  )}
-                </button>
+                </div>
               );
             })}
           </div>
