@@ -41,6 +41,7 @@ export const Route = createFileRoute("/")({
         href: "https://qgucscghlnjlikvvuxpe.supabase.co/storage/v1/object/public/portada/flor-de-loto.mp4",
         type: "video/mp4",
         fetchPriority: "high",
+        crossOrigin: "anonymous",
       },
     ],
   }),

@@ -102,7 +102,7 @@ const DECAY_DURATION_MS: Record<StatKey, number> = {
   hambre: 3 * 60 * 60_000,
   felicidad: 2 * 60 * 60_000 + 45 * 60_000,
   higiene: 3 * 60 * 60_000 + 20 * 60_000,
-  energia: 3 * 60 * 60_000 + 40 * 60_000,
+  energia: 60 * 60_000,
 };
 const DECAY_STEP_MS: Record<StatKey, number> = {
   hambre: DECAY_DURATION_MS.hambre / 100,
@@ -203,7 +203,7 @@ const ACCIONES: Record<
     pose: "comiendo",
     anim: "bounce",
     dur: 2600,
-    delta: { hambre: 30, felicidad: 8 },
+    delta: { hambre: 5, felicidad: 5 },
     particulas: ["🍖", "🦴", "✨", "⭐", "🍗"],
     frases: ["¡Qué rico! 😋", "¡Ñam, ñam! 🍖", "¡Mi favorito! 🦴"],
     sonido: "comer",
@@ -212,7 +212,7 @@ const ACCIONES: Record<
     pose: "banando",
     anim: "wiggle",
     dur: 2800,
-    delta: { higiene: 30, felicidad: 8 },
+    delta: { higiene: 5, felicidad: 5 },
     particulas: ["💧", "🫧", "💦"],
     frases: ["¡Splash! 💦", "¡Burbujas! 🫧", "¡Quedé brillante! ✨"],
     sonido: "banar",
