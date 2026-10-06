@@ -1348,7 +1348,9 @@ export function MascotaGame() {
                   onClick={() => ejecutar(b.tipo)}
                   disabled={!b.habilitado}
                   aria-pressed={b.tipo === "dormir" ? dormido : undefined}
-                  className={`mg-boton mg-vidrio relative flex h-[62px] items-center justify-center gap-2.5 overflow-hidden rounded-2xl ${
+                  className={`mg-boton relative flex h-[62px] items-center justify-center gap-2.5 overflow-hidden rounded-2xl ${
+                    b.tipo === "pasear" ? "mg-vidrio" : "mg-boton-transparente"
+                  } ${
                     activo ? "mg-boton-activo" : ""
                   } ${b.necesita && b.habilitado && !activo ? "mg-boton-necesita" : ""}`}
                 >
@@ -1608,6 +1610,13 @@ const CSS = `
 
 /* Botones */
 .mg-boton { transition: transform 0.22s cubic-bezier(.2,.9,.3,1.2), box-shadow 0.22s ease, background-color 0.22s ease, opacity 0.25s ease; }
+.mg-boton-transparente {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.12);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
 @media (hover: hover) {
   .mg-boton:not(:disabled):hover {
     transform: translateY(-4px) scale(1.06);
@@ -1619,6 +1628,7 @@ const CSS = `
 .mg-boton:not(:disabled):active { transform: scale(0.97); }
 .mg-boton:disabled { cursor: not-allowed; opacity: 0.45; }
 .mg-boton.mg-boton-activo { opacity: 1; background: rgba(255,255,255,0.24); }
+.mg-boton-transparente.mg-boton-activo { background: rgba(255,255,255,0.1); }
 .mg-boton:focus-visible { outline: 2px solid rgba(255,255,255,0.9); outline-offset: 2px; }
 .mg-boton-necesita { animation: mg-necesita 1.6s ease-in-out infinite; }
 .mg-lampara-on { color: #fde68a; filter: drop-shadow(0 0 6px rgba(253,230,138,0.85)); }
