@@ -1330,7 +1330,7 @@ export function MascotaGame() {
 
       {/* Controles */}
       <div
-        className={`mg-panel-abajo mg-contenido absolute inset-x-0 bottom-0 z-10 text-white ${
+        className={`mg-contenido absolute inset-x-0 bottom-0 z-10 text-white ${
           listo ? "opacity-100" : "opacity-0"
         }`}
         style={{ height: PANEL }}
@@ -1556,10 +1556,6 @@ const CSS = `
 .mg-overlay { transition: background-color 1.2s ease; }
 .mg-vineta { background: radial-gradient(ellipse at 50% 40%, transparent 50%, rgba(0,0,0,0.35) 100%); }
 .mg-fundido { background: linear-gradient(to bottom, transparent, rgba(10,12,32,0.55)); }
-.mg-panel-abajo {
-  background: linear-gradient(to bottom, rgba(10,12,32,0.55), rgba(10,12,32,0.72));
-  border-top: 1px solid rgba(255,255,255,0.12);
-}
 .mg-mota {
   width: 4px; height: 4px; opacity: 0;
   background: rgba(255,255,255,0.9);
