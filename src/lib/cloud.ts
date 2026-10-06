@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 
 // Almacenamiento en la nube:
 // - Cartas, fotos (metadatos), eventos y música: una sola fila en Postgres
@@ -57,6 +58,38 @@ export interface CloudStore {
   musica?: string; // única canción de fondo elegida ahora mismo (opcional); subir una nueva reemplaza esta
   ajustes?: Ajustes;
 }
+
+const letterSchema = z.object({
+  id: z.string().min(1).max(200),
+  title: z.string().max(300),
+  text: z.string().max(100_000),
+  date: z.string().max(100),
+  format: z.string().max(100).optional(),
+  createdAt: z.number().finite().optional(),
+  updatedAt: z.number().finite().optional(),
+});
+const photoSchema = z.object({
+  id: z.string().min(1).max(200),
+  url: z.string().url().or(z.string().startsWith("/")),
+  date: z.number().finite(),
+  link: z.string().url().optional(),
+});
+const eventSchema = z.object({
+  id: z.string().min(1).max(200),
+  title: z.string().min(1).max(300),
+  type: z.enum(["once", "monthly", "yearly"]),
+  date: z.string().max(30),
+  note: z.string().max(2_000).optional(),
+  special: z.boolean().optional(),
+  createdAt: z.number().finite(),
+});
+const ajustesSchema = z.object({
+  portada: z.string().min(1).max(100),
+  portadaUrl: z.string().url().optional(),
+  mostrarGalaxia: z.boolean(),
+  mostrarOceano: z.boolean(),
+});
+const musicSchema = z.string().trim().max(2_000);
 
 /** Carga cartas + fotos desde la nube. */
 export const loadStore = createServerFn({ method: "GET" }).handler(async () => {
@@ -126,7 +159,9 @@ export const getPushKey = createServerFn({ method: "GET" }).handler(async () => 
 
 /** Guarda la "dirección" de avisos de este celular. */
 export const savePushSubscription = createServerFn({ method: "POST" })
-  .validator((sub: { endpoint: string }) => sub)
+  .validator((sub: { endpoint: string }) =>
+    z.object({ endpoint: z.string().url().max(2_000) }).parse(sub),
+  )
   .handler(async ({ data }) => {
     try {
       const { savePushSub } = await import("./cloud.server");
@@ -140,7 +175,9 @@ export const savePushSubscription = createServerFn({ method: "POST" })
 
 /** Guarda la lista de cartas (conserva fotos, eventos y música existentes). */
 export const saveCartas = createServerFn({ method: "POST" })
-  .validator((cartas: SavedLetter[]) => cartas)
+  .validator(
+    (cartas: SavedLetter[]) => z.array(letterSchema).max(500).parse(cartas) as SavedLetter[],
+  )
   .handler(async ({ data }) => {
     const { patchStore } = await import("./cloud.server");
     try {
@@ -165,10 +202,9 @@ export const saveCartas = createServerFn({ method: "POST" })
     }
   });
 
-
 /** Guarda la lista de fotos (conserva cartas, eventos y música existentes). */
 export const saveFotos = createServerFn({ method: "POST" })
-  .validator((fotos: PhotoMeta[]) => fotos)
+  .validator((fotos: PhotoMeta[]) => z.array(photoSchema).max(500).parse(fotos) as PhotoMeta[])
   .handler(async ({ data }) => {
     const { patchStore } = await import("./cloud.server");
     try {
@@ -181,7 +217,9 @@ export const saveFotos = createServerFn({ method: "POST" })
 
 /** Guarda la lista de fechas importantes (conserva cartas, fotos y música existentes). */
 export const saveEventos = createServerFn({ method: "POST" })
-  .validator((eventos: CalendarEvent[]) => eventos)
+  .validator(
+    (eventos: CalendarEvent[]) => z.array(eventSchema).max(500).parse(eventos) as CalendarEvent[],
+  )
   .handler(async ({ data }) => {
     const { patchStore } = await import("./cloud.server");
     try {
@@ -194,7 +232,7 @@ export const saveEventos = createServerFn({ method: "POST" })
 
 /** Guarda la única canción de fondo actual (reemplaza la anterior; conserva todo lo demás). */
 export const saveMusica = createServerFn({ method: "POST" })
-  .validator((musica: string) => musica)
+  .validator((musica: string) => musicSchema.parse(musica))
   .handler(async ({ data }) => {
     const { patchStore } = await import("./cloud.server");
     try {
@@ -207,7 +245,7 @@ export const saveMusica = createServerFn({ method: "POST" })
 
 /** Guarda los ajustes del inicio (portada y secciones visibles). */
 export const saveAjustes = createServerFn({ method: "POST" })
-  .validator((ajustes: Ajustes) => ajustes)
+  .validator((ajustes: Ajustes) => ajustesSchema.parse(ajustes) as Ajustes)
   .handler(async ({ data }) => {
     const { patchStore } = await import("./cloud.server");
     try {
@@ -231,11 +269,7 @@ export const uploadImage = createServerFn({ method: "POST" })
       const filename = `foto-${Date.now()}-${Math.round(Math.random() * 1e9)}.${ext}`;
 
       // 1. Intentar primero en Supabase Storage (rápido y con CDN público)
-      const storageUrl = await uploadToSupabaseStorage(
-        filename,
-        file.type || "image/jpeg",
-        bytes,
-      );
+      const storageUrl = await uploadToSupabaseStorage(filename, file.type || "image/jpeg", bytes);
       if (storageUrl) return { url: storageUrl };
 
       // 2. Respaldo: guardar en tabla app_files de Postgres
@@ -260,11 +294,7 @@ export const uploadAudio = createServerFn({ method: "POST" })
       const filename = `audio-${Date.now()}-${Math.round(Math.random() * 1e9)}.${ext}`;
 
       // 1. Intentar primero en Supabase Storage (soporta hasta 50MB)
-      const storageUrl = await uploadToSupabaseStorage(
-        filename,
-        file.type || "audio/mpeg",
-        bytes,
-      );
+      const storageUrl = await uploadToSupabaseStorage(filename, file.type || "audio/mpeg", bytes);
       if (storageUrl) return { url: storageUrl };
 
       // 2. Respaldo: guardar en tabla app_files de Postgres
@@ -275,7 +305,6 @@ export const uploadAudio = createServerFn({ method: "POST" })
       return { url: null as string | null };
     }
   });
-
 
 // La música se sube directo del navegador a Vercel Blob (ver
 // src/routes/api/blob-upload.ts), no por una función de servidor: un archivo

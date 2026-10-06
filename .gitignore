@@ -38,6 +38,3 @@ dist-ssr
 
 # Carpeta con video duplicado (se usa public/video-portada.mp4)
 /video portada/
-
-# El proyecto usa bun (bun.lock); ignorar lockfile de npm
-package-lock.json

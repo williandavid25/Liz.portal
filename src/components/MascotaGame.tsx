@@ -69,6 +69,7 @@ interface Particula {
 }
 
 interface Guardado {
+  version?: number;
   stats?: Partial<Stats>;
   escena?: Escena;
   ts?: number;
@@ -87,6 +88,7 @@ interface Ancla {
 }
 
 const KEY = "liz-mascota-juego";
+const GUARDADO_VERSION = 2;
 const DECAY_MS = 5 * 60_000;
 const UMBRAL_TRISTE = 20;
 /** Con la app cerrada baja más lento, pero sí puede llegar a ponerse triste. */
@@ -353,7 +355,6 @@ export function MascotaGame() {
     const opts: NotificationOptions = {
       body: cuerpo,
       tag: "mascota",
-      renotify: true,
       silent: false,
       icon: "/icons/liz-192.png",
       badge: "/icons/liz-192.png",
@@ -448,6 +449,7 @@ export function MascotaGame() {
     if (!listo) return;
     try {
       const g: Guardado = {
+        version: GUARDADO_VERSION,
         stats,
         escena,
         ts: Date.now(),
