@@ -1312,7 +1312,9 @@ export function MascotaGame() {
                       <s.Icono size={13} style={{ color: s.color }} aria-hidden="true" />
                       {s.label}
                     </span>
-                    <span className="tabular-nums text-white/80">{v}</span>
+                    <span key={`${s.key}-${v}`} className="mg-valor tabular-nums text-white/80">
+                      {v}
+                    </span>
                   </div>
                   <div
                     className="h-2 overflow-hidden rounded-full bg-white/20"
@@ -1553,6 +1555,22 @@ const CSS = `
 .mg-overlay { transition: background-color 1.2s ease; }
 .mg-vineta { background: radial-gradient(ellipse at 50% 40%, transparent 50%, rgba(0,0,0,0.35) 100%); }
 .mg-fundido { background: linear-gradient(to bottom, transparent, rgba(10,12,32,0.55)); }
+.mg-escena::before {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  height: 18%;
+  pointer-events: none;
+  content: "";
+  background: linear-gradient(to bottom, rgba(8,12,26,0.14), transparent);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
+}
+.mg-valor {
+  display: inline-block;
+  animation: mg-valor-cambio 0.5s ease both;
+}
 .mg-mota {
   width: 4px; height: 4px; opacity: 0;
   background: rgba(255,255,255,0.9);
@@ -1712,6 +1730,11 @@ const CSS = `
 @keyframes mg-necesita {
   0%, 100% { box-shadow: 0 10px 30px rgba(0,0,0,0.18), 0 0 0 0 rgba(255,255,255,0.0); }
   50% { box-shadow: 0 10px 30px rgba(0,0,0,0.18), 0 0 0 2px rgba(255,255,255,0.5); }
+}
+@keyframes mg-valor-cambio {
+  0% { opacity: 0.55; transform: translateY(2px) scale(0.96); }
+  60% { opacity: 1; transform: translateY(-1px) scale(1.08); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes mg-latido { 0%, 100% { box-shadow: 0 0 0 0 rgba(244,63,94,0.6); } 50% { box-shadow: 0 0 0 10px rgba(244,63,94,0); } }
 @keyframes mg-aparecer { from { opacity: 0; } to { opacity: 1; } }
