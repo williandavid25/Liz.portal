@@ -783,6 +783,10 @@ export function MascotaGame() {
       return;
     }
     if (accion || escuchando) return;
+    if (stats.energia >= 100) {
+      decir("Ya estoy descansado y lleno de energía ⚡", 2400);
+      return;
+    }
     setMirada(null);
     registrar("dormir");
     setStats((s) => aplicar(s, { felicidad: 8 }));
@@ -797,6 +801,18 @@ export function MascotaGame() {
   const ejecutar = (tipo: TipoAccion) => {
     if (tipo === "dormir") return lampara();
     if (ocupada) return;
+    if (tipo === "alimentar" && stats.hambre >= 100) {
+      decir("Ya estoy llenito, no necesito más comida 💛", 2400);
+      return;
+    }
+    if (tipo === "banar" && stats.higiene >= 100) {
+      decir("Estoy completamente limpio ✨", 2200);
+      return;
+    }
+    if (tipo === "pasear" && stats.felicidad >= 100) {
+      decir("Ya estoy muy feliz, puedo descansar un poquito 🐶", 2600);
+      return;
+    }
     setMirada(null);
     registrar(tipo);
 
