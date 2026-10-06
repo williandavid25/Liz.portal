@@ -525,26 +525,13 @@
   opacity: 0;
   filter: blur(8px);
   transform: translateY(5px);
-  background: linear-gradient(
-    105deg,
-    #fff 0%,
-    #ffd9f3 22%,
-    #f49bff 42%,
-    #ffffff 56%,
-    #d98cff 75%,
-    #ffb7e9 100%
-  );
-  background-size: 220% 100%;
-  animation: bienvenida-brillo 5s ease-in-out infinite;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #fff;
   letter-spacing: 0.012em;
   line-height: 1.5;
   text-shadow:
-    0 2px 0 rgb(104 32 139 / 0.75),
-    0 0 8px rgb(242 133 255 / 0.95),
-    0 0 18px rgb(180 81 255 / 0.8);
+    0 1px 0 rgb(116 31 120 / 0.8),
+    0 0 8px rgb(244 141 220 / 0.95),
+    0 0 18px rgb(225 103 199 / 0.75);
 }
 .bienvenida-texto span {
   display: block;
@@ -560,9 +547,7 @@
   animation: bienvenida-relleno 1.6s ease-out 2.2s forwards;
 }
 .bienvenida--play .bienvenida-texto {
-  animation:
-    bienvenida-difuminado 0.8s ease-out 1.4s forwards,
-    bienvenida-brillo 5s ease-in-out 2.2s infinite;
+  animation: bienvenida-difuminado 0.8s ease-out 1.4s forwards;
 }
 @keyframes bienvenida-escribir {
   to {
