@@ -809,10 +809,6 @@ export function MascotaGame() {
       decir("Estoy completamente limpio ✨", 2200);
       return;
     }
-    if (tipo === "pasear" && stats.felicidad >= 100) {
-      decir("Ya estoy muy feliz, puedo descansar un poquito 🐶", 2600);
-      return;
-    }
     setMirada(null);
     registrar(tipo);
 
