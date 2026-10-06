@@ -11,7 +11,9 @@ export type Sonido =
   | "caricia"
   | "ladrido"
   | "triste"
-  | "logro";
+  | "logro"
+  | "aviso-hambre"
+  | "aviso-sueno";
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -150,6 +152,15 @@ export function reproducir(s: Sonido) {
       );
       tono(c, out, { t: 0.42, f: 2093, dur: 0.5, vol: 0.06 });
       tono(c, out, { t: 0.5, f: 2637, dur: 0.45, vol: 0.05 });
+      break;
+    case "aviso-hambre":
+      tono(c, out, { f: 880, f2: 1047, dur: 0.16, tipo: "triangle", vol: 0.16 });
+      tono(c, out, { t: 0.2, f: 1047, f2: 1319, dur: 0.2, tipo: "triangle", vol: 0.14 });
+      tono(c, out, { t: 0.46, f: 784, f2: 659, dur: 0.28, tipo: "sine", vol: 0.12 });
+      break;
+    case "aviso-sueno":
+      tono(c, out, { f: 523, f2: 392, dur: 0.42, tipo: "sine", vol: 0.11 });
+      tono(c, out, { t: 0.48, f: 392, f2: 294, dur: 0.56, tipo: "sine", vol: 0.09 });
       break;
   }
 }

@@ -76,6 +76,7 @@ interface Guardado {
   progreso?: Partial<Progreso>;
   sonido?: boolean;
   avisos?: boolean;
+  dormido?: boolean;
 }
 
 /** Punto de apoyo en la imagen: x, y (fracciones) y lado del cuadro de Snoopy. */
@@ -86,12 +87,17 @@ interface Ancla {
 }
 
 const KEY = "liz-mascota-juego";
-const DECAY_MS = 30_000;
+const DECAY_MS = 5 * 60_000;
 const UMBRAL_TRISTE = 20;
 /** Con la app cerrada baja más lento, pero sí puede llegar a ponerse triste. */
-const OFFLINE_POR_HORA = 10;
+const OFFLINE_POR_HORA = 3;
 const OFFLINE_MAX = 85;
 const INICIAL: Stats = { hambre: 80, felicidad: 85, higiene: 75, energia: 80 };
+const COMIDAS = [
+  { hora: 8, nombre: "desayuno" },
+  { hora: 13, nombre: "almuerzo" },
+  { hora: 19, nombre: "merienda" },
+] as const;
 /** Alto de la franja de controles. */
 const PANEL = "calc(206px + env(safe-area-inset-bottom))";
 
@@ -146,6 +152,8 @@ const escenaPorHora = (): Escena => {
   const h = new Date().getHours();
   return h >= 7 && h < 19 ? "patio" : "dormitorio";
 };
+
+const esHorarioDescanso = (hora = new Date().getHours()) => hora >= 19 || hora < 7;
 
 const STATS: Array<{ key: StatKey; Icono: LucideIcon; label: string; color: string }> = [
   { key: "hambre", Icono: Drumstick, label: "Hambre", color: "#f87171" },
@@ -280,6 +288,9 @@ export function MascotaGame() {
   const bocaRef = useRef<HTMLDivElement>(null);
   const ultimaCaricia = useRef(0);
   const durmiendoRef = useRef(false);
+  const descansoAutomaticoRef = useRef(false);
+  const ultimaAlertaRef = useRef<Partial<Record<"hambre" | "sueno", number>>>({});
+  const comidasAvisadasRef = useRef(new Set<string>());
   durmiendoRef.current = dormido;
   // Los navegadores solo dejan sonar audio después de un toque.
   const interactuo = useRef(false);
@@ -342,17 +353,21 @@ export function MascotaGame() {
     const opts: NotificationOptions = {
       body: cuerpo,
       tag: "mascota",
+      renotify: true,
+      silent: false,
       icon: "/icons/liz-192.png",
       badge: "/icons/liz-192.png",
       data: { url: "/mascota" },
     };
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.ready.then((r) => r.showNotification(titulo, opts)).catch(() => {});
+      navigator.serviceWorker.ready
+        .then((r) => r.showNotification(titulo, opts))
+        .catch((error) => console.warn("No se pudo mostrar el aviso de la mascota:", error));
     } else {
       try {
         new Notification(titulo, opts);
-      } catch {
-        /* el navegador no lo permite */
+      } catch (error) {
+        console.warn("El navegador no permitió mostrar el aviso:", error);
       }
     }
   }, []);
@@ -390,6 +405,13 @@ export function MascotaGame() {
       }
       if (typeof g.sonido === "boolean") setSonido(g.sonido);
       if (typeof g.avisos === "boolean") setAvisos(g.avisos);
+      if (typeof g.dormido === "boolean") {
+        setDormido(g.dormido);
+        descansoAutomaticoRef.current = g.dormido && esHorarioDescanso();
+      } else if (!reciente && esHorarioDescanso()) {
+        setDormido(true);
+        descansoAutomaticoRef.current = true;
+      }
       let n = g.nombre;
       if (!n) {
         const vieja = localStorage.getItem("liz-mascota");
@@ -425,12 +447,21 @@ export function MascotaGame() {
   useEffect(() => {
     if (!listo) return;
     try {
-      const g: Guardado = { stats, escena, ts: Date.now(), nombre, progreso, sonido, avisos };
+      const g: Guardado = {
+        stats,
+        escena,
+        ts: Date.now(),
+        nombre,
+        progreso,
+        sonido,
+        avisos,
+        dormido,
+      };
       localStorage.setItem(KEY, JSON.stringify(g));
     } catch {
       /* almacenamiento lleno o bloqueado */
     }
-  }, [listo, stats, escena, nombre, progreso, sonido, avisos]);
+  }, [listo, stats, escena, nombre, progreso, sonido, avisos, dormido]);
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -438,11 +469,35 @@ export function MascotaGame() {
         hambre: clamp(s.hambre - baja()),
         felicidad: clamp(s.felicidad - baja()),
         higiene: clamp(s.higiene - baja()),
-        energia: durmiendoRef.current ? s.energia : clamp(s.energia - baja()),
+        energia: durmiendoRef.current ? clamp(s.energia + 1) : clamp(s.energia - baja()),
       }));
     }, DECAY_MS);
     return () => window.clearInterval(id);
   }, []);
+
+  // Mantiene un ciclo diario amable: actividad de 7:00 a 19:00 y descanso
+  // nocturno de 12 horas, sin forzar a despertar un descanso manual.
+  useEffect(() => {
+    if (!listo) return;
+    const revisarHorario = () => {
+      const debeDormir = esHorarioDescanso();
+      if (debeDormir && !durmiendoRef.current && !accion && !escuchando) {
+        descansoAutomaticoRef.current = true;
+        setEscena("dormitorio");
+        setDormido(true);
+        decir("Es hora de descansar… 🌙", 2600);
+        sonar("aviso-sueno");
+      } else if (!debeDormir && durmiendoRef.current && descansoAutomaticoRef.current) {
+        descansoAutomaticoRef.current = false;
+        setDormido(false);
+        decir("¡Buenos días! ☀️", 2400);
+        sonar("despertar");
+      }
+    };
+    revisarHorario();
+    const id = window.setInterval(revisarHorario, 60_000);
+    return () => window.clearInterval(id);
+  }, [listo, accion, escuchando, decir, sonar]);
 
   // Al salir: cortar temporizadores y micrófono, y devolver la música.
   useEffect(() => {
@@ -514,14 +569,65 @@ export function MascotaGame() {
   const avisoTriste = useRef(false);
   useEffect(() => {
     if (!listo) return;
-    if (necesitada && !accion && !dormido && !avisoTriste.current) {
+    if (accion || dormido) return;
+    const ahora = Date.now();
+    const alertar = (tipo: "hambre" | "sueno", texto: string, sonidoAviso: Sonido) => {
+      const ultima = ultimaAlertaRef.current[tipo] ?? 0;
+      if (ahora - ultima < 4 * 60 * 60_000) return;
+      ultimaAlertaRef.current[tipo] = ahora;
+      decir(texto, 3200);
+      sonar(sonidoAviso);
+      avisar(texto);
+    };
+    if (stats.hambre <= UMBRAL_TRISTE) {
+      alertar("hambre", FRASES_TRISTE.hambre, "aviso-hambre");
+    } else if (stats.energia <= UMBRAL_TRISTE) {
+      alertar("sueno", FRASES_TRISTE.energia, "aviso-sueno");
+    } else if (necesitada && !avisoTriste.current) {
       avisoTriste.current = true;
       decir(FRASES_TRISTE[masBaja], 3200);
       sonar("triste");
       avisar(FRASES_TRISTE[masBaja]);
     }
     if (!necesitada) avisoTriste.current = false;
-  }, [listo, necesitada, accion, dormido, masBaja, decir, sonar, avisar]);
+  }, [
+    listo,
+    stats.hambre,
+    stats.energia,
+    necesitada,
+    accion,
+    dormido,
+    masBaja,
+    decir,
+    sonar,
+    avisar,
+  ]);
+
+  // Tres avisos de comida al día, uno por cada franja horaria. Se guarda una
+  // clave por fecha para que volver a abrir la página no repita el mismo aviso.
+  useEffect(() => {
+    if (!listo) return;
+    const revisarComida = () => {
+      const ahora = new Date();
+      const comida = COMIDAS.find((c) => c.hora === ahora.getHours());
+      if (!comida) return;
+      const fechaLocal = [
+        ahora.getFullYear(),
+        String(ahora.getMonth() + 1).padStart(2, "0"),
+        String(ahora.getDate()).padStart(2, "0"),
+      ].join("-");
+      const clave = `${fechaLocal}-${comida.hora}`;
+      if (comidasAvisadasRef.current.has(clave)) return;
+      comidasAvisadasRef.current.add(clave);
+      const texto = `Es hora del ${comida.nombre}. Tengo hambre 🍖`;
+      decir(texto, 3000);
+      sonar("aviso-hambre");
+      avisar(texto);
+    };
+    revisarComida();
+    const id = window.setInterval(revisarComida, 60_000);
+    return () => window.clearInterval(id);
+  }, [listo, decir, sonar, avisar]);
 
   // En reposo mira de vez en cuando a los lados: se siente viva.
   const enReposo = listo && !ocupada && !necesitada;
@@ -627,6 +733,7 @@ export function MascotaGame() {
     decir("Buenas noches… 🌙", 2600);
     // Se va a su cama: si estaba en el patio, vuelve al dormitorio.
     setEscena("dormitorio");
+    descansoAutomaticoRef.current = false;
     setDormido(true);
   };
 

@@ -1,5 +1,8 @@
 import type { CSSProperties, Ref } from "react";
 
+/* This module intentionally exports the pose helpers used by MascotaGame. */
+/* eslint-disable react-refresh/only-export-components */
+
 // Snoopy "con vida": cada pose es la misma imagen de siempre, pero recortada
 // en piezas (cabeza, orejas, cola, patas, cuerpo) que se mueven por separado,
 // a distinta profundidad (3D real con perspectiva) y con párpados y boca
@@ -250,7 +253,7 @@ export function SnoopyVivo({
   return (
     <div
       ref={bocaRef}
-      className={`sv-raiz sv-${animo}`}
+      className={`sv-raiz sv-${animo} sv-pose-${pose}`}
       style={{ translate: `0 ${PIE[pose] * 100}%` }}
     >
       <div className="sv-balanceo">
@@ -331,7 +334,7 @@ export function SnoopyVivo({
 export const SNOOPY_CSS = `
 .sv-raiz { position: absolute; inset: 0; perspective: 640px; }
 .sv-balanceo, .sv-3d, .sv-capa, .sv-mira { position: absolute; inset: 0; transform-style: preserve-3d; }
-.sv-balanceo { animation: sv-balanceo 7s ease-in-out infinite; }
+.sv-balanceo { animation: sv-balanceo 7s ease-in-out infinite; will-change: transform; }
 .sv-3d {
   transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
   transition: transform 0.45s cubic-bezier(.2,.8,.3,1);
@@ -349,6 +352,10 @@ export const SNOOPY_CSS = `
 .sv-pata { translate: 0 0 14px; }
 .sv-pata-i { animation: sv-pata 4.6s ease-in-out infinite; }
 .sv-pata-d { animation: sv-pata 4.6s ease-in-out 2.3s infinite; }
+.sv-pose-comiendo .sv-pata-i { animation: sv-pata-comiendo 1.1s ease-in-out infinite; }
+.sv-pose-comiendo .sv-pata-d { animation: sv-pata-comiendo 1.1s ease-in-out 0.55s infinite; }
+.sv-pose-espalda .sv-pata-i { animation: sv-pata-caminando 0.42s ease-in-out infinite; }
+.sv-pose-espalda .sv-pata-d { animation: sv-pata-caminando 0.42s ease-in-out 0.21s infinite; }
 .sv-cabeza { translate: 0 0 26px; animation: sv-cabeza 5.2s ease-in-out infinite; }
 .sv-cabeza-fija { translate: 0 0 2px; }
 .sv-mira {
@@ -409,6 +416,14 @@ export const SNOOPY_CSS = `
   0%, 70%, 100% { transform: translateY(0) rotate(0); }
   76% { transform: translateY(-5%) rotate(-3deg); }
   82% { transform: translateY(0) rotate(0); }
+}
+@keyframes sv-pata-comiendo {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(2%) rotate(1.5deg); }
+}
+@keyframes sv-pata-caminando {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-7%) rotate(5deg); }
 }
 @keyframes sv-cabeza {
   0%, 100% { transform: rotate(0deg); }
