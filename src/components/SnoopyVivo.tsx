@@ -226,6 +226,7 @@ export function SnoopyVivo({
   boca,
   ladrido,
   ladrando,
+  caminando = false,
   bocaRef,
 }: {
   pose: Pose;
@@ -234,6 +235,7 @@ export function SnoopyVivo({
   /** Cambia este número para que ladre (abre la boca dos veces). */
   ladrido: number;
   ladrando: boolean;
+  caminando?: boolean;
   bocaRef?: Ref<HTMLDivElement>;
 }) {
   const src = imgPose(pose);
@@ -253,7 +255,7 @@ export function SnoopyVivo({
   return (
     <div
       ref={bocaRef}
-      className={`sv-raiz sv-${animo} sv-pose-${pose}`}
+      className={`sv-raiz sv-${animo} sv-pose-${pose} ${caminando ? "sv-caminando" : ""}`}
       style={{ translate: `0 ${PIE[pose] * 100}%` }}
     >
       <div className="sv-balanceo">
@@ -335,6 +337,7 @@ export const SNOOPY_CSS = `
 .sv-raiz { position: absolute; inset: 0; perspective: 640px; }
 .sv-balanceo, .sv-3d, .sv-capa, .sv-mira { position: absolute; inset: 0; transform-style: preserve-3d; }
 .sv-balanceo { animation: sv-balanceo 7s ease-in-out infinite; will-change: transform; }
+.sv-caminando .sv-balanceo { animation: sv-caminar-balanceo 0.84s ease-in-out infinite; }
 .sv-3d {
   transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
   transition: transform 0.45s cubic-bezier(.2,.8,.3,1);
@@ -352,6 +355,8 @@ export const SNOOPY_CSS = `
 .sv-pata { translate: 0 0 14px; }
 .sv-pata-i { animation: sv-pata 4.6s ease-in-out infinite; }
 .sv-pata-d { animation: sv-pata 4.6s ease-in-out 2.3s infinite; }
+.sv-caminando .sv-pata-i { animation: sv-pata-paso 0.84s ease-in-out infinite; }
+.sv-caminando .sv-pata-d { animation: sv-pata-paso 0.84s ease-in-out 0.42s infinite; }
 .sv-pose-comiendo .sv-pata-i { animation: sv-pata-comiendo 1.1s ease-in-out infinite; }
 .sv-pose-comiendo .sv-pata-d { animation: sv-pata-comiendo 1.1s ease-in-out 0.55s infinite; }
 .sv-pose-espalda .sv-pata-i { animation: sv-pata-caminando 0.42s ease-in-out infinite; }
@@ -406,6 +411,12 @@ export const SNOOPY_CSS = `
 .sv-feliz .sv-cola { animation-duration: 0.32s; }
 
 @keyframes sv-balanceo { 0%, 100% { transform: rotateY(-5deg); } 50% { transform: rotateY(5deg); } }
+@keyframes sv-caminar-balanceo {
+  0%, 100% { transform: translate3d(0, 0, 0) rotateZ(-1.2deg) rotateY(-3deg); }
+  25% { transform: translate3d(0, -0.8%, 0) rotateZ(1deg) rotateY(2deg); }
+  50% { transform: translate3d(0, 0, 0) rotateZ(-1.2deg) rotateY(3deg); }
+  75% { transform: translate3d(0, -0.8%, 0) rotateZ(1deg) rotateY(-2deg); }
+}
 @keyframes sv-cola { from { transform: rotate(-12deg); } to { transform: rotate(14deg); } }
 @keyframes sv-cola-triste { from { transform: rotate(18deg); } to { transform: rotate(10deg); } }
 @keyframes sv-oreja-i { 0%, 100% { transform: rotate(0deg); } 30% { transform: rotate(3deg); } 60% { transform: rotate(-2deg); } }
@@ -424,6 +435,12 @@ export const SNOOPY_CSS = `
 @keyframes sv-pata-caminando {
   0%, 100% { transform: translateY(0) rotate(-4deg); }
   50% { transform: translateY(-7%) rotate(5deg); }
+}
+@keyframes sv-pata-paso {
+  0%, 100% { transform: translate3d(0, 0, 0) rotateZ(-5deg) rotateY(-7deg); }
+  22% { transform: translate3d(0, -7%, 10px) rotateZ(8deg) rotateY(8deg); }
+  48% { transform: translate3d(0, 1%, 0) rotateZ(3deg) rotateY(3deg); }
+  72% { transform: translate3d(0, -3%, -7px) rotateZ(-8deg) rotateY(-5deg); }
 }
 @keyframes sv-cabeza {
   0%, 100% { transform: rotate(0deg); }

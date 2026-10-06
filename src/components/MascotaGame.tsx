@@ -1017,6 +1017,7 @@ export function MascotaGame() {
                     boca={oido === "hablando" ? "voz" : "auto"}
                     ladrido={toques}
                     ladrando={ladrando}
+                    caminando={anim === "walk"}
                     bocaRef={bocaRef}
                   />
                 </div>
