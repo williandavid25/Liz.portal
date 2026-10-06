@@ -1047,6 +1047,21 @@ export function MascotaGame() {
             />
           ))}
         </div>
+        {micDisponible && (
+          <button
+            type="button"
+            onClick={() => (escuchando ? apagarMic() : void prenderMic())}
+            disabled={!escuchando && (accion !== null || dormido)}
+            aria-pressed={escuchando}
+            aria-label={escuchando ? "Terminar de hablar" : `Háblale a ${nombre}`}
+            title={escuchando ? "Terminar de hablar" : "Háblale: te repite"}
+            className={`mg-boton absolute left-[24%] top-[54%] z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full shadow-lg transition-transform hover:scale-105 disabled:opacity-40 sm:left-[29%] ${
+              escuchando ? "mg-mic-activo" : "mg-vidrio"
+            }`}
+          >
+            {escuchando ? <MicOff size={18} /> : <Mic size={18} />}
+          </button>
+        )}
 
         {/* Capa de mensajes y partículas: misma geometría, por encima de la luz. */}
         <div
@@ -1281,23 +1296,6 @@ export function MascotaGame() {
               <IconoAmb size={13} aria-hidden="true" />
               {dormido ? "Luz apagada" : ESCENAS[escena].ambiente}
             </p>
-            {micDisponible ? (
-              <button
-                type="button"
-                onClick={() => (escuchando ? apagarMic() : void prenderMic())}
-                disabled={!escuchando && (accion !== null || dormido)}
-                aria-pressed={escuchando}
-                aria-label={escuchando ? "Terminar de hablar" : `Háblale a ${nombre}`}
-                title={escuchando ? "Terminar de hablar" : "Háblale: te repite"}
-                className={`mg-redondo grid h-9 w-9 shrink-0 place-items-center rounded-full disabled:opacity-40 ${
-                  escuchando ? "mg-mic-activo" : "mg-vidrio"
-                }`}
-              >
-                {escuchando ? <MicOff size={16} /> : <Mic size={16} />}
-              </button>
-            ) : (
-              <span className="h-9 w-9 shrink-0" aria-hidden="true" />
-            )}
           </div>
         </div>
       </div>

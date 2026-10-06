@@ -155,6 +155,11 @@ export function WeatherPanel() {
     };
   }, [loadWeather]);
 
+  useEffect(() => {
+    const toggle = window.setInterval(() => setVisible((current) => !current), 5000);
+    return () => window.clearInterval(toggle);
+  }, []);
+
   const position =
     "absolute right-4 top-[calc(env(safe-area-inset-top)+300px)] z-10 sm:right-6 sm:top-[calc(env(safe-area-inset-top)+326px)]";
 
