@@ -461,12 +461,6 @@ export function MascotaGame() {
     }
   }, [decir]);
 
-  useEffect(() => {
-    if (!cartaPendiente) return;
-    const id = window.setTimeout(() => setCartaPendiente(null), 9000);
-    return () => window.clearTimeout(id);
-  }, [cartaPendiente]);
-
   // Fondo vertical en celulares, horizontal en pantallas anchas.
   useEffect(() => {
     const mq = window.matchMedia("(min-aspect-ratio: 1/1)");
