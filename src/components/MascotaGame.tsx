@@ -20,8 +20,6 @@ import {
   Sun,
   Trees,
   Trophy,
-  Volume2,
-  VolumeX,
   X,
   Zap,
   type LucideIcon,
@@ -123,9 +121,6 @@ const COMIDAS = [
   { hora: 13, nombre: "almuerzo" },
   { hora: 19, nombre: "merienda" },
 ] as const;
-/** Alto de la franja de controles. */
-const PANEL = "calc(206px + env(safe-area-inset-bottom))";
-
 const POSES: Pose[] = [
   "frente",
   "comiendo",
@@ -1012,8 +1007,6 @@ export function MascotaGame() {
   const fondos = FONDOS[orient];
   const ancla = dormido ? ANCLAS[orient].cama : ANCLAS[orient][escena];
   const sombraAncha = pose === "durmiendo" || pose === "banando";
-  const { Icono: IconoEscena, IconoAmb } = ESCENAS[escena];
-
   return (
     <section
       ref={raizRef}
@@ -1041,7 +1034,7 @@ export function MascotaGame() {
       </div>
 
       {/* Escena: el fondo nítido con Snoopy apoyado en él. */}
-      <div className="mg-escena absolute inset-x-0 top-0" style={{ bottom: PANEL }}>
+      <div className="mg-escena absolute inset-0">
         <div className="mg-lienzo mg-kb" style={lienzoEstilo(fondos.ar)}>
           {(["dormitorio", "patio"] as Escena[]).map((e) => (
             <img
@@ -1333,9 +1326,8 @@ export function MascotaGame() {
         className={`mg-contenido absolute inset-x-0 bottom-0 z-10 text-white ${
           listo ? "opacity-100" : "opacity-0"
         }`}
-        style={{ height: PANEL }}
       >
-        <div className="mx-auto flex w-full max-w-[352px] flex-col gap-2.5 px-4 pt-3">
+        <div className="mx-auto w-full max-w-[352px] px-4 pb-[env(safe-area-inset-bottom)] pt-3">
           <div className="grid grid-cols-2 gap-2.5">
             {botones.map((b) => {
               const activo =
@@ -1348,7 +1340,7 @@ export function MascotaGame() {
                   onClick={() => ejecutar(b.tipo)}
                   disabled={!b.habilitado}
                   aria-pressed={b.tipo === "dormir" ? dormido : undefined}
-                  className={`mg-boton mg-boton-transparente relative flex h-[62px] items-center justify-center gap-2.5 overflow-hidden rounded-2xl ${
+                  className={`mg-boton mg-boton-transparente relative flex h-[62px] items-center justify-center gap-2.5 overflow-hidden rounded-full ${
                     activo ? "mg-boton-activo" : ""
                   } ${b.necesita && b.habilitado && !activo ? "mg-boton-necesita" : ""}`}
                 >
@@ -1373,26 +1365,6 @@ export function MascotaGame() {
                 </button>
               );
             })}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSonido((s) => !s)}
-              aria-pressed={sonido}
-              aria-label={sonido ? "Silenciar sonidos" : "Activar sonidos"}
-              title={sonido ? "Silenciar sonidos" : "Activar sonidos"}
-              className="mg-redondo mg-vidrio grid h-9 w-9 shrink-0 place-items-center rounded-full"
-            >
-              {sonido ? <Volume2 size={16} /> : <VolumeX size={16} className="opacity-70" />}
-            </button>
-            <p className="mg-vidrio flex h-9 flex-1 items-center justify-center gap-2 rounded-full text-[12px] font-semibold text-white/75">
-              <IconoEscena size={14} aria-hidden="true" />
-              {ESCENAS[escena].nombre}
-              <span className="h-1 w-1 rounded-full bg-white/50" aria-hidden="true" />
-              <IconoAmb size={13} aria-hidden="true" />
-              {dormido ? "Luz apagada" : ESCENAS[escena].ambiente}
-            </p>
           </div>
         </div>
       </div>
