@@ -1214,7 +1214,7 @@ export function MascotaGame() {
           listo ? "opacity-100" : "opacity-0"
         }`}
       >
-        <div className="mg-vidrio w-full rounded-3xl px-4 pb-3.5 pt-3">
+        <div className="mg-stats w-full px-4 pb-3.5 pt-3">
           <div className="mb-2.5 flex items-center justify-between gap-2">
             {editandoNombre ? (
               <form
@@ -1544,6 +1544,9 @@ const CSS = `
   backdrop-filter: blur(18px);
   border: 1px solid rgba(255,255,255,0.22);
   box-shadow: 0 24px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.mg-stats {
+  text-shadow: 0 2px 5px rgba(0,0,0,0.62);
 }
 .mg-pastilla { background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.22); }
 
