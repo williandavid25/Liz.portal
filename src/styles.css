@@ -525,13 +525,30 @@
   opacity: 0;
   filter: blur(8px);
   transform: translateY(5px);
-  color: #fff;
+  background: linear-gradient(
+    105deg,
+    #fff 0%,
+    #ffd9f3 22%,
+    #f49bff 42%,
+    #ffffff 56%,
+    #d98cff 75%,
+    #ffb7e9 100%
+  );
+  background-size: 220% 100%;
+  animation: bienvenida-brillo 5s ease-in-out infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
   letter-spacing: 0.012em;
   line-height: 1.5;
   text-shadow:
-    0 2px 0 rgb(104 32 139 / 0.9),
-    0 0 8px rgb(242 133 255 / 1),
-    0 0 18px rgb(180 81 255 / 0.9);
+    0 2px 0 rgb(104 32 139 / 0.75),
+    0 0 8px rgb(242 133 255 / 0.95),
+    0 0 18px rgb(180 81 255 / 0.8);
+}
+.bienvenida-texto span {
+  display: block;
+  white-space: nowrap;
 }
 .bienvenida--play .bienvenida-titulo {
   animation: bienvenida-escribir 3.4s cubic-bezier(0.45, 0.05, 0.4, 1) 0.3s forwards;
@@ -543,7 +560,9 @@
   animation: bienvenida-relleno 1.6s ease-out 2.2s forwards;
 }
 .bienvenida--play .bienvenida-texto {
-  animation: bienvenida-difuminado 0.8s ease-out 1.4s forwards;
+  animation:
+    bienvenida-difuminado 0.8s ease-out 1.4s forwards,
+    bienvenida-brillo 5s ease-in-out 2.2s infinite;
 }
 @keyframes bienvenida-escribir {
   to {
@@ -568,6 +587,10 @@
     transform: translateY(0);
   }
 }
+@keyframes bienvenida-brillo {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
 @media (prefers-reduced-motion: reduce) {
   .bienvenida--play .bienvenida-titulo,
   .bienvenida--play .bienvenida-trazo,
@@ -575,6 +598,9 @@
   .bienvenida--play .bienvenida-texto {
     animation-duration: 0.01s;
     animation-delay: 0s;
+  }
+  .bienvenida-texto {
+    animation: none;
   }
 }
 

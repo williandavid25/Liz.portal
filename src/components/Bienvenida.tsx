@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { esperarSplash } from "./Splash";
 
 const TITULO = "Bienvenida, mi niña";
-const DESCRIPCION =
-  "Este es tu espacio, hecho especialmente para ti. Espero que te guste y que aquí puedas guardar y escribir muchos momentos bonitos.";
 
 /**
  * Título de la portada que se "escribe" a mano: el trazo de cada letra se
@@ -95,8 +93,13 @@ export function Bienvenida() {
       </div>
       {/* px extra + text-balance: en celular el texto queda bien dentro del
           margen (no pegado a los bordes) y las líneas salen parejas. */}
-      <p className="bienvenida-texto mt-1 w-full max-w-[26rem] px-5 text-center font-sans text-[1rem] font-semibold leading-snug [text-wrap:balance] sm:mt-2 sm:max-w-[30rem] sm:px-0 sm:text-[1.35rem]">
-        {DESCRIPCION}
+      <p
+        className="bienvenida-texto mt-1 flex w-full max-w-[34rem] flex-col items-center px-5 text-center font-sans text-[1rem] font-semibold leading-relaxed sm:mt-2 sm:px-0 sm:text-[1.35rem]"
+        aria-label="Este es tu espacio, hecho especialmente para ti. Espero que te guste y que aquí puedas guardar y escribir muchos momentos bonitos."
+      >
+        <span>Este es tu espacio, hecho especialmente para ti.</span>
+        <span>Espero que te guste y que aquí puedas guardar</span>
+        <span>y escribir muchos momentos bonitos.</span>
       </p>
     </div>
   );
