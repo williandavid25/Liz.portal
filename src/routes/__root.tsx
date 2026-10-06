@@ -693,7 +693,7 @@ function AppShell() {
               alt=""
               width={20}
               height={20}
-              className="h-full w-full scale-[2] object-cover object-[50%_20%]"
+              className="h-full w-full scale-[1.25] object-cover object-[50%_12%]"
             />
           </span>
           <span className="hidden sm:inline">Mascota</span>
