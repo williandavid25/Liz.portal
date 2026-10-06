@@ -1083,15 +1083,19 @@ export function MascotaGame() {
               }
             }}
             aria-label={`Abrir carta: ${cartaPendiente.title}`}
-            className="mg-carta-aviso absolute z-20 w-[min(92px,22vw)] -translate-x-1/2 translate-y-[-105%] rounded-sm bg-cover bg-center p-1.5 text-left text-slate-800 shadow-2xl transition-transform hover:scale-105 sm:w-28"
+            className="mg-carta-aviso absolute z-20 w-[min(112px,27vw)] -translate-x-1/2 translate-y-[-105%] overflow-hidden rounded-md shadow-2xl transition-transform hover:scale-105 sm:w-36"
             style={{
               left: `${ancla.x * 100 - 14}%`,
               top: `${ancla.y * 100}%`,
-              backgroundImage: `url(${cartaPendiente.format === "pergamino" ? "/pergamino.jpeg" : `/formatos/formato-${cartaPendiente.format ?? "cumpleanos"}.jpeg`})`,
             }}
           >
-            <p className="relative truncate text-[11px] font-bold">{cartaPendiente.title}</p>
-            <span className="relative mt-0.5 block text-[9px] font-semibold">Abrir 💌</span>
+            <img
+              src="/cartas/sobre.webp"
+              alt={`Sobre de la carta: ${cartaPendiente.title}`}
+              width={640}
+              height={426}
+              className="block aspect-[3/2] w-full object-cover"
+            />
           </button>
         )}
         <div className="pointer-events-none absolute inset-0" aria-hidden="true">
