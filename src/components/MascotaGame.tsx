@@ -37,7 +37,6 @@ import {
 } from "@/lib/logros-mascota";
 import { enablePush } from "@/lib/push-client";
 import { SNOOPY_CSS, SnoopyVivo, imgPose, type Pose } from "@/components/SnoopyVivo";
-import { Snoopy3D } from "@/components/Snoopy3D";
 import { WeatherPanel } from "@/components/WeatherPanel";
 
 // Mascota virtual tipo Tamagotchi. Snoopy vive "dentro" del fondo: se ubica en
@@ -1012,20 +1011,15 @@ export function MascotaGame() {
               />
               <div className={`absolute inset-0 ${ANIM_CLASE[anim]}`}>
                 <div key={`${pose}-${toques}`} className="mg-pop absolute inset-0">
-                  <div className="absolute inset-0 opacity-0" aria-hidden="true">
-                    <SnoopyVivo
-                      pose={pose}
-                      animo={animo}
-                      boca={oido === "hablando" ? "voz" : "auto"}
-                      ladrido={toques}
-                      ladrando={ladrando}
-                      caminando={anim === "walk"}
-                      bocaRef={bocaRef}
-                    />
-                  </div>
-                  <div className="absolute inset-[8%] opacity-100 transition-opacity duration-500">
-                    <Snoopy3D caminando={anim === "walk"} durmiendo={dormido} ladrando={ladrando} />
-                  </div>
+                  <SnoopyVivo
+                    pose={pose}
+                    animo={animo}
+                    boca={oido === "hablando" ? "voz" : "auto"}
+                    ladrido={toques}
+                    ladrando={ladrando}
+                    caminando={anim === "walk"}
+                    bocaRef={bocaRef}
+                  />
                 </div>
               </div>
             </div>
