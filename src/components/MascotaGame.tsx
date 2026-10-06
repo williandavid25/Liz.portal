@@ -1342,7 +1342,7 @@ export function MascotaGame() {
 
       {/* Controles */}
       <div
-        className={`mg-contenido absolute inset-x-0 bottom-0 z-10 text-white ${
+        className={`mg-contenido absolute inset-x-0 bottom-[24%] z-10 text-white ${
           listo ? "opacity-100" : "opacity-0"
         }`}
       >
