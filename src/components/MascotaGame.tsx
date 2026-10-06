@@ -114,6 +114,7 @@ const DECAY_OFFSETS_MS: Record<StatKey, number> = {
   higiene: 54_000,
   energia: 81_000,
 };
+const RECOVERY_STEP_MS = 5 * 60_000;
 const UMBRAL_TRISTE = 20;
 const INICIAL: Stats = { hambre: 80, felicidad: 85, higiene: 75, energia: 80 };
 const COMIDAS = [
@@ -364,6 +365,22 @@ export function MascotaGame() {
   const registrar = useCallback((k: keyof Contadores) => {
     setProgreso((p) => registrarCuidado(p, k));
   }, []);
+
+  const recuperarGradual = useCallback(
+    (delta: Partial<Stats>) => {
+      for (const [key, total] of Object.entries(delta) as Array<[StatKey, number | undefined]>) {
+        let restantes = Math.max(0, Math.round(total ?? 0));
+        const siguiente = () => {
+          if (restantes <= 0) return;
+          setStats((s) => (s[key] >= 100 ? s : { ...s, [key]: clamp(s[key] + 1) }));
+          restantes -= 1;
+          if (restantes > 0) programar(siguiente, RECOVERY_STEP_MS);
+        };
+        programar(siguiente, RECOVERY_STEP_MS);
+      }
+    },
+    [programar],
+  );
 
   /** Notificación del sistema, solo si la app quedó en segundo plano. */
   const avisar = useCallback((cuerpo: string) => {
@@ -758,9 +775,9 @@ export function MascotaGame() {
   useEffect(() => {
     if (!dormido) return;
     const id = window.setInterval(() => {
-      setStats((s) => aplicar(s, { energia: 6 }));
+      setStats((s) => (s.energia >= 100 ? s : { ...s, energia: clamp(s.energia + 1) }));
       lanzar(["💤", "z", "Z"], 2);
-    }, 2000);
+    }, RECOVERY_STEP_MS);
     return () => window.clearInterval(id);
   }, [dormido, lanzar]);
   useEffect(() => {
@@ -810,7 +827,7 @@ export function MascotaGame() {
     }
     setMirada(null);
     registrar("dormir");
-    setStats((s) => aplicar(s, { felicidad: 8 }));
+    recuperarGradual({ felicidad: 8 });
     sonar("dormir");
     decir("Buenas noches… 🌙", 2600);
     // Se va a su cama: si estaba en el patio, vuelve al dormitorio.
@@ -844,7 +861,7 @@ export function MascotaGame() {
         dur,
         mover: alPatio ? "irse" : "llegar",
       });
-      setStats((s) => aplicar(s, { felicidad: 20 }));
+      recuperarGradual({ felicidad: 20 });
       sonar("pasear");
       decir(alPatio ? "¡Vamos al patio! 🌳" : "¡De vuelta a casa! 🏠", 1700);
       lanzar(alPatio ? ["🌳", "🌸", "🦋", "🍃", "☀️"] : ["🏠", "💛", "✨", "🌙"]);
@@ -859,7 +876,7 @@ export function MascotaGame() {
 
     const c = ACCIONES[tipo];
     setAccion({ tipo, pose: c.pose, anim: c.anim, dur: c.dur });
-    setStats((s) => aplicar(s, c.delta));
+    recuperarGradual(c.delta);
     sonar(c.sonido);
     lanzar(c.particulas);
     decir(elegir(c.frases), Math.min(c.dur, 2600));
@@ -873,7 +890,7 @@ export function MascotaGame() {
     if (ahora - ultimaCaricia.current < 700) return;
     ultimaCaricia.current = ahora;
     setToques((t) => t + 1);
-    setStats((s) => aplicar(s, { felicidad: 3 }));
+    recuperarGradual({ felicidad: 3 });
     registrar("caricias");
     lanzar(["💛", "❤️", "💕", "✨"], 6);
     if (Math.random() < 0.4) {
@@ -934,7 +951,7 @@ export function MascotaGame() {
         if (e === "inactivo") return;
         setOido(e);
         if (e === "hablando") {
-          setStats((s) => aplicar(s, { felicidad: 2 }));
+          recuperarGradual({ felicidad: 2 });
           registrar("charlas");
         }
         if (e === "oyendo") setTextoOido(null);
