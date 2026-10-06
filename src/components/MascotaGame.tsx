@@ -98,8 +98,18 @@ interface Ancla {
 
 const KEY = "liz-mascota-juego";
 const GUARDADO_VERSION = 2;
-const DECAY_DURATION_MS = 3 * 60 * 60_000;
-const DECAY_STEP_MS = DECAY_DURATION_MS / 100;
+const DECAY_DURATION_MS: Record<StatKey, number> = {
+  hambre: 3 * 60 * 60_000,
+  felicidad: 2 * 60 * 60_000 + 45 * 60_000,
+  higiene: 3 * 60 * 60_000 + 20 * 60_000,
+  energia: 3 * 60 * 60_000 + 40 * 60_000,
+};
+const DECAY_STEP_MS: Record<StatKey, number> = {
+  hambre: DECAY_DURATION_MS.hambre / 100,
+  felicidad: DECAY_DURATION_MS.felicidad / 100,
+  higiene: DECAY_DURATION_MS.higiene / 100,
+  energia: DECAY_DURATION_MS.energia / 100,
+};
 const DECAY_OFFSETS_MS: Record<StatKey, number> = {
   hambre: 0,
   felicidad: 27_000,
@@ -396,11 +406,19 @@ export function MascotaGame() {
       const g: Guardado = raw ? (JSON.parse(raw) as Guardado) : {};
       volvio = !!raw;
       const ahora = Date.now();
-      if (g.ts) perdida = Math.min(100, ((ahora - g.ts) / DECAY_DURATION_MS) * 100);
+      if (g.ts) perdida = Math.min(100, ((ahora - g.ts) / DECAY_DURATION_MS.felicidad) * 100);
       setStats(
         aplicar(
           { ...INICIAL, ...g.stats },
-          { hambre: -perdida, felicidad: -perdida, higiene: -perdida, energia: -perdida },
+          {
+            hambre: -Math.min(100, ((ahora - (g.ts ?? ahora)) / DECAY_DURATION_MS.hambre) * 100),
+            felicidad: -Math.min(
+              100,
+              ((ahora - (g.ts ?? ahora)) / DECAY_DURATION_MS.felicidad) * 100,
+            ),
+            higiene: -Math.min(100, ((ahora - (g.ts ?? ahora)) / DECAY_DURATION_MS.higiene) * 100),
+            energia: -Math.min(100, ((ahora - (g.ts ?? ahora)) / DECAY_DURATION_MS.energia) * 100),
+          },
         ),
       );
       // Si volvió hace poco sigue donde estaba; si no, el escenario va con la hora.
@@ -493,7 +511,8 @@ export function MascotaGame() {
   }, [listo, stats, escena, nombre, progreso, sonido, avisos, dormido]);
 
   useEffect(() => {
-    const ids = (Object.keys(DECAY_OFFSETS_MS) as StatKey[]).map((key) => {
+    const ids = new Set<number>();
+    (Object.keys(DECAY_OFFSETS_MS) as StatKey[]).forEach((key) => {
       const id = window.setTimeout(() => {
         const intervalId = window.setInterval(() => {
           setStats((s) => {
@@ -501,12 +520,12 @@ export function MascotaGame() {
             if (s[key] <= 0) return s;
             return { ...s, [key]: clamp(s[key] - 1) };
           });
-        }, DECAY_STEP_MS);
-        ids.push(intervalId);
+        }, DECAY_STEP_MS[key]);
+        ids.add(intervalId);
       }, DECAY_OFFSETS_MS[key]);
-      return id;
+      ids.add(id);
     });
-    return () => ids.forEach((id) => window.clearTimeout(id));
+    return () => ids.forEach((id) => window.clearInterval(id));
   }, []);
 
   // Al salir: cortar temporizadores y micrófono, y devolver la música.

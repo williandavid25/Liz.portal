@@ -492,9 +492,55 @@
     transparent 100%
   );
 }
+.portada-cargando {
+  position: absolute;
+  inset-inline: 1.5rem;
+  top: 50%;
+  z-index: 10;
+  display: flex;
+  transform: translateY(-50%);
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  color: white;
+  font-family: var(--font-display, sans-serif);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-shadow: 0 2px 8px rgb(0 0 0 / 0.8);
+}
+.portada-cargando-linea {
+  position: relative;
+  display: block;
+  width: min(16rem, 70vw);
+  height: 0.2rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.25);
+  box-shadow: 0 0 18px rgb(255 169 220 / 0.7);
+}
+.portada-cargando-linea::after {
+  position: absolute;
+  inset-block: 0;
+  left: -35%;
+  width: 35%;
+  content: "";
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, #fff, #ff9edb, transparent);
+  box-shadow: 0 0 14px #fff;
+  animation: portada-linea-cargando 1.15s ease-in-out infinite;
+}
+@keyframes portada-linea-cargando {
+  to {
+    transform: translateX(385%);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .portada-video {
     transition: none !important;
+  }
+  .portada-cargando-linea::after {
+    animation-duration: 2.5s;
   }
 }
 

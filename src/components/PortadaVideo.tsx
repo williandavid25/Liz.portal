@@ -212,6 +212,12 @@ export function PortadaVideo({ src, poster }: { src: string; poster?: string }) 
           } ${playing || !poster ? "opacity-100" : "opacity-0"}`}
         />
       </div>
+      {!playing && (
+        <div className="portada-cargando" role="status" aria-live="polite">
+          <span className="portada-cargando-linea" />
+          <span>Cargando tu sorpresa…</span>
+        </div>
+      )}
 
       <div className="portada-fade-top" />
       <div className="portada-fade-bottom" />
