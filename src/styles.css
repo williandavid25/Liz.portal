@@ -458,6 +458,12 @@
   aspect-ratio: var(--portada-ar, 0.5625);
   max-width: 100%;
 }
+/* Copias laterales de la portada (solo computador): bordes que se funden. */
+.portada-lado {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent);
+  margin-inline: -4%;
+}
 @media (min-aspect-ratio: 3/4) {
   .portada-frame--fade {
     -webkit-mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent);

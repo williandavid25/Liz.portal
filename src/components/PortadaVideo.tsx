@@ -25,18 +25,24 @@ function useEsPantallaAncha() {
  *   se ve la galaxia o el océano) y se reanuda al volver.
  * - Silenciado: los navegadores solo permiten reproducción automática así, y
  *   la música de fondo del sitio sigue sonando aparte.
- * - En computador, los costados se llenan con un reflejo difuminado del mismo
- *   video (se dibuja en un canvas diminuto: casi no consume nada).
+ * - En computador, a cada lado del video va una copia de la misma flor, un
+ *   poco transparente, para llenar toda la pantalla. Las copias se dibujan
+ *   desde el video principal (un solo video que se descarga y decodifica), así
+ *   que siempre van sincronizadas. Detrás, un reflejo difuminado llena el resto.
  */
 export function PortadaVideo({ src, poster }: { src: string; poster?: string }) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const ambientRef = useRef<HTMLCanvasElement>(null);
+  const izqRef = useRef<HTMLCanvasElement>(null);
+  const derRef = useRef<HTMLCanvasElement>(null);
   const ambientReadyRef = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [ambientOn, setAmbientOn] = useState(false);
   const [ratio, setRatio] = useState(9 / 16);
   const ancha = useEsPantallaAncha();
+  const portrait = ratio < 1;
+  const frameRatio = ancha && portrait ? Math.max(ratio, RATIO_MINIMO_ANCHO) : ratio;
 
   useEffect(() => {
     setPlaying(false);
@@ -84,7 +90,7 @@ export function PortadaVideo({ src, poster }: { src: string; poster?: string }) 
     };
   }, [src]);
 
-  // Reflejo ambiental de los costados (solo pantallas anchas).
+  // Copias laterales y reflejo ambiental (solo pantallas anchas).
   useEffect(() => {
     if (!ancha) return;
     const video = videoRef.current;
@@ -92,10 +98,17 @@ export function PortadaVideo({ src, poster }: { src: string; poster?: string }) 
     const section = sectionRef.current;
     const ctx = canvas?.getContext("2d");
     if (!video || !canvas || !section || !ctx) return;
+    const lados = [izqRef.current, derRef.current].flatMap((c) => {
+      const lctx = c?.getContext("2d");
+      return c && lctx ? [{ c, lctx }] : [];
+    });
 
     let cancelled = false;
     let handle = 0;
     const W = 48;
+    // Resolución de las copias: van semitransparentes, no necesitan más.
+    const LW = 360;
+    const LH = Math.round(LW / frameRatio);
 
     const draw = () => {
       if (cancelled) return;
@@ -115,6 +128,17 @@ export function PortadaVideo({ src, poster }: { src: string; poster?: string }) 
         const ch = H / scale;
         ctx.filter = "blur(3px)";
         ctx.drawImage(video, (vw - cw) / 2, (vh - ch) / 2, cw, ch, 0, 0, W, H);
+        // Copias nítidas con el mismo recorte que el video del centro.
+        const ls = Math.max(LW / vw, LH / vh);
+        const lw = LW / ls;
+        const lh = LH / ls;
+        for (const { c, lctx } of lados) {
+          if (c.width !== LW || c.height !== LH) {
+            c.width = LW;
+            c.height = LH;
+          }
+          lctx.drawImage(video, (vw - lw) / 2, (vh - lh) / 2, lw, lh, 0, 0, LW, LH);
+        }
         if (!ambientReadyRef.current) {
           ambientReadyRef.current = true;
           setAmbientOn(true);
@@ -138,15 +162,37 @@ export function PortadaVideo({ src, poster }: { src: string; poster?: string }) 
       if (rvfc) video.cancelVideoFrameCallback(handle);
       else window.clearTimeout(handle);
     };
-  }, [ancha, src]);
+  }, [ancha, src, frameRatio]);
 
-  const portrait = ratio < 1;
-  const frameRatio = ancha && portrait ? Math.max(ratio, RATIO_MINIMO_ANCHO) : ratio;
+  // Mientras el video arranca se ve su primer cuadro; luego el canvas lo cubre
+  // con la flor en movimiento.
+  const lado = (ref: typeof izqRef) => (
+    <div
+      className="portada-lado relative h-full shrink-0 opacity-50"
+      style={{ aspectRatio: String(frameRatio) }}
+      aria-hidden="true"
+    >
+      {poster && (
+        <img
+          src={poster}
+          alt=""
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      )}
+      <canvas
+        ref={ref}
+        className={`absolute inset-0 h-full w-full transition-opacity duration-700 ${
+          ambientOn ? "opacity-100" : "opacity-0"
+        }`}
+      />
+    </div>
+  );
 
   return (
     <div
       ref={sectionRef}
-      className="absolute inset-0 flex items-center justify-center bg-[#02020a]"
+      className="absolute inset-0 flex items-center justify-center overflow-hidden bg-[#02020a]"
     >
       {/* Brillo de fondo mientras arranca: el primer cuadro muy difuminado. */}
       {poster && (
@@ -172,48 +218,53 @@ export function PortadaVideo({ src, poster }: { src: string; poster?: string }) 
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_35%,rgb(2_2_10/0.75)_100%)]" />
       )}
 
-      <div
-        className="portada-frame portada-frame--fade"
-        style={{ "--portada-ar": String(frameRatio) } as CSSProperties}
-      >
-        {poster && (
-          <img
-            src={poster}
-            alt=""
+      {/* En computador: copia · video principal · copia, uno al lado del otro. */}
+      <div className="relative flex h-full shrink-0 items-center justify-center">
+        {ancha && lado(izqRef)}
+        <div
+          className="portada-frame portada-frame--fade shrink-0"
+          style={{ "--portada-ar": String(frameRatio) } as CSSProperties}
+        >
+          {poster && (
+            <img
+              src={poster}
+              alt=""
+              aria-hidden="true"
+              fetchPriority="high"
+              decoding="async"
+              className={`absolute inset-0 h-full w-full ${portrait ? "object-cover" : "object-contain"}`}
+            />
+          )}
+          <video
+            key={src}
+            ref={videoRef}
+            src={src}
+            poster={poster}
+            crossOrigin="anonymous"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            disablePictureInPicture
+            disableRemotePlayback
             aria-hidden="true"
-            fetchPriority="high"
-            decoding="async"
-            className={`absolute inset-0 h-full w-full ${portrait ? "object-cover" : "object-contain"}`}
+            onLoadedMetadata={(e) => {
+              const v = e.currentTarget;
+              if (v.videoWidth && v.videoHeight) setRatio(v.videoWidth / v.videoHeight);
+            }}
+            onPlaying={() => setPlaying(true)}
+            // Respaldo por si el atributo `loop` falla en algún navegador viejo.
+            onEnded={(e) => {
+              e.currentTarget.currentTime = 0;
+              e.currentTarget.play().catch(() => {});
+            }}
+            className={`portada-video absolute inset-0 h-full w-full transition-opacity duration-700 ${
+              portrait ? "object-cover" : "object-contain"
+            } ${playing || !poster ? "opacity-100" : "opacity-0"}`}
           />
-        )}
-        <video
-          key={src}
-          ref={videoRef}
-          src={src}
-          poster={poster}
-          crossOrigin="anonymous"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-          disablePictureInPicture
-          disableRemotePlayback
-          aria-hidden="true"
-          onLoadedMetadata={(e) => {
-            const v = e.currentTarget;
-            if (v.videoWidth && v.videoHeight) setRatio(v.videoWidth / v.videoHeight);
-          }}
-          onPlaying={() => setPlaying(true)}
-          // Respaldo por si el atributo `loop` falla en algún navegador viejo.
-          onEnded={(e) => {
-            e.currentTarget.currentTime = 0;
-            e.currentTarget.play().catch(() => {});
-          }}
-          className={`portada-video absolute inset-0 h-full w-full transition-opacity duration-700 ${
-            portrait ? "object-cover" : "object-contain"
-          } ${playing || !poster ? "opacity-100" : "opacity-0"}`}
-        />
+        </div>
+        {ancha && lado(derRef)}
       </div>
       {!playing && (
         <div className="portada-cargando" role="status" aria-live="polite">
