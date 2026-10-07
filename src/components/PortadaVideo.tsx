@@ -192,7 +192,9 @@ export function PortadaVideo({ src, poster }: { src: string; poster?: string }) 
   return (
     <div
       ref={sectionRef}
-      className="absolute inset-0 flex items-center justify-center overflow-hidden bg-[#02020a]"
+      className={`absolute inset-0 flex items-center justify-center bg-[#02020a] ${
+        ancha ? "overflow-hidden" : ""
+      }`}
     >
       {/* Brillo de fondo mientras arranca: el primer cuadro muy difuminado. */}
       {poster && (
@@ -218,11 +220,15 @@ export function PortadaVideo({ src, poster }: { src: string; poster?: string }) 
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_35%,rgb(2_2_10/0.75)_100%)]" />
       )}
 
-      {/* En computador: copia · video principal · copia, uno al lado del otro. */}
-      <div className="relative flex h-full shrink-0 items-center justify-center">
+      {/* En computador: copia · video principal · copia, uno al lado del otro.
+          En celular este contenedor no existe para el diseño (display: contents),
+          así el video queda exactamente como antes. */}
+      <div
+        className={ancha ? "relative flex h-full shrink-0 items-center justify-center" : "contents"}
+      >
         {ancha && lado(izqRef)}
         <div
-          className="portada-frame portada-frame--fade shrink-0"
+          className={`portada-frame portada-frame--fade ${ancha ? "shrink-0" : ""}`}
           style={{ "--portada-ar": String(frameRatio) } as CSSProperties}
         >
           {poster && (
