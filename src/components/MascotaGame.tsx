@@ -50,6 +50,8 @@ type Anim = "respirar" | "bounce" | "wiggle" | "breathe" | "shake" | "walk" | "t
 type Orientacion = "v" | "h";
 
 interface Accion {
+  /** Cada toque crea una acción nueva; los temporizadores viejos no la cortan. */
+  id: number;
   tipo: Exclude<TipoAccion, "dormir">;
   pose: Pose;
   anim: Anim;
@@ -168,13 +170,11 @@ const ESCENAS: Record<
   patio: { nombre: "Patio", Icono: Trees, ambiente: "Día soleado", IconoAmb: Sun },
 };
 
-/** De día arranca en el patio y de noche en el dormitorio. */
+/** Solo la primera vez: de día arranca en el patio y de noche en el dormitorio. */
 const escenaPorHora = (): Escena => {
   const h = new Date().getHours();
   return h >= 7 && h < 19 ? "patio" : "dormitorio";
 };
-
-const esHorarioDescanso = (hora = new Date().getHours()) => hora >= 19 || hora < 7;
 
 const STATS: Array<{ key: StatKey; Icono: LucideIcon; label: string; color: string }> = [
   { key: "hambre", Icono: Drumstick, label: "Hambre", color: "#f87171" },
@@ -199,7 +199,7 @@ const ACCIONES: Record<
     pose: "comiendo",
     anim: "bounce",
     dur: 2600,
-    delta: { hambre: 2, felicidad: 2 },
+    delta: { hambre: 5 },
     particulas: ["🍖", "🦴", "✨", "⭐", "🍗"],
     frases: ["¡Qué rico! 😋", "¡Ñam, ñam! 🍖", "¡Mi favorito! 🦴"],
     sonido: "comer",
@@ -208,7 +208,7 @@ const ACCIONES: Record<
     pose: "banando",
     anim: "wiggle",
     dur: 2800,
-    delta: { higiene: 2, felicidad: 2 },
+    delta: { higiene: 5 },
     particulas: ["💧", "🫧", "💦"],
     frases: ["¡Splash! 💦", "¡Burbujas! 🫧", "¡Quedé brillante! ✨"],
     sonido: "banar",
@@ -288,7 +288,6 @@ export function MascotaGame() {
   const [listo, setListo] = useState(false);
   const [accion, setAccion] = useState<Accion | null>(null);
   const [dormido, setDormido] = useState(false);
-  const [mirada, setMirada] = useState<"mira-derecha" | "mira-izquierda" | null>(null);
   const [particulas, setParticulas] = useState<Particula[]>([]);
   const [toast, setToast] = useState<{ id: number; texto: string } | null>(null);
   const [toques, setToques] = useState(0);
@@ -304,12 +303,12 @@ export function MascotaGame() {
 
   const raizRef = useRef<HTMLElement>(null);
   const idRef = useRef(0);
+  const accionRef = useRef(0);
   const timers = useRef(new Set<number>());
   const vozRef = useRef<VozMascota | null>(null);
   const bocaRef = useRef<HTMLDivElement>(null);
   const ultimaCaricia = useRef(0);
   const durmiendoRef = useRef(false);
-  const descansoAutomaticoRef = useRef(false);
   const ultimaAlertaRef = useRef<Partial<Record<"hambre" | "sueno", number>>>({});
   const comidasAvisadasRef = useRef(new Set<string>());
   durmiendoRef.current = dormido;
@@ -411,34 +410,23 @@ export function MascotaGame() {
   /* ---------------- Carga, guardado y desgaste ---------------- */
 
   useEffect(() => {
-    let perdida = 0;
     let volvio = false;
+    let durmiendo = false;
     try {
       const raw = localStorage.getItem(KEY);
       const g: Guardado = raw ? (JSON.parse(raw) as Guardado) : {};
       volvio = !!raw;
-      const ahora = Date.now();
-      if (g.ts) perdida = Math.min(100, ((ahora - g.ts) / DECAY_DURATION_MS.felicidad) * 100);
-      setStats(
-        aplicar(
-          { ...INICIAL, ...g.stats },
-          {
-            hambre: -Math.min(100, ((ahora - (g.ts ?? ahora)) / DECAY_DURATION_MS.hambre) * 100),
-            felicidad: -Math.min(
-              100,
-              ((ahora - (g.ts ?? ahora)) / DECAY_DURATION_MS.felicidad) * 100,
-            ),
-            higiene: -Math.min(100, ((ahora - (g.ts ?? ahora)) / DECAY_DURATION_MS.higiene) * 100),
-            energia: -Math.min(100, ((ahora - (g.ts ?? ahora)) / DECAY_DURATION_MS.energia) * 100),
-          },
-        ),
-      );
-      // Si volvió hace poco sigue donde estaba; si no, el escenario va con la hora.
-      const reciente = g.ts && ahora - g.ts < 20 * 60_000;
+      // Todo queda tal como lo dejaste al salir: porcentajes, lugar y si
+      // estaba durmiendo. Con la app cerrada no baja nada.
+      setStats(aplicar({ ...INICIAL, ...g.stats }, {}));
+      durmiendo = g.dormido === true;
+      setDormido(durmiendo);
       setEscena(
-        reciente && (g.escena === "patio" || g.escena === "dormitorio")
-          ? g.escena
-          : escenaPorHora(),
+        durmiendo
+          ? "dormitorio"
+          : g.escena === "patio" || g.escena === "dormitorio"
+            ? g.escena
+            : escenaPorHora(),
       );
       if (g.progreso) {
         setProgreso({
@@ -449,13 +437,6 @@ export function MascotaGame() {
       }
       if (typeof g.sonido === "boolean") setSonido(g.sonido);
       if (typeof g.avisos === "boolean") setAvisos(g.avisos);
-      if (typeof g.dormido === "boolean") {
-        setDormido(g.dormido);
-        descansoAutomaticoRef.current = g.dormido && esHorarioDescanso();
-      } else if (!reciente && esHorarioDescanso()) {
-        setDormido(true);
-        descansoAutomaticoRef.current = true;
-      }
       let n = g.nombre;
       if (!n) {
         const vieja = localStorage.getItem("liz-mascota");
@@ -468,7 +449,7 @@ export function MascotaGame() {
     }
     setMicDisponible(VozMascota.disponible());
     setListo(true);
-    if (perdida >= 30) decir("¡Te extrañé mucho! 🥺", 3200);
+    if (durmiendo) decir("Zzz… sigo dormidito 💤", 2600);
     else if (volvio) decir("¡Hola de nuevo! 💛", 2600);
     else decir("¡Hola! Cuídame mucho 🐶", 2800);
     // Precarga de poses: sin parpadeo blanco al cambiar de estado.
@@ -582,7 +563,6 @@ export function MascotaGame() {
   const masBaja = STATS.reduce((a, b) => (stats[b.key] < stats[a.key] ? b : a)).key;
   const necesitada = stats[masBaja] < UMBRAL_TRISTE;
   const escuchando = oido !== "inactivo";
-  const ocupada = accion !== null || escuchando || dormido;
   const bienestar = Math.round(
     (stats.hambre + stats.felicidad + stats.higiene + stats.energia) / 4,
   );
@@ -601,8 +581,6 @@ export function MascotaGame() {
   } else if (necesitada) {
     pose = "triste";
     anim = "shake";
-  } else if (mirada) {
-    pose = mirada;
   }
   const animo =
     bienestar <= 18
@@ -613,29 +591,23 @@ export function MascotaGame() {
           ? "feliz"
           : "normal";
 
-  // Mantiene un ciclo diario amable: actividad de 7:00 a 19:00 y descanso
-  // nocturno de 12 horas, sin forzar a despertar un descanso manual.
+  // De noche solo avisa con un mensaje: nunca se duerme ni se despierta solo,
+  // eso lo decides tú con la lámpara.
   useEffect(() => {
     if (!listo) return;
     const revisarHorario = () => {
-      const debeDormir = esHorarioDescanso();
-      if (debeDormir && !durmiendoRef.current && !accion && !escuchando) {
-        descansoAutomaticoRef.current = true;
-        setEscena("dormitorio");
-        setDormido(true);
-        decir("Es hora de descansar… 🌙", 2600);
-        sonar("aviso-sueno");
-      } else if (!debeDormir && durmiendoRef.current && descansoAutomaticoRef.current) {
-        descansoAutomaticoRef.current = false;
-        setDormido(false);
-        decir("¡Buenos días! ☀️", 2400);
-        sonar("despertar");
+      const h = new Date().getHours();
+      if ((h >= 19 || h < 7) && !durmiendoRef.current) {
+        const ultima = ultimaAlertaRef.current.sueno ?? 0;
+        if (Date.now() - ultima < 4 * 60 * 60_000) return;
+        ultimaAlertaRef.current.sueno = Date.now();
+        decir("Ya es de noche, tengo sueñito… 🌙", 3000);
       }
     };
     revisarHorario();
     const id = window.setInterval(revisarHorario, 60_000);
     return () => window.clearInterval(id);
-  }, [listo, accion, escuchando, decir, sonar]);
+  }, [listo, decir]);
 
   // Avisa una vez al ponerse triste (y al celular si la app está de fondo).
   const avisoTriste = useRef(false);
@@ -701,57 +673,6 @@ export function MascotaGame() {
     return () => window.clearInterval(id);
   }, [listo, decir, sonar, avisar]);
 
-  // En reposo mira de vez en cuando a los lados: se siente viva.
-  const enReposo = listo && !ocupada && !necesitada;
-  useEffect(() => {
-    if (!enReposo) {
-      setMirada(null);
-      return;
-    }
-    let t1 = 0;
-    let t2 = 0;
-    const ciclo = () => {
-      t1 = window.setTimeout(
-        () => {
-          setMirada(Math.random() < 0.5 ? "mira-derecha" : "mira-izquierda");
-          t2 = window.setTimeout(() => {
-            setMirada(null);
-            ciclo();
-          }, 1400);
-        },
-        8000 + Math.random() * 5000,
-      );
-    };
-    ciclo();
-    return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-    };
-  }, [enReposo]);
-
-  // Ladridos ocasionales para que Snoopy se sienta vivo, sin interrumpir
-  // acciones, sueño, voz ni otros sonidos del juego.
-  useEffect(() => {
-    if (!enReposo) return;
-    let id = 0;
-    const programarLadrido = () => {
-      id = window.setTimeout(
-        () => {
-          if (interactuo.current && sonidoRef.current) {
-            setLadrando(true);
-            sonar("ladrido");
-            decir(Math.random() < 0.5 ? "¡Guau! 🐶" : "¡Guau, guau! 🐾", 1500);
-            window.setTimeout(() => setLadrando(false), 520);
-          }
-          programarLadrido();
-        },
-        25_000 + Math.random() * 20_000,
-      );
-    };
-    programarLadrido();
-    return () => window.clearTimeout(id);
-  }, [enReposo, sonar, decir]);
-
   // Celebra cuando la racha sube a un nuevo día.
   const rachaPrevia = useRef<number | null>(null);
   useEffect(() => {
@@ -771,7 +692,8 @@ export function MascotaGame() {
     decir("¡Buenos días! ☀️");
   }, [sonar, decir]);
 
-  // Mientras duerme recupera energía; con la barra llena enciende la luz solo.
+  // Mientras duerme recupera energía. Con la barra llena solo lo avisa:
+  // sigue dormido hasta que tú enciendas la luz.
   useEffect(() => {
     if (!dormido) return;
     const id = window.setInterval(() => {
@@ -780,9 +702,18 @@ export function MascotaGame() {
     }, RECOVERY_STEP_MS);
     return () => window.clearInterval(id);
   }, [dormido, lanzar]);
+  const avisoDescansado = useRef(false);
   useEffect(() => {
-    if (dormido && stats.energia >= 100) despertar();
-  }, [dormido, stats.energia, despertar]);
+    if (!listo) return;
+    if (!dormido || stats.energia < 100) {
+      avisoDescansado.current = false;
+      return;
+    }
+    if (!avisoDescansado.current) {
+      avisoDescansado.current = true;
+      decir("Ya descansé ☀️ Enciende la luz cuando quieras", 3200);
+    }
+  }, [listo, dormido, stats.energia, decir]);
 
   /* ---------------- Logros ---------------- */
 
@@ -815,46 +746,56 @@ export function MascotaGame() {
 
   /* ---------------- Acciones ---------------- */
 
+  /** Apaga el micrófono sin decir nada (para cuando se va a dormir). */
+  const cortarMic = () => {
+    if (!vozRef.current) return;
+    vozRef.current.detener();
+    vozRef.current = null;
+    setOido("inactivo");
+    setTextoOido(null);
+    bocaRef.current?.style.setProperty("--boca", "0");
+    musica("reanudar");
+  };
+
+  /** Arranca una acción nueva (corta la anterior) y devuelve su id. */
+  const iniciarAccion = (a: Omit<Accion, "id">) => {
+    const id = ++idRef.current;
+    accionRef.current = id;
+    setAccion({ ...a, id });
+    return id;
+  };
+
   const lampara = () => {
     if (dormido) {
       despertar();
       return;
     }
-    if (accion || escuchando) return;
-    if (stats.energia >= 100) {
-      decir("Ya estoy descansado y lleno de energía ⚡", 2400);
-      return;
-    }
-    setMirada(null);
+    // Siempre obedece: deja lo que estaba haciendo y se va a dormir.
+    accionRef.current = 0;
+    setAccion(null);
+    cortarMic();
     registrar("dormir");
     recuperarGradual({ felicidad: 8 });
     sonar("dormir");
     decir("Buenas noches… 🌙", 2600);
     // Se va a su cama: si estaba en el patio, vuelve al dormitorio.
     setEscena("dormitorio");
-    descansoAutomaticoRef.current = false;
     setDormido(true);
   };
 
   const ejecutar = (tipo: TipoAccion) => {
     if (tipo === "dormir") return lampara();
-    if (ocupada) return;
-    if (tipo === "alimentar" && stats.hambre >= 100) {
-      decir("Ya estoy llenito, no necesito más comida 💛", 2400);
-      return;
-    }
-    if (tipo === "banar" && stats.higiene >= 100) {
-      decir("Estoy completamente limpio ✨", 2200);
-      return;
-    }
-    setMirada(null);
+    // A mitad del paseo espera a llegar; todo lo demás responde al instante,
+    // también de noche o si estaba durmiendo (se despierta para hacerlo).
+    if (accion?.tipo === "pasear") return;
+    if (dormido) setDormido(false);
     registrar(tipo);
 
     if (tipo === "pasear") {
       const destino: Escena = escena === "dormitorio" ? "patio" : "dormitorio";
       const dur = 1900;
       const alPatio = destino === "patio";
-      setAccion({
+      const id = iniciarAccion({
         tipo,
         pose: alPatio ? "espalda" : "mira-derecha",
         anim: "walk",
@@ -866,33 +807,48 @@ export function MascotaGame() {
       decir(alPatio ? "¡Vamos al patio! 🌳" : "¡De vuelta a casa! 🏠", 1700);
       lanzar(alPatio ? ["🌳", "🌸", "🦋", "🍃", "☀️"] : ["🏠", "💛", "✨", "🌙"]);
       // El fondo cambia a mitad de camino, mientras va caminando.
-      programar(() => setEscena(destino), dur * 0.35);
+      programar(() => accionRef.current === id && setEscena(destino), dur * 0.35);
       programar(() => {
+        if (accionRef.current !== id) return;
+        accionRef.current = 0;
         setAccion(null);
         decir(alPatio ? "¡Qué lindo día! ☀️🦋" : "Hogar, dulce hogar 💛");
       }, dur);
       return;
     }
 
+    // Cada toque suma 5 % al momento: puedes darle varias veces seguidas.
     const c = ACCIONES[tipo];
-    setAccion({ tipo, pose: c.pose, anim: c.anim, dur: c.dur });
-    recuperarGradual(c.delta);
+    const lleno = tipo === "alimentar" ? stats.hambre >= 100 : stats.higiene >= 100;
+    const id = iniciarAccion({ tipo, pose: c.pose, anim: c.anim, dur: c.dur });
+    setStats((s) => aplicar(s, c.delta));
     sonar(c.sonido);
     lanzar(c.particulas);
-    decir(elegir(c.frases), Math.min(c.dur, 2600));
-    programar(() => setAccion(null), c.dur);
+    decir(
+      lleno
+        ? tipo === "alimentar"
+          ? "¡Ya estoy llenito, pero gracias! 💛"
+          : "¡Ya estoy limpiecito! ✨"
+        : `${elegir(c.frases)} +5%`,
+      Math.min(c.dur, 2600),
+    );
+    programar(() => {
+      if (accionRef.current !== id) return;
+      accionRef.current = 0;
+      setAccion(null);
+    }, c.dur);
   };
 
   const acariciar = () => {
-    if (dormido) return decir("Shh… está durmiendo 💤", 1800);
-    if (ocupada) return;
     const ahora = Date.now();
     if (ahora - ultimaCaricia.current < 700) return;
     ultimaCaricia.current = ahora;
-    setToques((t) => t + 1);
     recuperarGradual({ felicidad: 3 });
     registrar("caricias");
     lanzar(["💛", "❤️", "💕", "✨"], 6);
+    // Dormido recibe el cariño sin despertarse.
+    if (dormido) return decir("Zzz… 💛", 1600);
+    setToques((t) => t + 1);
     if (Math.random() < 0.4) {
       setLadrando(true);
       programar(() => setLadrando(false), 520);
@@ -935,17 +891,12 @@ export function MascotaGame() {
   /* ---------------- Háblale (repite tu voz) ---------------- */
 
   const apagarMic = () => {
-    vozRef.current?.detener();
-    vozRef.current = null;
-    setOido("inactivo");
-    setTextoOido(null);
-    bocaRef.current?.style.setProperty("--boca", "0");
-    musica("reanudar");
+    cortarMic();
     decir("¡Me encantó hablar contigo! 💛", 2200);
   };
 
   const prenderMic = async () => {
-    if (ocupada) return;
+    if (dormido) setDormido(false);
     const voz = new VozMascota({
       onEstado: (e) => {
         if (e === "inactivo") return;
@@ -989,35 +940,20 @@ export function MascotaGame() {
     Icono: LucideIcon;
     label: string;
     necesita: boolean;
-    habilitado: boolean;
   }> = [
-    {
-      tipo: "alimentar",
-      Icono: Bone,
-      label: "Alimentar",
-      necesita: stats.hambre <= 30,
-      habilitado: !ocupada,
-    },
-    {
-      tipo: "banar",
-      Icono: Bath,
-      label: "Bañar",
-      necesita: stats.higiene <= 30,
-      habilitado: !ocupada,
-    },
+    { tipo: "alimentar", Icono: Bone, label: "Comer", necesita: stats.hambre <= 30 },
+    { tipo: "banar", Icono: Bath, label: "Bañar", necesita: stats.higiene <= 30 },
     {
       tipo: "dormir",
       Icono: Lamp,
       label: dormido ? "Encender" : "Dormir",
-      necesita: stats.energia <= 30,
-      habilitado: dormido || (!accion && !escuchando),
+      necesita: !dormido && stats.energia <= 30,
     },
     {
       tipo: "pasear",
       Icono: escena === "dormitorio" ? Trees : House,
       label: escena === "dormitorio" ? "Pasear" : "Casa",
       necesita: stats.felicidad <= 30,
-      habilitado: !ocupada,
     },
   ];
 
@@ -1154,22 +1090,6 @@ export function MascotaGame() {
             />
           ))}
         </div>
-        {micDisponible && (
-          <button
-            type="button"
-            onClick={() => (escuchando ? apagarMic() : void prenderMic())}
-            disabled={!escuchando && (accion !== null || dormido)}
-            aria-pressed={escuchando}
-            aria-label={escuchando ? "Terminar de hablar" : `Háblale a ${nombre}`}
-            title={escuchando ? "Terminar de hablar" : "Háblale: te repite"}
-            className={`mg-boton absolute left-[24%] top-[54%] z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full shadow-lg transition-transform hover:scale-105 disabled:opacity-40 sm:left-[29%] ${
-              escuchando ? "mg-mic-activo" : "mg-vidrio"
-            }`}
-          >
-            {escuchando ? <MicOff size={18} /> : <Mic size={18} />}
-          </button>
-        )}
-
         {/* Capa de mensajes y partículas: misma geometría, por encima de la luz. */}
         <div
           className="mg-lienzo mg-kb pointer-events-none"
@@ -1196,14 +1116,14 @@ export function MascotaGame() {
             ))}
             <div className="absolute inset-x-[-60%] bottom-[96%] flex justify-center">
               {globo ? (
-                <p className="mg-globo mg-vidrio-fuerte whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-bold text-white">
+                <p className="mg-globo mg-vidrio-fuerte mg-mensaje rounded-2xl px-4 py-1.5 text-center text-sm font-bold text-white">
                   {globo}
                 </p>
               ) : (
                 toast && (
                   <p
                     key={toast.id}
-                    className="mg-toast mg-vidrio-fuerte max-w-[300px] truncate rounded-full px-4 py-1.5 text-sm font-bold text-white"
+                    className="mg-toast mg-vidrio-fuerte mg-mensaje rounded-2xl px-4 py-1.5 text-center text-sm font-bold text-white"
                   >
                     {toast.texto}
                   </p>
@@ -1340,57 +1260,70 @@ export function MascotaGame() {
         </div>
       </div>
 
-      {/* Controles */}
+      {/* Controles: una columna a la izquierda, por encima de la cabeza de
+          Snoopy. Así no lo tapan ni chocan con el clima (que va a la derecha). */}
       <div
-        className={`mg-contenido absolute inset-x-0 bottom-[24%] z-10 text-white ${
+        className={`mg-contenido mg-columna absolute z-10 flex flex-col items-center gap-1.5 text-white ${
           listo ? "opacity-100" : "opacity-0"
         }`}
       >
-        <div className="mx-auto w-full max-w-[352px] px-4 pb-[env(safe-area-inset-bottom)] pt-3">
-          <div className="grid grid-cols-2 gap-2.5">
-            {botones.map((b) => {
-              const activo =
-                (b.tipo === "dormir" && dormido) || (accion !== null && accion.tipo === b.tipo);
-              const lamparaEncendida = b.tipo === "dormir" && !dormido;
-              return (
-                <div
-                  key={b.tipo}
-                  className="flex min-h-[86px] flex-col items-center justify-start gap-1"
-                >
-                  <button
-                    type="button"
-                    onClick={() => ejecutar(b.tipo)}
-                    disabled={!b.habilitado}
-                    aria-label={b.label}
-                    aria-pressed={b.tipo === "dormir" ? dormido : undefined}
-                    className={`mg-boton mg-boton-transparente relative grid h-16 w-16 place-items-center overflow-hidden rounded-full ${
-                      activo ? "mg-boton-activo" : ""
-                    } ${b.necesita && b.habilitado && !activo ? "mg-boton-necesita" : ""}`}
-                  >
-                    <b.Icono
-                      size={26}
-                      strokeWidth={1.7}
-                      aria-hidden="true"
-                      className={
-                        lamparaEncendida ? "mg-lampara-on" : b.tipo === "dormir" ? "opacity-60" : ""
-                      }
-                    />
-                    {accion !== null && accion.tipo === b.tipo && (
-                      <span
-                        className="mg-progreso absolute bottom-0 left-0 h-[2px] bg-white/80"
-                        style={{ animationDuration: `${accion.dur}ms` }}
-                        aria-hidden="true"
-                      />
-                    )}
-                  </button>
-                  <span className="text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-white/75">
-                    {b.label}
-                  </span>
-                </div>
-              );
-            })}
+        {botones.map((b) => {
+          const activo =
+            (b.tipo === "dormir" && dormido) || (accion !== null && accion.tipo === b.tipo);
+          const lamparaEncendida = b.tipo === "dormir" && !dormido;
+          return (
+            <div key={b.tipo} className="flex w-16 flex-col items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => ejecutar(b.tipo)}
+                aria-label={b.tipo === "alimentar" ? "Alimentar" : b.label}
+                aria-pressed={b.tipo === "dormir" ? dormido : undefined}
+                className={`mg-boton mg-boton-transparente relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full ${
+                  activo ? "mg-boton-activo" : ""
+                } ${b.necesita && !activo ? "mg-boton-necesita" : ""}`}
+              >
+                <b.Icono
+                  size={22}
+                  strokeWidth={1.8}
+                  aria-hidden="true"
+                  className={
+                    lamparaEncendida ? "mg-lampara-on" : b.tipo === "dormir" ? "opacity-60" : ""
+                  }
+                />
+                {accion !== null && accion.tipo === b.tipo && (
+                  <span
+                    key={accion.id}
+                    className="mg-progreso absolute bottom-0 left-0 h-[2px] bg-white/80"
+                    style={{ animationDuration: `${accion.dur}ms` }}
+                    aria-hidden="true"
+                  />
+                )}
+              </button>
+              <span className="whitespace-nowrap text-[10.5px] font-semibold leading-tight text-white/80">
+                {b.label}
+              </span>
+            </div>
+          );
+        })}
+        {micDisponible && (
+          <div className="flex w-16 flex-col items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => (escuchando ? apagarMic() : void prenderMic())}
+              aria-pressed={escuchando}
+              aria-label={escuchando ? "Terminar de hablar" : `Háblale a ${nombre}`}
+              title={escuchando ? "Terminar de hablar" : "Háblale: te repite"}
+              className={`mg-boton relative grid h-12 w-12 shrink-0 place-items-center rounded-full ${
+                escuchando ? "mg-mic-activo" : "mg-boton-transparente"
+              }`}
+            >
+              {escuchando ? <MicOff size={20} /> : <Mic size={20} />}
+            </button>
+            <span className="whitespace-nowrap text-[10.5px] font-semibold leading-tight text-white/80">
+              {escuchando ? "Terminar" : "Háblale"}
+            </span>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Panel de logros */}
@@ -1658,6 +1591,15 @@ const CSS = `
   box-shadow: 0 0 0 2px rgba(253,224,71,0.7), 0 0 34px rgba(253,224,71,0.55);
   animation: mg-brillo 1.6s ease-in-out infinite;
 }
+/* Columna de botones a la izquierda, a la misma altura que el clima (derecha). */
+.mg-columna {
+  left: max(12px, calc(50% - 250px));
+  top: calc(env(safe-area-inset-top) + 260px);
+}
+@media (min-width: 640px) { .mg-columna { top: calc(env(safe-area-inset-top) + 286px); } }
+/* Mensajes angostos para no chocar con la columna; si no caben, bajan de línea. */
+.mg-mensaje { width: max-content; max-width: min(300px, calc(100vw - 170px)); }
+
 .mg-switch {
   position: relative; width: 38px; height: 22px; border-radius: 999px;
   background: rgba(255,255,255,0.25); transition: background-color 0.2s ease; flex-shrink: 0;
