@@ -102,7 +102,7 @@ const GUARDADO_VERSION = 2;
 const STAT_TICK_MS = 30_000;
 const DECAY_PER_TICK: Record<StatKey, number> = {
   hambre: 1,
-  felicidad: 1,
+  felicidad: 2,
   higiene: 1,
   energia: 2,
 };
