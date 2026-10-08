@@ -99,20 +99,14 @@ interface Ancla {
 
 const KEY = "liz-mascota-juego";
 const GUARDADO_VERSION = 2;
-const DECAY_DURATION_MS: Record<StatKey, number> = {
-  hambre: 3 * 60 * 60_000,
-  felicidad: 2 * 60 * 60_000 + 45 * 60_000,
-  higiene: 3 * 60 * 60_000 + 20 * 60_000,
-  energia: 60 * 60_000,
+const STAT_TICK_MS = 30_000;
+const DECAY_PER_TICK: Record<StatKey, number> = {
+  hambre: 1,
+  felicidad: 1,
+  higiene: 1,
+  energia: 2,
 };
-const DECAY_STEP_MS: Record<StatKey, number> = {
-  hambre: DECAY_DURATION_MS.hambre / 100,
-  felicidad: DECAY_DURATION_MS.felicidad / 100,
-  higiene: DECAY_DURATION_MS.higiene / 100,
-  energia: DECAY_DURATION_MS.energia / 100,
-};
-const DECAY_GRACE_MS = 60 * 60_000;
-const RECOVERY_STEP_MS = 3_000;
+const RECOVERY_STEP_MS = 30_000;
 const UMBRAL_TRISTE = 20;
 const INICIAL: Stats = { hambre: 80, felicidad: 85, higiene: 75, energia: 80 };
 const COMIDAS = [
@@ -413,39 +407,20 @@ export function MascotaGame() {
       volvio = !!raw;
       const ahora = Date.now();
       const actualizaciones = {} as Record<StatKey, number>;
-      for (const key of Object.keys(DECAY_DURATION_MS) as StatKey[]) {
+      const guardadoDormido = g.dormido === true;
+      const statsGuardadas = { ...INICIAL, ...g.stats };
+      const statsActualizadas = { ...statsGuardadas };
+      for (const key of Object.keys(DECAY_PER_TICK) as StatKey[]) {
         const ultimo = g.statUpdatedAt?.[key] ?? g.ts ?? ahora;
-        const perdidaAtributo = Math.min(
-          100,
-          (Math.max(0, ahora - ultimo - DECAY_GRACE_MS) / DECAY_DURATION_MS[key]) * 100,
-        );
-        actualizaciones[key] = ultimo + DECAY_GRACE_MS + perdidaAtributo * DECAY_STEP_MS[key];
+        const ticks = Math.floor(Math.max(0, ahora - ultimo) / STAT_TICK_MS);
+        actualizaciones[key] =
+          guardadoDormido && key === "energia" ? ahora : ultimo + ticks * STAT_TICK_MS;
+        const cambio = guardadoDormido && key === "energia" ? ticks : -ticks * DECAY_PER_TICK[key];
+        statsActualizadas[key] = clamp(statsActualizadas[key] + cambio);
       }
       statUpdatedAtRef.current = actualizaciones;
-      setStats(
-        aplicar(
-          { ...INICIAL, ...g.stats },
-          {
-            hambre: -Math.min(
-              100,
-              (Math.max(0, ahora - actualizaciones.hambre) / DECAY_DURATION_MS.hambre) * 100,
-            ),
-            felicidad: -Math.min(
-              100,
-              (Math.max(0, ahora - actualizaciones.felicidad) / DECAY_DURATION_MS.felicidad) * 100,
-            ),
-            higiene: -Math.min(
-              100,
-              (Math.max(0, ahora - actualizaciones.higiene) / DECAY_DURATION_MS.higiene) * 100,
-            ),
-            energia: -Math.min(
-              100,
-              (Math.max(0, ahora - actualizaciones.energia) / DECAY_DURATION_MS.energia) * 100,
-            ),
-          },
-        ),
-      );
-      durmiendo = g.dormido === true;
+      setStats(statsActualizadas);
+      durmiendo = guardadoDormido;
       setDormido(durmiendo);
       setEscena(
         durmiendo
@@ -535,14 +510,14 @@ export function MascotaGame() {
       const ahora = Date.now();
       setStats((s) => {
         const siguiente = { ...s };
-        for (const key of Object.keys(DECAY_DURATION_MS) as StatKey[]) {
+        for (const key of Object.keys(DECAY_PER_TICK) as StatKey[]) {
           if (key === "energia" && durmiendoRef.current) continue;
-          const transcurrido = ahora - statUpdatedAtRef.current[key] - DECAY_GRACE_MS;
-          if (transcurrido <= 0 || siguiente[key] <= 0) continue;
-          const perdida = Math.floor(transcurrido / DECAY_STEP_MS[key]);
-          if (perdida > 0) {
-            siguiente[key] = clamp(siguiente[key] - perdida);
-            statUpdatedAtRef.current[key] += perdida * DECAY_STEP_MS[key];
+          const ticks = Math.floor(
+            Math.max(0, ahora - statUpdatedAtRef.current[key]) / STAT_TICK_MS,
+          );
+          if (ticks > 0 && siguiente[key] > 0) {
+            siguiente[key] = clamp(siguiente[key] - ticks * DECAY_PER_TICK[key]);
+            statUpdatedAtRef.current[key] += ticks * STAT_TICK_MS;
           }
         }
         return siguiente;
@@ -718,6 +693,7 @@ export function MascotaGame() {
 
   const despertar = useCallback(() => {
     setDormido(false);
+    statUpdatedAtRef.current.energia = Date.now();
     sonar("despertar");
     decir("¡Buenos días! ☀️");
   }, [sonar, decir]);
@@ -811,6 +787,7 @@ export function MascotaGame() {
     decir("Buenas noches… 🌙", 2600);
     // Se va a su cama: si estaba en el patio, vuelve al dormitorio.
     setEscena("dormitorio");
+    statUpdatedAtRef.current.energia = Date.now();
     setDormido(true);
   };
 
