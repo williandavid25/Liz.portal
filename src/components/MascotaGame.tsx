@@ -368,16 +368,13 @@ export function MascotaGame() {
     setProgreso((p) => registrarCuidado(p, k));
   }, []);
 
-  const recuperarGradual = useCallback(
-    (delta: Partial<Stats>) => {
-      const ahora = Date.now();
-      for (const key of Object.keys(delta) as StatKey[]) {
-        statUpdatedAtRef.current[key] = ahora;
-        setStats((s) => ({ ...s, [key]: clamp(s[key] + 5) }));
-      }
-    },
-    [],
-  );
+  const recuperarGradual = useCallback((delta: Partial<Stats>) => {
+    const ahora = Date.now();
+    for (const key of Object.keys(delta) as StatKey[]) {
+      statUpdatedAtRef.current[key] = ahora;
+      setStats((s) => ({ ...s, [key]: clamp(s[key] + 5) }));
+    }
+  }, []);
 
   /** Notificación del sistema, solo si la app quedó en segundo plano. */
   const avisar = useCallback((cuerpo: string) => {
@@ -855,7 +852,7 @@ export function MascotaGame() {
     const c = ACCIONES[tipo];
     const lleno = tipo === "alimentar" ? stats.hambre >= 100 : stats.higiene >= 100;
     const id = iniciarAccion({ tipo, pose: c.pose, anim: c.anim, dur: c.dur });
-    setStats((s) => aplicar(s, c.delta));
+    recuperarGradual(c.delta);
     sonar(c.sonido);
     lanzar(c.particulas);
     decir(
