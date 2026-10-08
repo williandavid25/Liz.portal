@@ -107,6 +107,7 @@ const DECAY_PER_TICK: Record<StatKey, number> = {
   energia: 2,
 };
 const RECOVERY_STEP_MS = 30_000;
+const CARICIA_FELICIDAD = 5;
 const UMBRAL_TRISTE = 20;
 const UMBRAL_AVISO = 50;
 const INICIAL: Stats = { hambre: 80, felicidad: 85, higiene: 75, energia: 80 };
@@ -838,7 +839,7 @@ export function MascotaGame() {
     const ahora = Date.now();
     if (ahora - ultimaCaricia.current < 700) return;
     ultimaCaricia.current = ahora;
-    recuperarGradual({ felicidad: 3 });
+    recuperarGradual({ felicidad: CARICIA_FELICIDAD });
     registrar("caricias");
     lanzar(["💛", "❤️", "💕", "✨"], 6);
     // Dormido recibe el cariño sin despertarse.
@@ -851,7 +852,7 @@ export function MascotaGame() {
       decir("¡Guau, guau! 🐶", 1800);
     } else {
       sonar("caricia");
-      decir(elegir(FRASES_CARICIA), 1800);
+      decir(`${elegir(FRASES_CARICIA)} +${CARICIA_FELICIDAD}%`, 1800);
     }
   };
 
