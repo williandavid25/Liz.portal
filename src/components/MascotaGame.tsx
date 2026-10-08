@@ -280,6 +280,7 @@ export function MascotaGame() {
   const [listo, setListo] = useState(false);
   const [accion, setAccion] = useState<Accion | null>(null);
   const [dormido, setDormido] = useState(false);
+  const [tristeEnCama, setTristeEnCama] = useState(false);
   const [particulas, setParticulas] = useState<Particula[]>([]);
   const [toast, setToast] = useState<{ id: number; texto: string } | null>(null);
   const [toques, setToques] = useState(0);
@@ -583,6 +584,9 @@ export function MascotaGame() {
   } else if (accion) {
     pose = accion.pose;
     anim = accion.anim;
+  } else if (tristeEnCama) {
+    pose = "espalda";
+    anim = "breathe";
   } else if (escuchando) {
     anim = "tilt";
   } else if (necesitada) {
@@ -597,6 +601,20 @@ export function MascotaGame() {
         : bienestar > 70
           ? "feliz"
           : "normal";
+
+  // Cuando una necesidad llega a un nivel crítico, Snoopy se refugia en la
+  // cama y mira hacia la ventana hasta que vuelven a cuidarlo.
+  useEffect(() => {
+    if (!listo || dormido || accion || escuchando) return;
+    if (necesitada && !tristeEnCama) {
+      setEscena("dormitorio");
+      setTristeEnCama(true);
+      decir("Estoy triste… nadie viene a verme 🥺", 3600);
+      sonar("triste");
+    } else if (!necesitada && tristeEnCama) {
+      setTristeEnCama(false);
+    }
+  }, [listo, dormido, accion, escuchando, necesitada, tristeEnCama, decir, sonar]);
 
   // De noche solo avisa con un mensaje: nunca se duerme ni se despierta solo,
   // eso lo decides tú con la lámpara.
@@ -784,6 +802,7 @@ export function MascotaGame() {
     // A mitad del paseo espera a llegar; todo lo demás responde al instante,
     // también de noche o si estaba durmiendo (se despierta para hacerlo).
     if (accion?.tipo === "pasear") return;
+    setTristeEnCama(false);
     if (dormido) setDormido(false);
     registrar(tipo);
 
@@ -839,6 +858,7 @@ export function MascotaGame() {
     const ahora = Date.now();
     if (ahora - ultimaCaricia.current < 700) return;
     ultimaCaricia.current = ahora;
+    setTristeEnCama(false);
     recuperarGradual({ felicidad: CARICIA_FELICIDAD });
     registrar("caricias");
     lanzar(["💛", "❤️", "💕", "✨"], 6);
@@ -954,7 +974,7 @@ export function MascotaGame() {
   ];
 
   const fondos = FONDOS[orient];
-  const ancla = dormido ? ANCLAS[orient].cama : ANCLAS[orient][escena];
+  const ancla = dormido || tristeEnCama ? ANCLAS[orient].cama : ANCLAS[orient][escena];
   const sombraAncha = pose === "durmiendo" || pose === "banando";
   return (
     <section
