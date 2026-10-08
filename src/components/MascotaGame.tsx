@@ -108,6 +108,7 @@ const DECAY_PER_TICK: Record<StatKey, number> = {
 };
 const RECOVERY_STEP_MS = 30_000;
 const UMBRAL_TRISTE = 20;
+const UMBRAL_AVISO = 50;
 const INICIAL: Stats = { hambre: 80, felicidad: 85, higiene: 75, energia: 80 };
 const COMIDAS = [
   { hora: 8, nombre: "desayuno" },
@@ -306,7 +307,7 @@ export function MascotaGame() {
     energia: Date.now(),
   });
   const descansoAutomaticoRef = useRef(false);
-  const ultimaAlertaRef = useRef<Partial<Record<"hambre" | "sueno", number>>>({});
+  const ultimaAlertaRef = useRef<Partial<Record<StatKey, number>>>({});
   const comidasAvisadasRef = useRef(new Set<string>());
   durmiendoRef.current = dormido;
   // Los navegadores solo dejan sonar audio después de un toque.
@@ -603,9 +604,9 @@ export function MascotaGame() {
     const revisarHorario = () => {
       const h = new Date().getHours();
       if ((h >= 19 || h < 7) && !durmiendoRef.current) {
-        const ultima = ultimaAlertaRef.current.sueno ?? 0;
+        const ultima = ultimaAlertaRef.current.energia ?? 0;
         if (Date.now() - ultima < 4 * 60 * 60_000) return;
-        ultimaAlertaRef.current.sueno = Date.now();
+        ultimaAlertaRef.current.energia = Date.now();
         decir("Ya es de noche, tengo sueñito… 🌙", 3000);
       }
     };
@@ -614,13 +615,12 @@ export function MascotaGame() {
     return () => window.clearInterval(id);
   }, [listo, decir]);
 
-  // Avisa una vez al ponerse triste (y al celular si la app está de fondo).
-  const avisoTriste = useRef(false);
+  // Avisa cuando una necesidad baja de 50% y limita los avisos repetidos.
   useEffect(() => {
     if (!listo) return;
-    if (accion || dormido) return;
+    if (accion) return;
     const ahora = Date.now();
-    const alertar = (tipo: "hambre" | "sueno", texto: string, sonidoAviso: Sonido) => {
+    const alertar = (tipo: StatKey, texto: string, sonidoAviso: Sonido) => {
       const ultima = ultimaAlertaRef.current[tipo] ?? 0;
       if (ahora - ultima < 4 * 60 * 60_000) return;
       ultimaAlertaRef.current[tipo] = ahora;
@@ -628,29 +628,16 @@ export function MascotaGame() {
       sonar(sonidoAviso);
       avisar(texto);
     };
-    if (stats.hambre <= UMBRAL_TRISTE) {
+    if (stats.hambre < UMBRAL_AVISO) {
       alertar("hambre", FRASES_TRISTE.hambre, "aviso-hambre");
-    } else if (stats.energia <= UMBRAL_TRISTE) {
-      alertar("sueno", FRASES_TRISTE.energia, "aviso-sueno");
-    } else if (necesitada && !avisoTriste.current) {
-      avisoTriste.current = true;
-      decir(FRASES_TRISTE[masBaja], 3200);
-      sonar("triste");
-      avisar(FRASES_TRISTE[masBaja]);
     }
-    if (!necesitada) avisoTriste.current = false;
-  }, [
-    listo,
-    stats.hambre,
-    stats.energia,
-    necesitada,
-    accion,
-    dormido,
-    masBaja,
-    decir,
-    sonar,
-    avisar,
-  ]);
+    if (stats.higiene < UMBRAL_AVISO) {
+      alertar("higiene", FRASES_TRISTE.higiene, "aviso-higiene");
+    }
+    if (!dormido && stats.energia < UMBRAL_AVISO) {
+      alertar("energia", FRASES_TRISTE.energia, "aviso-sueno");
+    }
+  }, [listo, stats.hambre, stats.higiene, stats.energia, accion, dormido, decir, sonar, avisar]);
 
   // Tres avisos de comida al día, uno por cada franja horaria. Se guarda una
   // clave por fecha para que volver a abrir la página no repita el mismo aviso.

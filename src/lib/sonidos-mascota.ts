@@ -13,6 +13,7 @@ export type Sonido =
   | "triste"
   | "logro"
   | "aviso-hambre"
+  | "aviso-higiene"
   | "aviso-sueno";
 
 let ctx: AudioContext | null = null;
@@ -157,6 +158,10 @@ export function reproducir(s: Sonido) {
       tono(c, out, { f: 880, f2: 1047, dur: 0.16, tipo: "triangle", vol: 0.16 });
       tono(c, out, { t: 0.2, f: 1047, f2: 1319, dur: 0.2, tipo: "triangle", vol: 0.14 });
       tono(c, out, { t: 0.46, f: 784, f2: 659, dur: 0.28, tipo: "sine", vol: 0.12 });
+      break;
+    case "aviso-higiene":
+      tono(c, out, { f: 659, f2: 784, dur: 0.18, tipo: "sine", vol: 0.12 });
+      tono(c, out, { t: 0.22, f: 784, f2: 988, dur: 0.24, tipo: "triangle", vol: 0.1 });
       break;
     case "aviso-sueno":
       tono(c, out, { f: 523, f2: 392, dur: 0.42, tipo: "sine", vol: 0.11 });
