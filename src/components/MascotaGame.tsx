@@ -108,7 +108,7 @@ const DECAY_PER_TICK: Record<StatKey, number> = {
 };
 const RECOVERY_STEP_MS = 30_000;
 const CARICIA_FELICIDAD = 5;
-const UMBRAL_TRISTE = 20;
+const UMBRAL_TRISTE = 50;
 const UMBRAL_AVISO = 50;
 const INICIAL: Stats = { hambre: 80, felicidad: 85, higiene: 75, energia: 80 };
 const COMIDAS = [
@@ -281,6 +281,7 @@ export function MascotaGame() {
   const [accion, setAccion] = useState<Accion | null>(null);
   const [dormido, setDormido] = useState(false);
   const [tristeEnCama, setTristeEnCama] = useState(false);
+  const [tristeAtendida, setTristeAtendida] = useState(false);
   const [particulas, setParticulas] = useState<Particula[]>([]);
   const [toast, setToast] = useState<{ id: number; texto: string } | null>(null);
   const [toques, setToques] = useState(0);
@@ -584,37 +585,41 @@ export function MascotaGame() {
   } else if (accion) {
     pose = accion.pose;
     anim = accion.anim;
-  } else if (tristeEnCama) {
+  } else if (tristeEnCama && !tristeAtendida) {
     pose = "espalda";
     anim = "breathe";
   } else if (escuchando) {
     anim = "tilt";
-  } else if (necesitada) {
+  } else if (necesitada && !tristeAtendida) {
     pose = "triste";
     anim = "shake";
   }
   const animo =
     bienestar <= 18
       ? "enojado"
-      : pose === "triste"
+      : pose === "triste" && !tristeAtendida
         ? "triste"
-        : bienestar > 70
+        : tristeAtendida
           ? "feliz"
-          : "normal";
+          : bienestar > 70
+            ? "feliz"
+            : "normal";
 
   // Cuando una necesidad llega a un nivel crítico, Snoopy se refugia en la
   // cama y mira hacia la ventana hasta que vuelven a cuidarlo.
   useEffect(() => {
     if (!listo || dormido || accion || escuchando) return;
-    if (necesitada && !tristeEnCama) {
+    if (necesitada && !tristeEnCama && !tristeAtendida) {
       setEscena("dormitorio");
       setTristeEnCama(true);
       decir("Estoy triste… nadie viene a verme 🥺", 3600);
       sonar("triste");
     } else if (!necesitada && tristeEnCama) {
       setTristeEnCama(false);
+    } else if (!necesitada && tristeAtendida) {
+      setTristeAtendida(false);
     }
-  }, [listo, dormido, accion, escuchando, necesitada, tristeEnCama, decir, sonar]);
+  }, [listo, dormido, accion, escuchando, necesitada, tristeEnCama, tristeAtendida, decir, sonar]);
 
   // De noche solo avisa con un mensaje: nunca se duerme ni se despierta solo,
   // eso lo decides tú con la lámpara.
@@ -803,6 +808,7 @@ export function MascotaGame() {
     // también de noche o si estaba durmiendo (se despierta para hacerlo).
     if (accion?.tipo === "pasear") return;
     setTristeEnCama(false);
+    setTristeAtendida(true);
     if (dormido) setDormido(false);
     registrar(tipo);
 
@@ -859,6 +865,7 @@ export function MascotaGame() {
     if (ahora - ultimaCaricia.current < 700) return;
     ultimaCaricia.current = ahora;
     setTristeEnCama(false);
+    setTristeAtendida(true);
     recuperarGradual({ felicidad: CARICIA_FELICIDAD });
     registrar("caricias");
     lanzar(["💛", "❤️", "💕", "✨"], 6);
