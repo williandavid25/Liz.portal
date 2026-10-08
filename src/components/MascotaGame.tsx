@@ -73,6 +73,7 @@ interface Particula {
 interface Guardado {
   version?: number;
   stats?: Partial<Stats>;
+  statUpdatedAt?: Partial<Record<StatKey, number>>;
   escena?: Escena;
   ts?: number;
   nombre?: string;
@@ -110,12 +111,7 @@ const DECAY_STEP_MS: Record<StatKey, number> = {
   higiene: DECAY_DURATION_MS.higiene / 100,
   energia: DECAY_DURATION_MS.energia / 100,
 };
-const DECAY_OFFSETS_MS: Record<StatKey, number> = {
-  hambre: 0,
-  felicidad: 27_000,
-  higiene: 54_000,
-  energia: 81_000,
-};
+const DECAY_GRACE_MS = 60 * 60_000;
 const RECOVERY_STEP_MS = 3_000;
 const UMBRAL_TRISTE = 20;
 const INICIAL: Stats = { hambre: 80, felicidad: 85, higiene: 75, energia: 80 };
@@ -309,6 +305,13 @@ export function MascotaGame() {
   const bocaRef = useRef<HTMLDivElement>(null);
   const ultimaCaricia = useRef(0);
   const durmiendoRef = useRef(false);
+  const statUpdatedAtRef = useRef<Record<StatKey, number>>({
+    hambre: Date.now(),
+    felicidad: Date.now(),
+    higiene: Date.now(),
+    energia: Date.now(),
+  });
+  const descansoAutomaticoRef = useRef(false);
   const ultimaAlertaRef = useRef<Partial<Record<"hambre" | "sueno", number>>>({});
   const comidasAvisadasRef = useRef(new Set<string>());
   durmiendoRef.current = dormido;
@@ -367,18 +370,13 @@ export function MascotaGame() {
 
   const recuperarGradual = useCallback(
     (delta: Partial<Stats>) => {
-      for (const [key, total] of Object.entries(delta) as Array<[StatKey, number | undefined]>) {
-        let restantes = Math.max(0, Math.round(total ?? 0));
-        const siguiente = () => {
-          if (restantes <= 0) return;
-          setStats((s) => (s[key] >= 100 ? s : { ...s, [key]: clamp(s[key] + 1) }));
-          restantes -= 1;
-          if (restantes > 0) programar(siguiente, RECOVERY_STEP_MS);
-        };
-        programar(siguiente, RECOVERY_STEP_MS);
+      const ahora = Date.now();
+      for (const key of Object.keys(delta) as StatKey[]) {
+        statUpdatedAtRef.current[key] = ahora;
+        setStats((s) => ({ ...s, [key]: clamp(s[key] + 5) }));
       }
     },
-    [programar],
+    [],
   );
 
   /** Notificación del sistema, solo si la app quedó en segundo plano. */
@@ -416,9 +414,40 @@ export function MascotaGame() {
       const raw = localStorage.getItem(KEY);
       const g: Guardado = raw ? (JSON.parse(raw) as Guardado) : {};
       volvio = !!raw;
-      // Todo queda tal como lo dejaste al salir: porcentajes, lugar y si
-      // estaba durmiendo. Con la app cerrada no baja nada.
-      setStats(aplicar({ ...INICIAL, ...g.stats }, {}));
+      const ahora = Date.now();
+      const actualizaciones = {} as Record<StatKey, number>;
+      for (const key of Object.keys(DECAY_DURATION_MS) as StatKey[]) {
+        const ultimo = g.statUpdatedAt?.[key] ?? g.ts ?? ahora;
+        const perdidaAtributo = Math.min(
+          100,
+          (Math.max(0, ahora - ultimo - DECAY_GRACE_MS) / DECAY_DURATION_MS[key]) * 100,
+        );
+        actualizaciones[key] = ultimo + DECAY_GRACE_MS + perdidaAtributo * DECAY_STEP_MS[key];
+      }
+      statUpdatedAtRef.current = actualizaciones;
+      setStats(
+        aplicar(
+          { ...INICIAL, ...g.stats },
+          {
+            hambre: -Math.min(
+              100,
+              (Math.max(0, ahora - actualizaciones.hambre) / DECAY_DURATION_MS.hambre) * 100,
+            ),
+            felicidad: -Math.min(
+              100,
+              (Math.max(0, ahora - actualizaciones.felicidad) / DECAY_DURATION_MS.felicidad) * 100,
+            ),
+            higiene: -Math.min(
+              100,
+              (Math.max(0, ahora - actualizaciones.higiene) / DECAY_DURATION_MS.higiene) * 100,
+            ),
+            energia: -Math.min(
+              100,
+              (Math.max(0, ahora - actualizaciones.energia) / DECAY_DURATION_MS.energia) * 100,
+            ),
+          },
+        ),
+      );
       durmiendo = g.dormido === true;
       setDormido(durmiendo);
       setEscena(
@@ -489,6 +518,7 @@ export function MascotaGame() {
       const g: Guardado = {
         version: GUARDADO_VERSION,
         stats,
+        statUpdatedAt: statUpdatedAtRef.current,
         escena,
         ts: Date.now(),
         nombre,
@@ -504,21 +534,24 @@ export function MascotaGame() {
   }, [listo, stats, escena, nombre, progreso, sonido, avisos, dormido]);
 
   useEffect(() => {
-    const ids = new Set<number>();
-    (Object.keys(DECAY_OFFSETS_MS) as StatKey[]).forEach((key) => {
-      const id = window.setTimeout(() => {
-        const intervalId = window.setInterval(() => {
-          setStats((s) => {
-            if (key === "energia" && durmiendoRef.current) return s;
-            if (s[key] <= 0) return s;
-            return { ...s, [key]: clamp(s[key] - 1) };
-          });
-        }, DECAY_STEP_MS[key]);
-        ids.add(intervalId);
-      }, DECAY_OFFSETS_MS[key]);
-      ids.add(id);
-    });
-    return () => ids.forEach((id) => window.clearInterval(id));
+    const id = window.setInterval(() => {
+      const ahora = Date.now();
+      setStats((s) => {
+        const siguiente = { ...s };
+        for (const key of Object.keys(DECAY_DURATION_MS) as StatKey[]) {
+          if (key === "energia" && durmiendoRef.current) continue;
+          const transcurrido = ahora - statUpdatedAtRef.current[key] - DECAY_GRACE_MS;
+          if (transcurrido <= 0 || siguiente[key] <= 0) continue;
+          const perdida = Math.floor(transcurrido / DECAY_STEP_MS[key]);
+          if (perdida > 0) {
+            siguiente[key] = clamp(siguiente[key] - perdida);
+            statUpdatedAtRef.current[key] += perdida * DECAY_STEP_MS[key];
+          }
+        }
+        return siguiente;
+      });
+    }, 15_000);
+    return () => window.clearInterval(id);
   }, []);
 
   // Al salir: cortar temporizadores y micrófono, y devolver la música.
@@ -697,6 +730,7 @@ export function MascotaGame() {
   useEffect(() => {
     if (!dormido) return;
     const id = window.setInterval(() => {
+      statUpdatedAtRef.current.energia = Date.now();
       setStats((s) => (s.energia >= 100 ? s : { ...s, energia: clamp(s.energia + 1) }));
       lanzar(["💤", "z", "Z"], 2);
     }, RECOVERY_STEP_MS);
@@ -1278,9 +1312,11 @@ export function MascotaGame() {
                 onClick={() => ejecutar(b.tipo)}
                 aria-label={b.tipo === "alimentar" ? "Alimentar" : b.label}
                 aria-pressed={b.tipo === "dormir" ? dormido : undefined}
-                className={`mg-boton mg-boton-transparente relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full ${
+                className={`mg-boton mg-boton-transparente relative grid h-12 w-12 shrink-0 place-items-center overflow-visible rounded-full ${
                   activo ? "mg-boton-activo" : ""
-                } ${b.necesita && !activo ? "mg-boton-necesita" : ""}`}
+                } ${b.necesita && !activo ? "mg-boton-necesita" : ""} ${
+                  accion !== null && accion.tipo === b.tipo ? "mg-boton-cargando" : ""
+                }`}
               >
                 <b.Icono
                   size={22}
@@ -1290,14 +1326,6 @@ export function MascotaGame() {
                     lamparaEncendida ? "mg-lampara-on" : b.tipo === "dormir" ? "opacity-60" : ""
                   }
                 />
-                {accion !== null && accion.tipo === b.tipo && (
-                  <span
-                    key={accion.id}
-                    className="mg-progreso absolute bottom-0 left-0 h-[2px] bg-white/80"
-                    style={{ animationDuration: `${accion.dur}ms` }}
-                    aria-hidden="true"
-                  />
-                )}
               </button>
               <span className="whitespace-nowrap text-[10.5px] font-semibold leading-tight text-white/80">
                 {b.label}
@@ -1572,6 +1600,20 @@ const CSS = `
 .mg-boton:disabled { cursor: not-allowed; opacity: 0.45; }
 .mg-boton.mg-boton-activo { opacity: 1; background: rgba(255,255,255,0.24); }
 .mg-boton-transparente.mg-boton-activo { background: rgba(255,255,255,0.1); }
+.mg-boton-cargando::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  z-index: 0;
+  border-radius: inherit;
+  background: conic-gradient(from 0deg, transparent 0 18%, rgba(255,255,255,0.98) 30%, #67e8f9 42%, transparent 58% 100%);
+  filter: drop-shadow(0 0 5px rgba(103,232,249,0.95)) drop-shadow(0 0 10px rgba(255,255,255,0.65));
+  padding: 3px;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: mg-carga 1.05s linear infinite;
+}
+.mg-boton > svg { position: relative; z-index: 1; }
 .mg-boton:focus-visible { outline: 2px solid rgba(255,255,255,0.9); outline-offset: 2px; }
 .mg-boton-necesita { animation: mg-necesita 1.6s ease-in-out infinite; }
 .mg-lampara-on { color: #fde68a; filter: drop-shadow(0 0 6px rgba(253,230,138,0.85)); }
@@ -1669,6 +1711,7 @@ const CSS = `
 }
 @keyframes mg-parpadeo { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 @keyframes mg-progreso { from { width: 0; } to { width: 100%; } }
+@keyframes mg-carga { to { transform: rotate(360deg); } }
 @keyframes mg-necesita {
   0%, 100% { box-shadow: 0 10px 30px rgba(0,0,0,0.18), 0 0 0 0 rgba(255,255,255,0.0); }
   50% { box-shadow: 0 10px 30px rgba(0,0,0,0.18), 0 0 0 2px rgba(255,255,255,0.5); }
@@ -1685,7 +1728,7 @@ const CSS = `
 @media (prefers-reduced-motion: reduce) {
   .mg-kb, .mg-mota, .mg-respirar, .mg-breathe, .mg-tilt, .mg-shake, .mg-wiggle, .mg-bounce, .mg-walk,
   .mg-sombra-respira, .mg-barra-baja, .mg-boton-necesita, .mg-mic-activo,
-  .mg-celebra-emoji { animation: none; }
+  .mg-celebra-emoji, .mg-boton-cargando::before { animation: none; }
   .mg-pop, .mg-toast, .mg-panel, .mg-celebra { animation-duration: 0.01s; }
 }
 `;
