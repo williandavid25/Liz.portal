@@ -88,6 +88,19 @@ async function ensureFilesTable() {
   filesTableReady = true;
 }
 
+/**
+ * Agrega una columna solo si falta. "alter table" bloquea la tabla aunque la
+ * columna ya exista, y se ejecutaba en cada arranque del servidor.
+ */
+async function agregarColumna(tabla: string, columna: string, tipo: "text" | "bigint") {
+  const existe = await db()`
+    select 1 from information_schema.columns
+    where table_schema = current_schema() and table_name = ${tabla} and column_name = ${columna}
+  `;
+  if (existe.length > 0) return;
+  await db().unsafe(`alter table ${tabla} add column if not exists ${columna} ${tipo}`);
+}
+
 // Suscripciones de avisos (push): cada celular que acepta recibir avisos
 // guarda aquí su "dirección" de notificaciones.
 let subsTableReady = false;
@@ -101,7 +114,7 @@ async function ensureSubsTable() {
     )
   `;
   // Qué celular es cada suscripción: así un aviso no le llega a quien lo mandó.
-  await db()`alter table push_subs add column if not exists device text`;
+  await agregarColumna("push_subs", "device", "text");
   subsTableReady = true;
 }
 
@@ -122,8 +135,8 @@ async function ensureNotasTable() {
     )
   `;
   // Para que quien la envía sepa que llegó al otro celular y que se leyó.
-  await db()`alter table notas_snoopy add column if not exists entregada_at bigint`;
-  await db()`alter table notas_snoopy add column if not exists leida_at bigint`;
+  await agregarColumna("notas_snoopy", "entregada_at", "bigint");
+  await agregarColumna("notas_snoopy", "leida_at", "bigint");
   notasTableReady = true;
 }
 // Lo que queda de una nota leída (sin texto) se guarda un día para avisar.
@@ -276,6 +289,7 @@ export async function insertNota(nota: NotaRow): Promise<void> {
   await db()`
     insert into notas_snoopy (id, de, texto, emoji, created_at)
     values (${nota.id}, ${nota.de}, ${nota.texto}, ${nota.emoji ?? null}, ${nota.createdAt})
+    on conflict (id) do nothing
   `;
 }
 

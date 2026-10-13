@@ -1092,22 +1092,15 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     }
   };
 
-  const enviarNotaSnoopy = async () => {
+  // Quien escribe no espera: el panel se cierra al instante, Snoopy sale con
+  // la nota y el envío sigue en segundo plano (con reintentos si no hay red).
+  const enviarNotaSnoopy = () => {
     const texto = textoNota.trim();
-    if (!texto || enviandoNota) return;
-    setEnviandoNota(true);
-    const r = await mandarNota(texto, emojiNota).catch(() => ({ ok: false, avisos: 0 }));
-    setEnviandoNota(false);
-    if (!r.ok) {
-      sonar("triste");
-      decir("No pude llevarla… revisa tu internet 📶", 3400);
-      return;
-    }
+    if (!texto) return;
     setTextoNota("");
     setNotaLlena(false);
     setEscribiendo(false);
     if (dormido) setDormido(false);
-    // Salta contento y el sobre sale volando hacia el otro celular.
     if (accion?.tipo !== "pasear") {
       const id = iniciarAccion({ tipo: "nota", pose: "frente", anim: "entregar", dur: 1800 });
       programar(() => {
@@ -1121,12 +1114,23 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     programar(() => setSobreVolando((v) => (v === vuelo ? 0 : v)), 1700);
     sonar("pasear");
     lanzar(["sobre", "corazon", "destello"], 9);
-    decir(
-      r.avisos > 0
-        ? "¡Ya se la llevé! Le llegó el aviso 💌"
-        : "¡Nota enviada! La verá al abrir la app 💌",
-      3400,
-    );
+    decir("¡Allá voy con tu nota!", 2000);
+    setEnviandoNota(true);
+    void mandarNota(texto, emojiNota)
+      .catch(() => ({ ok: false, avisos: 0 }))
+      .then((r) => {
+        setEnviandoNota(false);
+        if (!r.ok) {
+          decir("Sin conexión: la entregaré apenas vuelva el internet", 3600);
+          return;
+        }
+        decir(
+          r.avisos > 0
+            ? "¡Entregada! Le llegó el aviso a su celular"
+            : "Nota enviada. Su celular todavía no tiene los avisos activados",
+          3800,
+        );
+      });
   };
 
   const guardarNombre = () => {
@@ -1664,7 +1668,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
       {escribiendo && (
         <div
           className="mg-panel-fondo fixed inset-0 z-[66] flex justify-center overflow-y-auto bg-black/60 px-4 pb-4 pt-[calc(env(safe-area-inset-top)+96px)] backdrop-blur-sm sm:pt-[calc(env(safe-area-inset-top)+116px)]"
-          onClick={() => !enviandoNota && setEscribiendo(false)}
+          onClick={() => setEscribiendo(false)}
         >
           <form
             role="dialog"
@@ -1760,11 +1764,11 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
             </div>
             <button
               type="submit"
-              disabled={!textoNota.trim() || enviandoNota}
+              disabled={!textoNota.trim()}
               className="flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-pink-400 to-rose-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:brightness-110 disabled:opacity-45"
             >
               <Send size={16} />
-              {enviandoNota ? "Enviando…" : `Que ${nombre} la lleve`}
+              {`Que ${nombre} la lleve`}
             </button>
             {enviadas.length > 0 && (
               <div className="border-t border-white/15 pt-2.5">
@@ -1801,7 +1805,15 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
                               : "text-white/60"
                         }`}
                       >
-                        {n.leidaAt ? "Leída" : n.entregadaAt ? "Entregada ✓✓" : "Enviada ✓"}
+                        {n.pendiente === "error"
+                          ? "Sin conexión, reintentando…"
+                          : n.pendiente
+                            ? "Enviando…"
+                            : n.leidaAt
+                              ? "Leída"
+                              : n.entregadaAt
+                                ? "Entregada ✓✓"
+                                : "Enviada ✓"}
                       </span>
                     </li>
                   ))}

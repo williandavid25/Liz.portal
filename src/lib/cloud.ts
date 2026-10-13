@@ -296,13 +296,20 @@ export interface NotaEnviada {
   createdAt: number;
   entregadaAt?: number;
   leidaAt?: number;
+  /** Solo en el celular que la escribió: todavía va en camino al servidor. */
+  pendiente?: "enviando" | "error";
 }
 
 /** Snoopy lleva una nota al otro celular (y le manda un aviso). */
 export const enviarNota = createServerFn({ method: "POST" })
-  .validator((input: { de: string; texto: string; emoji?: string }) =>
+  .validator((input: { id?: string; de: string; texto: string; emoji?: string }) =>
     z
       .object({
+        // Lo crea el celular: si un reintento llega dos veces, no se duplica.
+        id: z
+          .string()
+          .regex(/^[A-Za-z0-9-]{6,80}$/)
+          .optional(),
         de: deviceSchema,
         texto: z.string().trim().min(1).max(NOTA_MAX),
         emoji: z.string().max(16).optional(),
@@ -313,7 +320,7 @@ export const enviarNota = createServerFn({ method: "POST" })
     try {
       const { insertNota } = await import("./cloud.server");
       const nota: NotaSnoopy = {
-        id: `${Date.now()}-${Math.round(Math.random() * 1e9)}`,
+        id: data.id ?? `${Date.now()}-${Math.round(Math.random() * 1e9)}`,
         de: data.de,
         texto: data.texto,
         emoji: data.emoji,

@@ -39,6 +39,8 @@ export async function sendPushToAll(
           method: built.method,
           headers: built.headers,
           body: built.body as unknown as BodyInit,
+          // Un servicio de avisos lento no debe frenar a quien envía.
+          signal: AbortSignal.timeout(6000),
         });
         if (res.status === 404 || res.status === 410) {
           // El navegador ya no existe / desinstaló la app: se limpia.

@@ -1,6 +1,6 @@
 // Service worker: permite "instalar" el sitio, abrirlo sin internet una vez
 // visitado, y recibir avisos de cartas nuevas con la app cerrada.
-const CACHE_NAME = "liz-portal-v5";
+const CACHE_NAME = "liz-portal-v6";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -75,6 +75,34 @@ self.addEventListener("push", (event) => {
         .matchAll({ type: "window", includeUncontrolled: true })
         .then((list) => list.forEach((c) => c.postMessage({ tipo: "nota" })))
     : Promise.resolve();
+  // Notas de Snoopy: un solo aviso que cuenta cuántas hay sin leer, y el
+  // número también en el ícono de la app.
+  if (url.startsWith("/mascota?nota=")) {
+    event.waitUntil(
+      (async () => {
+        const previas = await self.registration.getNotifications({ tag: "notas" });
+        const n = ((previas[0] && previas[0].data && previas[0].data.n) || 0) + 1;
+        previas.forEach((x) => x.close());
+        if (self.navigator.setAppBadge) self.navigator.setAppBadge(n).catch(() => {});
+        await Promise.all([
+          avisarApp,
+          self.registration.showNotification(n > 1 ? `🐶 Snoopy te trae ${n} notas` : title, {
+            body:
+              n > 1
+                ? "Ábrelas y léelas antes de que se borren 💌"
+                : data.body || "Toca para leerla",
+            tag: "notas",
+            icon: "/icons/liz-192.png",
+            badge: "/icons/liz-192.png",
+            vibrate: [120, 60, 120],
+            renotify: true,
+            data: { url: n > 1 ? "/mascota" : url, n },
+          }),
+        ]);
+      })(),
+    );
+    return;
+  }
   event.waitUntil(
     Promise.all([
       avisarApp,
