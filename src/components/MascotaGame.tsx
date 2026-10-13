@@ -44,7 +44,7 @@ import {
   useNotasEnviadas,
   useNotasRecibidas,
 } from "@/lib/notas-client";
-import { NOTA_MAX, guardarEstadoMascota, type NotaSnoopy } from "@/lib/cloud";
+import { NOTA_MAX, guardarEstadoMascota, type NotaEnviada, type NotaSnoopy } from "@/lib/cloud";
 import { getDeviceId } from "@/lib/dispositivo";
 import { SNOOPY_CSS, SnoopyVivo, imgPose, type Pose } from "@/components/SnoopyVivo";
 import { WeatherPanel } from "@/components/WeatherPanel";
@@ -230,6 +230,39 @@ const ANIM_CLASE: Record<Anim, string> = {
   entregar: "mg-entregar",
 };
 
+type AvisoTono = "envio" | "ok" | "leida" | "llega" | "error";
+
+/** Estado de una nota enviada, en palabras y con su color. */
+function estadoEnviada(n: NotaEnviada): { texto: string; clase: string } {
+  if (n.pendiente === "error")
+    return { texto: "Sin conexión, reintentando…", clase: "text-amber-200" };
+  if (n.pendiente) return { texto: "Enviando…", clase: "text-white/60" };
+  if (n.leidaAt) return { texto: "Leída", clase: "text-pink-200" };
+  if (n.entregadaAt) return { texto: "Entregada ✓✓", clase: "text-sky-200" };
+  return { texto: "Enviada ✓", clase: "text-white/75" };
+}
+
+const horaCorta = (ts: number) =>
+  new Date(ts).toLocaleString("es-ES", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+function SelloIcono({
+  id,
+  size = 14,
+  className,
+}: {
+  id?: string;
+  size?: number;
+  className?: string;
+}) {
+  const S = sello(id).Icono;
+  return <S size={size} strokeWidth={2.2} className={className} aria-hidden="true" />;
+}
+
 const FRASES_CARICIA = ["¡Jiji! 💛", "¡Me haces cosquillas!", "¡Te quiero! ❤️", "¡Otra vez! 🐾"];
 const FRASES_TRISTE: Record<StatKey, string> = {
   hambre: "Tengo hambre… 🍖",
@@ -291,6 +324,11 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
   const [emojiNota, setEmojiNota] = useState<string>(SELLO_INICIAL);
   const [enviandoNota, setEnviandoNota] = useState(false);
   const [notaLlena, setNotaLlena] = useState(false);
+  // Panel tipo campanita de las notitas y el aviso flotante junto al botón.
+  const [panelNotas, setPanelNotas] = useState(false);
+  const [avisoNota, setAvisoNota] = useState<{ id: number; texto: string; tono: AvisoTono } | null>(
+    null,
+  );
   const [sobreVolando, setSobreVolando] = useState(0);
   const [stats, setStats] = useState<Stats>(INICIAL);
   const [escena, setEscena] = useState<Escena>("dormitorio");
@@ -358,6 +396,16 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
       const id = ++idRef.current;
       setToast({ id, texto: sinEmojis(texto) });
       programar(() => setToast((t) => (t?.id === id ? null : t)), ms);
+    },
+    [programar],
+  );
+
+  /** Aviso flotante junto al botón de notas (como una notificación). */
+  const avisarNota = useCallback(
+    (texto: string, tono: AvisoTono, ms = 3800) => {
+      const id = ++idRef.current;
+      setAvisoNota({ id, texto, tono });
+      programar(() => setAvisoNota((a) => (a?.id === id ? null : a)), ms);
     },
     [programar],
   );
@@ -902,14 +950,16 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
       else if (estado === "entregada" && previo === "enviada") entregada = true;
     }
     if (leida) {
+      avisarNota("¡Leyó tu nota!", "leida", 5000);
       decir("¡Leyó tu nota! 💜", 3600);
       sonar("logro");
       lanzar(["corazon", "destello"], 10);
     } else if (entregada) {
+      avisarNota("Entregada ✓✓ · ya está en su celular", "ok", 4500);
       decir("Tu nota ya llegó a su celular 📬", 3200);
       sonar("caricia");
     }
-  }, [listo, enviadas, decir, sonar, lanzar]);
+  }, [listo, enviadas, decir, sonar, lanzar, avisarNota]);
 
   // Cuando llega una nota nueva, Snoopy la anuncia y aparece el sobre.
   const notasVistas = useRef<Set<string> | null>(null);
@@ -927,7 +977,12 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     );
     sonar("logro");
     lanzar(["sobre", "destello", "corazon"], 9);
-  }, [listo, notas, decir, sonar, lanzar]);
+    avisarNota(
+      nuevas.length > 1 ? `Te llegaron ${nuevas.length} notas` : "Te llegó una nota",
+      "llega",
+      5000,
+    );
+  }, [listo, notas, decir, sonar, lanzar, avisarNota]);
 
   const leerNota = useCallback(
     (n: NotaSnoopy) => {
@@ -958,6 +1013,13 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     decir("Nota leída… y se fue con el viento 🍃", 2800);
     if (notaInicial) void navigate({ to: "/mascota", search: {}, replace: true });
   }, [notaAbierta, notaInicial, navigate, lanzar, decir]);
+
+  useEffect(() => {
+    if (!panelNotas) return;
+    const fn = (e: KeyboardEvent) => e.key === "Escape" && setPanelNotas(false);
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, [panelNotas]);
 
   // Escape cierra la nota (y la borra) o el editor.
   useEffect(() => {
@@ -1115,15 +1177,22 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     sonar("pasear");
     lanzar(["sobre", "corazon", "destello"], 9);
     decir("¡Allá voy con tu nota!", 2000);
+    avisarNota("Enviando tu nota…", "envio", 12000);
     setEnviandoNota(true);
     void mandarNota(texto, emojiNota)
       .catch(() => ({ ok: false, avisos: 0 }))
       .then((r) => {
         setEnviandoNota(false);
         if (!r.ok) {
+          avisarNota("Sin conexión · se enviará sola", "error", 5000);
           decir("Sin conexión: la entregaré apenas vuelva el internet", 3600);
           return;
         }
+        avisarNota(
+          r.avisos > 0 ? "Nota enviada ✓ · le llegó el aviso" : "Nota enviada ✓",
+          "ok",
+          4500,
+        );
         decir(
           r.avisos > 0
             ? "¡Entregada! Le llegó el aviso a su celular"
@@ -1251,28 +1320,35 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
         }`}
       >
         <WeatherPanel />
-        <div className="flex w-16 flex-col items-center gap-0.5 text-white">
+        <div className="relative z-20 flex w-16 flex-col items-center gap-0.5 text-white">
           <button
             type="button"
-            // Con una nota nueva, el botón la abre; si no, sirve para escribir.
-            onClick={() => (notas.length > 0 ? leerNota(notas[0]!) : setEscribiendo(true))}
+            onClick={() => setPanelNotas((v) => !v)}
+            aria-expanded={panelNotas}
             aria-label={
               notas.length > 0
-                ? `Tienes ${notas.length === 1 ? "una nota nueva" : `${notas.length} notas nuevas`}: ábrela`
-                : `Mandar una nota con ${nombre}`
+                ? `Notitas: ${notas.length === 1 ? "tienes una nota nueva" : `tienes ${notas.length} notas nuevas`}`
+                : "Notitas"
             }
-            title={
-              notas.length > 0 ? "Abrir la nota que te llegó" : "Mandar una nota al otro celular"
-            }
+            title="Notitas"
             className={`mg-boton mg-boton-transparente relative grid h-12 w-12 shrink-0 place-items-center overflow-visible rounded-full ${
-              escribiendo ? "mg-boton-activo" : ""
+              panelNotas || escribiendo ? "mg-boton-activo" : ""
             } ${enviandoNota ? "mg-boton-cargando" : ""}`}
           >
             <Mail size={22} strokeWidth={1.8} aria-hidden="true" className="text-pink-100" />
-            {notas.length > 0 && (
+            {notas.length > 0 ? (
               <span className="mg-nota-badge absolute -right-1 -top-1 z-[2] grid h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[11px] font-bold leading-none text-white">
                 {notas.length > 9 ? "9+" : notas.length}
               </span>
+            ) : (
+              enviadas.some((n) => !n.leidaAt) && (
+                <span
+                  className="absolute -right-1 -top-1 z-[2] grid h-5 min-w-5 place-items-center rounded-full border border-rose-300/80 bg-[#2a1030]/85 px-1 text-[10px] font-bold leading-none text-rose-100"
+                  title="Notas enviadas que aún no se leen"
+                >
+                  {Math.min(9, enviadas.filter((n) => !n.leidaAt).length)}
+                </span>
+              )
             )}
           </button>
           <span
@@ -1280,8 +1356,132 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
               notas.length > 0 ? "text-pink-200" : "text-white/80"
             }`}
           >
-            {notas.length > 0 ? "¡Nueva!" : "Nota"}
+            {notas.length > 0 ? "¡Nueva!" : "Notitas"}
           </span>
+
+          {/* Aviso flotante, como una notificación, al lado del botón. */}
+          {avisoNota && !panelNotas && (
+            <button
+              type="button"
+              key={avisoNota.id}
+              onClick={() => {
+                setAvisoNota(null);
+                setPanelNotas(true);
+              }}
+              className={`mg-aviso-nota mg-vidrio-oscuro absolute right-[calc(100%+6px)] top-1 flex w-max max-w-[min(230px,calc(100vw-110px))] items-center gap-2 rounded-2xl px-3 py-2 text-left text-xs font-semibold text-white ${avisoNota.tono}`}
+            >
+              <span className="mg-aviso-punto" aria-hidden="true" />
+              {avisoNota.texto}
+            </button>
+          )}
+
+          {/* Panel tipo campanita: notas recibidas y enviadas. */}
+          {panelNotas && (
+            <>
+              <div
+                className="fixed inset-0 z-[-1]"
+                aria-hidden="true"
+                onClick={() => setPanelNotas(false)}
+              />
+              <div
+                role="dialog"
+                aria-label="Notitas"
+                className="mg-panel mg-vidrio-oscuro absolute right-0 top-[calc(100%+8px)] max-h-[min(60svh,26rem)] w-[min(290px,calc(100vw-2rem))] overflow-y-auto rounded-2xl p-3 text-left text-white"
+              >
+                <div className="mb-2 flex items-center justify-between border-b border-white/15 pb-2">
+                  <p className="flex items-center gap-1.5 text-sm font-bold">
+                    <Mail size={15} className="text-pink-200" /> Notitas
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setPanelNotas(false)}
+                    aria-label="Cerrar notitas"
+                    className="grid h-7 w-7 place-items-center rounded-full bg-white/10 transition hover:bg-white/20"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+
+                <p className="mb-1 flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.14em] text-white/55">
+                  Te llegaron
+                  {notas.length > 0 && (
+                    <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] tracking-normal text-white">
+                      {notas.length}
+                    </span>
+                  )}
+                </p>
+                {notas.length === 0 ? (
+                  <p className="mb-2 px-1 py-1.5 text-xs text-white/55">No tienes notas nuevas.</p>
+                ) : (
+                  <ul className="mb-2 space-y-1">
+                    {notas.map((n) => (
+                      <li key={n.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPanelNotas(false);
+                            leerNota(n);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-xl bg-rose-500/15 px-2.5 py-2 text-left transition hover:bg-rose-500/25"
+                        >
+                          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-rose-500 text-white">
+                            <SelloIcono id={n.emoji} size={14} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-xs font-bold">
+                              Nota nueva · tócala para leer
+                            </span>
+                            <span className="block text-[10px] text-white/60">
+                              {horaCorta(n.createdAt)}
+                            </span>
+                          </span>
+                          <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-rose-400" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <p className="mb-1 mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white/55">
+                  Enviadas
+                </p>
+                {enviadas.length === 0 ? (
+                  <p className="mb-2 px-1 py-1.5 text-xs text-white/55">
+                    Aún no has enviado notas.
+                  </p>
+                ) : (
+                  <ul className="mb-2 space-y-1">
+                    {enviadas.map((n) => {
+                      const e = estadoEnviada(n);
+                      return (
+                        <li
+                          key={n.id}
+                          className="flex items-center gap-2 rounded-xl bg-white/[0.06] px-2.5 py-2"
+                        >
+                          <SelloIcono id={n.emoji} size={14} className="shrink-0 text-rose-200" />
+                          <span className="flex-1 text-[11px] text-white/70">
+                            {horaCorta(n.createdAt)}
+                          </span>
+                          <span className={`text-[11px] font-semibold ${e.clase}`}>{e.texto}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPanelNotas(false);
+                    setEscribiendo(true);
+                  }}
+                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-pink-400 to-rose-500 px-4 py-2 text-xs font-bold text-white shadow-lg transition hover:brightness-110"
+                >
+                  <Pencil size={13} /> Escribir una nota
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -1770,56 +1970,6 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
               <Send size={16} />
               {`Que ${nombre} la lleve`}
             </button>
-            {enviadas.length > 0 && (
-              <div className="border-t border-white/15 pt-2.5">
-                <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white/55">
-                  Tus notas
-                </p>
-                <ul className="space-y-1">
-                  {enviadas.slice(0, 3).map((n) => (
-                    <li key={n.id} className="flex items-center justify-between gap-2 text-xs">
-                      <span className="text-white/70">
-                        {(() => {
-                          const S = sello(n.emoji).Icono;
-                          return (
-                            <S
-                              size={12}
-                              className="mr-1 inline align-[-2px] text-rose-200"
-                              aria-hidden="true"
-                            />
-                          );
-                        })()}
-                        {new Date(n.createdAt).toLocaleString("es-ES", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                      <span
-                        className={`font-semibold ${
-                          n.leidaAt
-                            ? "text-pink-200"
-                            : n.entregadaAt
-                              ? "text-sky-200"
-                              : "text-white/60"
-                        }`}
-                      >
-                        {n.pendiente === "error"
-                          ? "Sin conexión, reintentando…"
-                          : n.pendiente
-                            ? "Enviando…"
-                            : n.leidaAt
-                              ? "Leída"
-                              : n.entregadaAt
-                                ? "Entregada ✓✓"
-                                : "Enviada ✓"}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </form>
         </div>
       )}
@@ -2101,6 +2251,16 @@ const CSS = `
   transform-origin: 50% 100%;
 }
 .mg-nota-aviso { animation: mg-carta-aviso 0.6s cubic-bezier(.2,.9,.3,1.2) both; transform-origin: 50% 100%; }
+.mg-aviso-nota { animation: mg-aviso-entra 0.45s cubic-bezier(.2,.9,.3,1.2) both; transform-origin: 100% 50%; }
+.mg-aviso-punto { width: 8px; height: 8px; border-radius: 999px; flex-shrink: 0; background: #fb7185; box-shadow: 0 0 0 3px rgba(251,113,133,0.25); }
+.mg-aviso-nota.envio .mg-aviso-punto { background: #f9a8d4; animation: mg-parpadeo 1s ease-in-out infinite; }
+.mg-aviso-nota.ok .mg-aviso-punto { background: #7dd3fc; box-shadow: 0 0 0 3px rgba(125,211,252,0.25); }
+.mg-aviso-nota.leida .mg-aviso-punto { background: #f0abfc; box-shadow: 0 0 0 3px rgba(240,171,252,0.3); }
+.mg-aviso-nota.error .mg-aviso-punto { background: #fcd34d; box-shadow: 0 0 0 3px rgba(252,211,77,0.25); }
+@keyframes mg-aviso-entra {
+  0% { opacity: 0; transform: translateX(14px) scale(0.85); }
+  100% { opacity: 1; transform: none; }
+}
 .mg-nota-badge { animation: mg-latido-badge 1.6s ease-in-out infinite; box-shadow: 0 0 0 2px rgba(15,19,40,0.6); }
 @keyframes mg-latido-badge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
 .mg-nota-flota { animation: mg-nota-flota 3.2s cubic-bezier(.45,.05,.55,.95) 0.6s infinite; }
