@@ -324,7 +324,7 @@ export const enviarNota = createServerFn({ method: "POST" })
       const { sendPushToAll } = await import("./push.server");
       const { sent } = await sendPushToAll(
         {
-          title: `${data.emoji || "🐶"} Snoopy te trae una nota`,
+          title: "🐶 Snoopy te trae una nota",
           body: "Ábrela y léela antes de que se borre 💌",
           url: `/mascota?nota=${nota.id}`,
           tag: `nota-${nota.id}`,
@@ -369,7 +369,7 @@ export const borrarNotas = createServerFn({ method: "POST" })
             sendPushToAll(
               {
                 title: "💜 Leyó tu nota",
-                body: `Snoopy entregó tu nota ${n.emoji ?? "💌"} y ya la leyeron.`,
+                body: "Snoopy entregó tu nota y ya la leyeron.",
                 url: "/mascota",
                 tag: `leida-${n.id}`,
               },

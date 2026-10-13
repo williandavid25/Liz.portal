@@ -48,6 +48,17 @@ import { NOTA_MAX, guardarEstadoMascota, type NotaSnoopy } from "@/lib/cloud";
 import { getDeviceId } from "@/lib/dispositivo";
 import { SNOOPY_CSS, SnoopyVivo, imgPose, type Pose } from "@/components/SnoopyVivo";
 import { WeatherPanel } from "@/components/WeatherPanel";
+import {
+  EFECTOS_CSS,
+  EfectosDefs,
+  ParticulaVisual,
+  SELLOS,
+  SELLO_INICIAL,
+  sello,
+  sinEmojis,
+  type Efecto,
+  type Particula,
+} from "@/components/Efectos";
 
 // Mascota virtual tipo Tamagotchi. Snoopy vive "dentro" del fondo: se ubica en
 // coordenadas de la imagen (sobre la cama o el pasto), así siempre toca el piso
@@ -69,16 +80,6 @@ interface Accion {
   dur: number;
   /** Desplazamiento de toda la mascota (al salir o volver del paseo). */
   mover?: "irse" | "llegar";
-}
-
-interface Particula {
-  id: number;
-  emoji: string;
-  x: number;
-  delay: number;
-  size: number;
-  dx: number;
-  rot: number;
 }
 
 interface Guardado {
@@ -193,7 +194,7 @@ const ACCIONES: Record<
     anim: Anim;
     dur: number;
     delta: Partial<Stats>;
-    particulas: string[];
+    particulas: Efecto[];
     frases: string[];
     sonido: Sonido;
   }
@@ -203,7 +204,7 @@ const ACCIONES: Record<
     anim: "bounce",
     dur: 2600,
     delta: { hambre: 5 },
-    particulas: ["🍖", "🦴", "✨", "⭐", "🍗"],
+    particulas: ["hueso", "hueso", "destello", "corazon"],
     frases: ["¡Qué rico! 😋", "¡Ñam, ñam! 🍖", "¡Mi favorito! 🦴"],
     sonido: "comer",
   },
@@ -212,7 +213,7 @@ const ACCIONES: Record<
     anim: "wiggle",
     dur: 2800,
     delta: { higiene: 5 },
-    particulas: ["💧", "🫧", "💦"],
+    particulas: ["burbuja", "burbuja", "gota", "gota", "destello"],
     frases: ["¡Splash! 💦", "¡Burbujas! 🫧", "¡Quedé brillante! ✨"],
     sonido: "banar",
   },
@@ -228,8 +229,6 @@ const ANIM_CLASE: Record<Anim, string> = {
   tilt: "mg-tilt",
   entregar: "mg-entregar",
 };
-
-const EMOJIS_NOTA = ["💌", "💛", "🌙", "🌻", "🐶", "✨"] as const;
 
 const FRASES_CARICIA = ["¡Jiji! 💛", "¡Me haces cosquillas!", "¡Te quiero! ❤️", "¡Otra vez! 🐾"];
 const FRASES_TRISTE: Record<StatKey, string> = {
@@ -289,7 +288,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
   const [notaAbierta, setNotaAbierta] = useState<NotaSnoopy | null>(null);
   const [escribiendo, setEscribiendo] = useState(false);
   const [textoNota, setTextoNota] = useState("");
-  const [emojiNota, setEmojiNota] = useState<string>(EMOJIS_NOTA[0]);
+  const [emojiNota, setEmojiNota] = useState<string>(SELLO_INICIAL);
   const [enviandoNota, setEnviandoNota] = useState(false);
   const [notaLlena, setNotaLlena] = useState(false);
   const [sobreVolando, setSobreVolando] = useState(0);
@@ -357,7 +356,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
   const decir = useCallback(
     (texto: string, ms = 2400) => {
       const id = ++idRef.current;
-      setToast({ id, texto });
+      setToast({ id, texto: sinEmojis(texto) });
       programar(() => setToast((t) => (t?.id === id ? null : t)), ms);
     },
     [programar],
@@ -368,16 +367,21 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
   }, []);
 
   const lanzar = useCallback(
-    (emojis: readonly string[], n = 10) => {
-      const nuevas: Particula[] = Array.from({ length: n }, () => ({
-        id: ++idRef.current,
-        emoji: elegir(emojis),
-        x: 14 + Math.random() * 72,
-        delay: Math.random() * 0.55,
-        size: 18 + Math.random() * 14,
-        dx: (Math.random() - 0.5) * 70,
-        rot: (Math.random() - 0.5) * 60,
-      }));
+    (tipos: readonly Efecto[], n = 10) => {
+      const nuevas: Particula[] = Array.from({ length: n }, () => {
+        const tipo = elegir(tipos);
+        const base = tipo === "destello" ? 16 : tipo === "confeti" ? 10 : tipo === "gota" ? 14 : 24;
+        return {
+          id: ++idRef.current,
+          tipo,
+          x: 14 + Math.random() * 72,
+          delay: Math.random() * 0.55,
+          size: base + Math.random() * (base * 0.6),
+          dx: (Math.random() - 0.5) * 80,
+          rot: (Math.random() - 0.5) * 70,
+          hue: Math.round(Math.random() * 360),
+        };
+      });
       setParticulas((p) => [...p, ...nuevas]);
       const ids = new Set(nuevas.map((p) => p.id));
       programar(() => setParticulas((p) => p.filter((q) => !ids.has(q.id))), 3200);
@@ -825,7 +829,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     const id = window.setInterval(() => {
       statUpdatedAtRef.current.energia = Date.now();
       setStats((s) => (s.energia >= 100 ? s : { ...s, energia: clamp(s.energia + 1) }));
-      lanzar(["💤", "z", "Z"], 2);
+      lanzar(["zzz"], 2);
     }, RECOVERY_STEP_MS);
     return () => window.clearInterval(id);
   }, [dormido, lanzar]);
@@ -838,7 +842,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     }
     if (!avisoDescansado.current) {
       avisoDescansado.current = true;
-      decir("Ya descansé ☀️ Enciende la luz cuando quieras", 3200);
+      decir("Ya descansé. Enciende la luz cuando quieras", 3200);
     }
   }, [listo, dormido, stats.energia, decir]);
 
@@ -858,7 +862,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
   useEffect(() => {
     if (!celebrando) return;
     sonar("logro");
-    lanzar(["🎉", "✨", "⭐", "💛", celebrando.emoji], 14);
+    lanzar(["confeti", "confeti", "destello", "corazon"], 18);
     const t = window.setTimeout(() => setCola((c) => c.slice(1)), 5200);
     return () => window.clearTimeout(t);
   }, [celebrando, sonar, lanzar]);
@@ -900,7 +904,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     if (leida) {
       decir("¡Leyó tu nota! 💜", 3600);
       sonar("logro");
-      lanzar(["💜", "💌", "✨"], 9);
+      lanzar(["corazon", "destello"], 10);
     } else if (entregada) {
       decir("Tu nota ya llegó a su celular 📬", 3200);
       sonar("caricia");
@@ -922,7 +926,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
       4200,
     );
     sonar("logro");
-    lanzar(["💌", "✨", "💛"], 8);
+    lanzar(["sobre", "destello", "corazon"], 9);
   }, [listo, notas, decir, sonar, lanzar]);
 
   const leerNota = useCallback(
@@ -950,7 +954,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     if (!notaAbierta) return;
     setNotaAbierta(null);
     void cerrarNota(notaAbierta.id);
-    lanzar(["🍃", "✨", "💛"], 7);
+    lanzar(["hoja", "destello"], 8);
     decir("Nota leída… y se fue con el viento 🍃", 2800);
     if (notaInicial) void navigate({ to: "/mascota", search: {}, replace: true });
   }, [notaAbierta, notaInicial, navigate, lanzar, decir]);
@@ -1031,7 +1035,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
       recuperarGradual({ felicidad: 20 });
       sonar("pasear");
       decir(alPatio ? "¡Vamos al patio! 🌳" : "¡De vuelta a casa! 🏠", 1700);
-      lanzar(alPatio ? ["🌳", "🌸", "🦋", "🍃", "☀️"] : ["🏠", "💛", "✨", "🌙"]);
+      lanzar(alPatio ? ["hoja", "hoja", "destello"] : ["corazon", "destello"]);
       // El fondo cambia a mitad de camino, mientras va caminando.
       programar(() => accionRef.current === id && setEscena(destino), dur * 0.35);
       programar(() => {
@@ -1073,7 +1077,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     setTristeAtendida(true);
     recuperarGradual({ felicidad: CARICIA_FELICIDAD });
     registrar("caricias");
-    lanzar(["💛", "❤️", "💕", "✨"], 6);
+    lanzar(["corazon", "corazon", "destello"], 9);
     // Dormido recibe el cariño sin despertarse.
     if (dormido) return decir("Zzz… 💛", 1600);
     setToques((t) => t + 1);
@@ -1116,7 +1120,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     setSobreVolando(vuelo);
     programar(() => setSobreVolando((v) => (v === vuelo ? 0 : v)), 1700);
     sonar("pasear");
-    lanzar([emojiNota, "✨", "💛"], 8);
+    lanzar(["sobre", "corazon", "destello"], 9);
     decir(
       r.avisos > 0
         ? "¡Ya se la llevé! Le llegó el aviso 💌"
@@ -1194,10 +1198,10 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     ? oido === "hablando"
       ? textoOido
         ? `«${textoOido}»`
-        : "🎵 ¡Te lo repito!"
+        : "¡Te lo repito!"
       : oido === "oyendo"
-        ? "👂 …"
-        : "Te escucho… 👂"
+        ? "…"
+        : "Te escucho…"
     : null;
 
   const botones: Array<{
@@ -1234,7 +1238,8 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
       onPointerMove={mirar}
       onPointerLeave={soltarMirada}
     >
-      <style>{CSS + SNOOPY_CSS}</style>
+      <style>{CSS + SNOOPY_CSS + EFECTOS_CSS}</style>
+      <EfectosDefs />
       {/* Columna derecha: el clima y, justo debajo, el botón de notas. */}
       <div
         className={`mg-contenido absolute right-4 top-[calc(env(safe-area-inset-top)+260px)] z-10 flex flex-col items-end gap-3 sm:right-6 sm:top-[calc(env(safe-area-inset-top)+286px)] ${
@@ -1406,9 +1411,12 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
                 className="block aspect-[3/2] w-full object-cover"
               />
             </span>
-            <span className="absolute -right-2 -top-2 grid h-6 min-w-6 place-items-center rounded-full bg-rose-500 px-1.5 text-xs font-bold text-white shadow-lg">
-              {notas[0]!.emoji || "💌"}
-              {notas.length > 1 ? ` ${notas.length}` : ""}
+            <span className="absolute -right-2 -top-2 flex h-6 min-w-6 items-center justify-center gap-0.5 rounded-full bg-rose-500 px-1.5 text-xs font-bold text-white shadow-lg">
+              {(() => {
+                const S = sello(notas[0]!.emoji).Icono;
+                return <S size={13} strokeWidth={2.4} aria-hidden="true" />;
+              })()}
+              {notas.length > 1 ? notas.length : ""}
             </span>
           </button>
         )}
@@ -1444,21 +1452,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
         >
           <div className="mg-ancla absolute aspect-square" style={anclaEstilo(ancla)}>
             {particulas.map((p) => (
-              <span
-                key={p.id}
-                className="mg-particula absolute bottom-[45%] font-bold"
-                style={
-                  {
-                    left: `${p.x}%`,
-                    fontSize: p.size,
-                    animationDelay: `${p.delay}s`,
-                    "--dx": `${p.dx}px`,
-                    "--rot": `${p.rot}deg`,
-                  } as CSSProperties
-                }
-              >
-                {p.emoji}
-              </span>
+              <ParticulaVisual key={p.id} p={p} />
             ))}
             <div className="absolute inset-x-[-60%] bottom-[96%] flex justify-center">
               {globo ? (
@@ -1702,6 +1696,14 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
             </p>
             {/* Post-it morado: solo se escribe lo que cabe dentro del cuadro. */}
             <div className="mg-postit mx-auto">
+              {(() => {
+                const S = sello(emojiNota).Icono;
+                return (
+                  <span key={emojiNota} className="mg-postit-sello" aria-hidden="true">
+                    <S strokeWidth={2.2} />
+                  </span>
+                );
+              })()}
               <textarea
                 autoFocus
                 value={textoNota}
@@ -1729,18 +1731,23 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
                 role="radiogroup"
                 aria-label="Sello de la nota"
               >
-                {EMOJIS_NOTA.map((em) => (
+                {Object.entries(SELLOS).map(([id, { nombre: nombreSello, Icono }]) => (
                   <button
-                    key={em}
+                    key={id}
                     type="button"
                     role="radio"
-                    aria-checked={emojiNota === em}
-                    onClick={() => setEmojiNota(em)}
-                    className={`grid h-8 w-8 place-items-center rounded-full text-base transition ${
-                      emojiNota === em ? "bg-white/30 ring-2 ring-pink-200" : "hover:bg-white/15"
+                    aria-checked={emojiNota === id}
+                    aria-label={`Sello: ${nombreSello}`}
+                    title={nombreSello}
+                    onClick={() => {
+                      setEmojiNota(id);
+                      sonar("caricia");
+                    }}
+                    className={`mg-sello-opcion grid h-9 w-9 place-items-center rounded-full ${
+                      emojiNota === id ? "activo" : ""
                     }`}
                   >
-                    {em}
+                    <Icono size={17} strokeWidth={2.2} aria-hidden="true" />
                   </button>
                 ))}
               </div>
@@ -1748,7 +1755,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
                 className="shrink-0 whitespace-nowrap text-[11px] font-semibold text-pink-200"
                 aria-live="polite"
               >
-                {notaLlena ? "Nota llena ✍️" : ""}
+                {notaLlena ? "Nota llena" : ""}
               </span>
             </div>
             <button
@@ -1768,7 +1775,16 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
                   {enviadas.slice(0, 3).map((n) => (
                     <li key={n.id} className="flex items-center justify-between gap-2 text-xs">
                       <span className="text-white/70">
-                        {n.emoji || "💌"}{" "}
+                        {(() => {
+                          const S = sello(n.emoji).Icono;
+                          return (
+                            <S
+                              size={12}
+                              className="mr-1 inline align-[-2px] text-rose-200"
+                              aria-hidden="true"
+                            />
+                          );
+                        })()}
                         {new Date(n.createdAt).toLocaleString("es-ES", {
                           day: "numeric",
                           month: "short",
@@ -1785,7 +1801,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
                               : "text-white/60"
                         }`}
                       >
-                        {n.leidaAt ? "Leída 💜" : n.entregadaAt ? "Entregada ✓✓" : "Enviada ✓"}
+                        {n.leidaAt ? "Leída" : n.entregadaAt ? "Entregada ✓✓" : "Enviada ✓"}
                       </span>
                     </li>
                   ))}
@@ -1813,9 +1829,14 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
               {nombre} te trajo esta nota
             </p>
             <div className="mg-postit mx-auto">
-              <span className="mg-postit-sello" aria-hidden="true">
-                {notaAbierta.emoji || "💌"}
-              </span>
+              {(() => {
+                const S = sello(notaAbierta.emoji).Icono;
+                return (
+                  <span className="mg-postit-sello" aria-hidden="true">
+                    <S strokeWidth={2.2} />
+                  </span>
+                );
+              })()}
               <p className="mg-postit-texto">{notaAbierta.texto}</p>
             </div>
             <p className="mt-3 text-center text-[11px] text-white/60">
@@ -2061,7 +2082,6 @@ const CSS = `
 .mg-llegar { animation: mg-llegar 1.9s cubic-bezier(.22,1,.36,1) both; }
 
 /* Partículas y mensajes */
-.mg-particula { opacity: 0; animation: mg-goUp 2.6s ease-out both; text-shadow: 0 2px 6px rgba(0,0,0,0.3); }
 .mg-toast { animation: mg-toast 0.35s cubic-bezier(.2,.9,.3,1.3) both; }
 .mg-globo { animation: mg-popIn 0.35s ease both; }
 .mg-carta-aviso {
@@ -2074,25 +2094,27 @@ const CSS = `
 .mg-nota-flota { animation: mg-nota-flota 3.2s cubic-bezier(.45,.05,.55,.95) 0.6s infinite; }
 .mg-sobre-vuela { translate: -50% 0; animation: mg-sobre-vuela 1.6s cubic-bezier(.5,0,.75,0) both; }
 .mg-nota-abre { animation: mg-nota-abre 0.5s cubic-bezier(.22,1,.36,1) both; }
-/* Post-it morado translúcido. Todo se mide en cqw (ancho del cuadro): la letra
-   y el margen (~0,5 cm) quedan iguales en cualquier celular, así lo que cupo
-   al escribir cabe exacto al leer. */
+/* Post-it rojo translúcido, como vidrio teñido. Todo se mide en cqw (ancho del
+   cuadro): la letra y el margen (~0,5 cm) quedan iguales en cualquier celular,
+   así lo que cupo al escribir cabe exacto al leer. */
 .mg-postit {
   position: relative;
   container-type: inline-size;
   width: min(78vw, 300px);
   aspect-ratio: 1;
-  border-radius: 2px;
+  border-radius: 3px;
   background:
-    linear-gradient(to bottom, rgba(233,222,255,0.2) 0 12.5%, rgba(233,222,255,0) 13.5%),
-    linear-gradient(155deg, rgba(167,139,250,0.62), rgba(124,58,237,0.5) 70%, rgba(109,40,217,0.55));
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(221,214,254,0.35);
+    linear-gradient(to bottom, rgba(255,228,230,0.22) 0 12.5%, rgba(255,228,230,0) 13.5%),
+    radial-gradient(120% 90% at 18% 0%, rgba(255,255,255,0.16), rgba(255,255,255,0) 55%),
+    linear-gradient(155deg, rgba(251,113,133,0.62), rgba(225,29,72,0.52) 62%, rgba(159,18,57,0.6));
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  backdrop-filter: blur(12px) saturate(1.3);
+  border: 1px solid rgba(255,205,210,0.4);
   box-shadow:
-    0 22px 34px -14px rgba(25,8,55,0.75),
-    0 2px 6px rgba(25,8,55,0.3),
-    inset 0 1px 0 rgba(255,255,255,0.3);
+    0 24px 36px -16px rgba(60,5,20,0.8),
+    0 2px 6px rgba(60,5,20,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.35),
+    inset 0 -18px 30px -18px rgba(80,0,20,0.45);
   rotate: -1.2deg;
 }
 .mg-postit-texto {
@@ -2109,11 +2131,35 @@ const CSS = `
 }
 .mg-postit-texto::placeholder { color: rgba(255,255,255,0.6); }
 p.mg-postit-texto { overflow-y: auto; }
+/* Sello de cera rojo con el ícono elegido. */
 .mg-postit-sello {
   position: absolute; left: 50%; top: 0; translate: -50% -55%; z-index: 1;
-  display: grid; place-items: center; width: 12cqw; height: 12cqw;
-  border-radius: 999px; font-size: 6.5cqw;
-  background: rgba(244,63,94,0.92); box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+  display: grid; place-items: center; width: 13cqw; height: 13cqw;
+  border-radius: 999px; color: #fff1f2;
+  background: radial-gradient(circle at 35% 30%, #fb7185, #e11d48 55%, #9f1239);
+  box-shadow: 0 6px 14px rgba(60,5,20,0.45), inset 0 1px 1px rgba(255,255,255,0.45), inset 0 -2px 3px rgba(80,0,20,0.5);
+  animation: mg-sello-pone 0.45s cubic-bezier(.2,.9,.3,1.3) both;
+}
+.mg-postit-sello > svg { width: 55%; height: 55%; filter: drop-shadow(0 1px 1px rgba(80,0,20,0.5)); }
+@keyframes mg-sello-pone {
+  0% { opacity: 0; transform: scale(1.8) rotate(-25deg); }
+  60% { opacity: 1; transform: scale(0.92) rotate(4deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+.mg-sello-opcion {
+  color: rgba(255,255,255,0.75);
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  transition: transform 0.2s cubic-bezier(.2,.9,.3,1.3), background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+.mg-sello-opcion:hover { background: rgba(255,255,255,0.14); color: #fff; }
+.mg-sello-opcion:active { transform: scale(0.9); }
+.mg-sello-opcion.activo {
+  color: #fff;
+  background: radial-gradient(circle at 35% 30%, #fb7185, #e11d48 60%, #9f1239);
+  border-color: rgba(255,205,210,0.7);
+  box-shadow: 0 4px 12px rgba(225,29,72,0.5);
+  transform: scale(1.08);
 }
 
 /* Barras */
@@ -2284,11 +2330,6 @@ p.mg-postit-texto { overflow-y: auto; }
 @keyframes mg-nota-abre {
   0% { opacity: 0; transform: translateY(24px) rotate(-4deg) scale(0.9); }
   100% { opacity: 1; transform: none; }
-}
-@keyframes mg-goUp {
-  0% { transform: translate(0, 0) scale(0.6) rotate(0); opacity: 0; }
-  15% { transform: translate(0, -14px) scale(1) rotate(0); opacity: 1; }
-  100% { transform: translate(var(--dx), -130px) scale(0.9) rotate(var(--rot)); opacity: 0; }
 }
 @keyframes mg-popIn {
   0% { transform: scale(0.8); opacity: 0; }

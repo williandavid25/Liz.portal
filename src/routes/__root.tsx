@@ -20,7 +20,7 @@ import { DismissLayer } from "../components/DismissLayer";
 import { Splash } from "../components/Splash";
 import { useAjustes, setAjustes, hydrateAjustes } from "../lib/ajustes";
 import { useNotasRecibidas } from "../lib/notas-client";
-import { refreshPushIfGranted } from "../lib/push-client";
+import { enablePush, refreshPushIfGranted } from "../lib/push-client";
 import { PORTADAS } from "../lib/portadas";
 import {
   loadStoreShared,
@@ -262,6 +262,20 @@ function AppShell() {
       const timeoutId = window.setTimeout(register, 1000);
       return () => window.clearTimeout(timeoutId);
     }
+  }, []);
+
+  // Avisos automáticos: con la app instalada, al primer toque en cualquier
+  // parte se piden los permisos y el celular queda anotado para recibir
+  // cartas, notas y avisos de Snoopy con la app cerrada. (Los navegadores,
+  // sobre todo iPhone, solo permiten pedirlo justo después de un toque.)
+  useEffect(() => {
+    if (typeof Notification === "undefined" || Notification.permission !== "default") return;
+    const activar = () => {
+      window.removeEventListener("click", activar, true);
+      if (Notification.permission === "default") void enablePush();
+    };
+    window.addEventListener("click", activar, true);
+    return () => window.removeEventListener("click", activar, true);
   }, []);
 
   // Al cambiar de página se cierra cualquier panel que haya quedado abierto.
