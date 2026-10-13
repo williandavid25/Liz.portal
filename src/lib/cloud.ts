@@ -318,7 +318,7 @@ export const enviarNota = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
-      const { insertNota } = await import("./cloud.server");
+      const { insertNota, reintentar } = await import("./cloud.server");
       const nota: NotaSnoopy = {
         id: data.id ?? `${Date.now()}-${Math.round(Math.random() * 1e9)}`,
         de: data.de,
@@ -326,7 +326,7 @@ export const enviarNota = createServerFn({ method: "POST" })
         emoji: data.emoji,
         createdAt: Date.now(),
       };
-      await insertNota(nota);
+      await reintentar(() => insertNota(nota));
       // El contenido no va en el aviso: se lee solo dentro de la app, y luego se borra.
       const { sendPushToAll } = await import("./push.server");
       const { sent } = await sendPushToAll(
@@ -350,8 +350,10 @@ export const listarNotas = createServerFn({ method: "GET" })
   .validator((device: string) => deviceSchema.parse(device))
   .handler(async ({ data }) => {
     try {
-      const { listNotasPara, listNotasEnviadas } = await import("./cloud.server");
-      const [notas, enviadas] = await Promise.all([listNotasPara(data), listNotasEnviadas(data)]);
+      const { listNotasPara, listNotasEnviadas, reintentar } = await import("./cloud.server");
+      // En serie: con una sola conexión, en paralelo solo se haría cola.
+      const notas = await reintentar(() => listNotasPara(data));
+      const enviadas = await reintentar(() => listNotasEnviadas(data));
       return { ok: true, notas: notas as NotaSnoopy[], enviadas: enviadas as NotaEnviada[] };
     } catch (e) {
       console.error("No se pudieron leer las notas:", e);
@@ -367,8 +369,8 @@ export const borrarNotas = createServerFn({ method: "POST" })
   .validator((ids: string[]) => z.array(z.string().min(1).max(200)).max(50).parse(ids))
   .handler(async ({ data }) => {
     try {
-      const { marcarNotasLeidas } = await import("./cloud.server");
-      const leidas = await marcarNotasLeidas(data);
+      const { marcarNotasLeidas, reintentar } = await import("./cloud.server");
+      const leidas = await reintentar(() => marcarNotasLeidas(data));
       if (leidas.length > 0) {
         const { sendPushToAll } = await import("./push.server");
         await Promise.all(

@@ -46,18 +46,70 @@ function getDbUrl(): string {
 }
 
 let sql: ReturnType<typeof postgres> | null = null;
+// En Vercel la función se "congela" entre una petición y otra. La conexión
+// abierta queda muerta del otro lado y la siguiente consulta esperaba para
+// siempre (por eso las notas se quedaban "reintentando"). Dos defensas:
+// 1. Si la conexión lleva un rato sin usarse, se descarta y se abre otra.
+// 2. Ninguna consulta espera más de LIMITE_CONSULTA_MS: se corta, se cierra la
+//    conexión y la siguiente usa una nueva.
+const LIMITE_CONSULTA_MS = 7_000;
+const CONEXION_VIEJA_MS = 8_000;
+let ultimoUso = 0;
+let sqlSeguro: ReturnType<typeof postgres> | null = null;
+
+function conLimite(base: ReturnType<typeof postgres>): ReturnType<typeof postgres> {
+  const limitar = <T>(q: PromiseLike<T> & { cancel?: () => void }): Promise<T> => {
+    let reloj: ReturnType<typeof setTimeout> | undefined;
+    const limite = new Promise<never>((_, rechazar) => {
+      reloj = setTimeout(() => {
+        try {
+          q.cancel?.();
+        } catch {
+          /* ya terminó */
+        }
+        if (sql === base) void resetDb();
+        rechazar(new Error("La base de datos no respondió a tiempo."));
+      }, LIMITE_CONSULTA_MS);
+    });
+    return Promise.race([Promise.resolve(q), limite]).finally(() => clearTimeout(reloj));
+  };
+  const envuelto = ((primero: unknown, ...resto: unknown[]) => {
+    const r = (base as unknown as (...a: unknown[]) => unknown)(primero, ...resto);
+    // Solo las consultas (plantillas `...`) llevan límite; `sql(ids)` o
+    // `sql.json(x)` son fragmentos y pasan igual.
+    const esConsulta = Array.isArray(primero) && "raw" in (primero as object);
+    return esConsulta ? limitar(r as PromiseLike<unknown>) : r;
+  }) as unknown as ReturnType<typeof postgres>;
+  return Object.assign(envuelto, {
+    json: base.json.bind(base),
+    end: base.end.bind(base),
+    unsafe: (...a: Parameters<typeof base.unsafe>) => limitar(base.unsafe(...a)),
+  }) as ReturnType<typeof postgres>;
+}
+
 export function db() {
-  if (!sql) {
+  const ahora = Date.now();
+  if (sql && ahora - ultimoUso > CONEXION_VIEJA_MS) {
+    // Probablemente estuvo congelada: no se reutiliza.
+    const vieja = sql;
+    sql = null;
+    sqlSeguro = null;
+    void vieja.end({ timeout: 0 }).catch(() => {});
+  }
+  ultimoUso = ahora;
+  if (!sql || !sqlSeguro) {
     const url = getDbUrl();
     sql = postgres(url, {
       ssl: "require",
       max: 1,
-      idle_timeout: 20,
-      connect_timeout: 10,
+      idle_timeout: 5,
+      max_lifetime: 60,
+      connect_timeout: 6,
       prepare: false, // Requerido para Supabase Transaction Pooler (puerto 6543)
     });
+    sqlSeguro = conLimite(sql);
   }
-  return sql;
+  return sqlSeguro;
 }
 
 let tableReady = false;
@@ -143,18 +195,26 @@ async function ensureNotasTable() {
 const LEIDA_VIDA_MS = 24 * 60 * 60 * 1000;
 
 export async function resetDb() {
-  if (sql) {
-    try {
-      await sql.end({ timeout: 1 }).catch(() => {});
-    } catch {
-      /* la conexión ya estaba cerrada */
-    }
-  }
+  // Se suelta la conexión al instante: la siguiente consulta usa una nueva.
+  const vieja = sql;
   sql = null;
+  sqlSeguro = null;
   tableReady = false;
   filesTableReady = false;
   subsTableReady = false;
   notasTableReady = false;
+  if (vieja) await vieja.end({ timeout: 0 }).catch(() => {});
+}
+
+/** Repite una vez con conexión nueva si la primera vez la base no respondió. */
+export async function reintentar<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    console.warn("Reintentando con conexión nueva:", e instanceof Error ? e.message : e);
+    await resetDb();
+    return await fn();
+  }
 }
 
 const EMPTY: CloudStore = { cartas: [], fotos: [], eventos: [] };

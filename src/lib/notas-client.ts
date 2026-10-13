@@ -15,7 +15,7 @@ const LEIDAS_KEY = "liz-notas-leidas";
 // Notas escritas que todavía no llegaron al servidor (sin conexión o lento):
 // se guardan aquí y se reenvían solas, sin duplicarse.
 const COLA_KEY = "liz-notas-por-enviar";
-const LIMITE_ENVIO_MS = 12_000;
+const LIMITE_ENVIO_MS = 20_000;
 const REINTENTO_MS = 8_000;
 const VACIO: NotaSnoopy[] = [];
 const SIN_ENVIADAS: NotaEnviada[] = [];

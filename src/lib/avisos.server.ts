@@ -1,4 +1,4 @@
-import { db } from "./cloud.server";
+import { db, reintentar } from "./cloud.server";
 
 // Todo lo necesario para que los avisos lleguen con la app CERRADA:
 //
@@ -73,7 +73,7 @@ export async function getVapidKeys(): Promise<VapidKeys | null> {
     }
   }
   try {
-    const saved = await getConfig("vapid");
+    const saved = await reintentar(() => getConfig("vapid"));
     if (saved) return (vapidCache = JSON.parse(saved) as VapidKeys);
     const pair = (await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
       "sign",
