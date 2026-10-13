@@ -29,6 +29,7 @@ export const Route = createFileRoute("/calendario")({
 });
 
 const EVENTOS_KEY = "birthday-eventos-cloud";
+const SEMBRADO_KEY = "birthday-eventos-sembrados";
 
 // Fechas especiales sembradas la primera vez que alguien abre el calendario, así
 // quedan guardadas en la nube y se ven igual en todos los dispositivos.
@@ -73,9 +74,15 @@ function nextOccurrence(ev: CalendarEvent, from: Date): Date | null {
   if (ev.type === "monthly") {
     const day = Number(ev.date);
     if (!day) return null;
-    let candidate = new Date(today.getFullYear(), today.getMonth(), day);
-    if (candidate < today) candidate = new Date(today.getFullYear(), today.getMonth() + 1, day);
-    return candidate;
+    // Meses sin ese día (31 en abril, 30 en febrero) se saltan: antes
+    // new Date(…, 31) se pasaba al mes siguiente y mostraba otra fecha.
+    for (let k = 0; k < 13; k++) {
+      const diasDelMes = new Date(today.getFullYear(), today.getMonth() + k + 1, 0).getDate();
+      if (day > diasDelMes) continue;
+      const candidate = new Date(today.getFullYear(), today.getMonth() + k, day);
+      if (candidate >= today) return candidate;
+    }
+    return null;
   }
   // yearly: "MM-DD"
   const [mm, dd] = ev.date.split("-").map(Number);
@@ -156,10 +163,9 @@ function CalendarioPage() {
   const persist = async (next: CalendarEvent[]) => {
     setEventos(next);
     localStorage.setItem(EVENTOS_KEY, JSON.stringify(next));
-    try {
-      await saveEventos({ data: next });
-    } catch (e) {
-      console.error("No se pudo guardar en la nube:", e);
+    const r = await saveEventos({ data: next }).catch(() => ({ ok: false }));
+    if (!r.ok) {
+      console.error("No se pudo guardar en la nube; se reintentará.");
       queuePendingEventos(next);
     }
   };
@@ -185,11 +191,19 @@ function CalendarioPage() {
         }
         setCloudOn(true);
         if (s.eventos.length > 0) {
+          localStorage.setItem(SEMBRADO_KEY, "1");
           setEventos(s.eventos);
           localStorage.setItem(EVENTOS_KEY, JSON.stringify(s.eventos));
+        } else if (local.length > 0) {
+          persist(local);
+        } else if (!localStorage.getItem(SEMBRADO_KEY)) {
+          // Primera vez: sembramos las fechas especiales para que se vean en
+          // todos los dispositivos. Solo una vez: si luego se borran todas,
+          // no deben volver a aparecer.
+          localStorage.setItem(SEMBRADO_KEY, "1");
+          persist(SEED_EVENTS);
         } else {
-          // Primera vez: sembramos las fechas especiales para que se vean en todos los dispositivos.
-          persist(local.length > 0 ? local : SEED_EVENTS);
+          setEventos([]);
         }
       })
       .catch(() => {
@@ -335,6 +349,7 @@ function CalendarioPage() {
                     <input
                       value={form.title}
                       onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                      maxLength={300}
                       placeholder="Título (ej. Aniversario)"
                       className="w-full bg-white/70 text-popover-foreground rounded-full px-4 py-2 text-sm outline-none border border-primary/20 focus:border-primary"
                     />
@@ -377,6 +392,7 @@ function CalendarioPage() {
                     <input
                       value={form.note}
                       onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+                      maxLength={2000}
                       placeholder="Nota (opcional)"
                       className="w-full bg-white/70 text-popover-foreground rounded-full px-4 py-2 text-sm outline-none border border-primary/20 focus:border-primary"
                     />

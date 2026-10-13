@@ -1,6 +1,6 @@
 // Service worker: permite "instalar" el sitio, abrirlo sin internet una vez
 // visitado, y recibir avisos de cartas nuevas con la app cerrada.
-const CACHE_NAME = "liz-portal-v4";
+const CACHE_NAME = "liz-portal-v5";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -10,7 +10,9 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))),
+      )
       .then(() => self.clients.claim()),
   );
 });
@@ -66,15 +68,26 @@ self.addEventListener("push", (event) => {
     data = { title: "💌 Nueva carta para ti" };
   }
   const title = data.title || "💌 Nueva carta para ti";
+  const url = data.url || "/bienvenida";
+  // Si la app está abierta, que revise las notas de Snoopy al instante.
+  const avisarApp = url.startsWith("/mascota")
+    ? self.clients
+        .matchAll({ type: "window", includeUncontrolled: true })
+        .then((list) => list.forEach((c) => c.postMessage({ tipo: "nota" })))
+    : Promise.resolve();
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body: data.body || "Toca para leerla",
-      tag: data.tag || "carta",
-      icon: "/icons/liz-192.png",
-      badge: "/icons/liz-192.png",
-      vibrate: [120, 60, 120],
-      data: { url: data.url || "/bienvenida" },
-    }),
+    Promise.all([
+      avisarApp,
+      self.registration.showNotification(title, {
+        body: data.body || "Toca para leerla",
+        tag: data.tag || "carta",
+        icon: "/icons/liz-192.png",
+        badge: "/icons/liz-192.png",
+        vibrate: [120, 60, 120],
+        renotify: true,
+        data: { url },
+      }),
+    ]),
   );
 });
 

@@ -246,7 +246,10 @@ export function PortadaVideo({ src, poster }: { src: string; poster?: string }) 
             ref={videoRef}
             src={src}
             poster={poster}
-            crossOrigin="anonymous"
+            // Solo Supabase (que coincide con la precarga): un video propio de
+            // un sitio sin CORS no cargaba nunca. El lienzo solo dibuja, no lee
+            // píxeles, así que no necesita CORS.
+            crossOrigin={src.includes("supabase.co") ? "anonymous" : undefined}
             autoPlay
             muted
             loop

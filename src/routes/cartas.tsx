@@ -32,7 +32,9 @@ function Cartas() {
         title: "Feliz Cumpleaños 💗",
         message: "Que este día se llene de flores, luz y sonrisas.\nHoy el universo celebra que existes.\nCon todo mi cariño 🌸",
       }]);
-    } catch {}
+    } catch {
+      /* datos guardados dañados: se empieza de cero */
+    }
     setLoaded(true);
   }, []);
 

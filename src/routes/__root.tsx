@@ -19,6 +19,8 @@ import { FallingStars } from "../components/FallingStars";
 import { DismissLayer } from "../components/DismissLayer";
 import { Splash } from "../components/Splash";
 import { useAjustes, setAjustes, hydrateAjustes } from "../lib/ajustes";
+import { useNotasRecibidas } from "../lib/notas-client";
+import { refreshPushIfGranted } from "../lib/push-client";
 import { PORTADAS } from "../lib/portadas";
 import {
   loadStoreShared,
@@ -236,6 +238,7 @@ function AppShell() {
   const [ytReady, setYtReady] = useState(false);
   const ytContainerRef = useRef<HTMLDivElement>(null);
   const ytPlayerRef = useRef<YTPlayer | null>(null);
+  const notasNuevas = useNotasRecibidas().length;
 
   // Registra el service worker para poder instalar el sitio como app y
   // abrirlo aunque no haya internet (después de haberlo visitado una vez).
@@ -248,6 +251,8 @@ function AppShell() {
         navigator.serviceWorker
           .register("/sw.js", { updateViaCache: "none" })
           .then((reg) => reg.update())
+          // Con permiso ya dado, vuelve a anotar este celular para los avisos.
+          .then(() => refreshPushIfGranted())
           .catch(() => {});
       };
       if (typeof window.requestIdleCallback === "function") {
@@ -680,13 +685,20 @@ function AppShell() {
       <nav className="fixed top-[calc(env(safe-area-inset-top)+17px)] right-4 sm:top-[calc(env(safe-area-inset-top)+27px)] sm:right-7 z-50 flex items-center gap-2 text-[11px] sm:text-xs font-bold">
         <Link
           to="/mascota"
-          className={`flex items-center gap-1.5 rounded-full border px-3 py-2.5 transition-all duration-300 hover:scale-105 ${
+          className={`relative flex items-center gap-1.5 rounded-full border px-3 py-2.5 transition-all duration-300 hover:scale-105 ${
             isHome
               ? "border-white/25 bg-white/5 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] hover:bg-white/15"
               : "border-black/5 bg-white/60 text-popover-foreground/80 hover:bg-white/80 hover:text-popover-foreground"
           }`}
-          aria-label="Ir a Mi mascota"
+          aria-label={
+            notasNuevas > 0 ? "Ir a Mi mascota: tienes una nota nueva" : "Ir a Mi mascota"
+          }
         >
+          {notasNuevas > 0 && (
+            <span className="pointer-events-none absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[9px] font-bold leading-none text-white">
+              {notasNuevas > 9 ? "9+" : notasNuevas}
+            </span>
+          )}
           <img
             src="/mascota/frente.webp"
             alt=""

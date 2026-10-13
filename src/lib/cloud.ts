@@ -157,15 +157,29 @@ export const getPushKey = createServerFn({ method: "GET" }).handler(async () => 
   return { key: process.env["VAPID_PUBLIC_KEY"] ?? null };
 });
 
+const deviceSchema = z.string().min(8).max(100);
+
+// La suscripción completa: sin `keys` el servidor no puede cifrar el aviso.
+// (Antes el esquema solo pedía `endpoint` y zod descartaba las claves, así que
+// los avisos reales nunca llegaban.)
+const pushSubSchema = z.object({
+  endpoint: z.string().url().max(2_000),
+  expirationTime: z.number().nullable().optional(),
+  keys: z.object({ p256dh: z.string().min(1).max(500), auth: z.string().min(1).max(200) }),
+});
+
 /** Guarda la "dirección" de avisos de este celular. */
 export const savePushSubscription = createServerFn({ method: "POST" })
-  .validator((sub: { endpoint: string }) =>
-    z.object({ endpoint: z.string().url().max(2_000) }).parse(sub),
+  .validator((input: { sub: unknown; device?: string }) =>
+    z.object({ sub: pushSubSchema, device: deviceSchema.optional() }).parse(input),
   )
   .handler(async ({ data }) => {
     try {
       const { savePushSub } = await import("./cloud.server");
-      await savePushSub(data);
+      await savePushSub(
+        { ...data.sub, expirationTime: data.sub.expirationTime ?? null },
+        data.device,
+      );
       return { ok: true };
     } catch (e) {
       console.error("No se pudo guardar la suscripción de avisos:", e);
@@ -173,12 +187,98 @@ export const savePushSubscription = createServerFn({ method: "POST" })
     }
   });
 
-/** Guarda la lista de cartas (conserva fotos, eventos y música existentes). */
-export const saveCartas = createServerFn({ method: "POST" })
-  .validator(
-    (cartas: SavedLetter[]) => z.array(letterSchema).max(500).parse(cartas) as SavedLetter[],
+/* ---------------- Notas de Snoopy (temporales) ---------------- */
+
+export interface NotaSnoopy {
+  id: string;
+  de: string;
+  texto: string;
+  emoji?: string;
+  createdAt: number;
+}
+
+export const NOTA_MAX = 500;
+
+/** Snoopy lleva una nota al otro celular (y le manda un aviso). */
+export const enviarNota = createServerFn({ method: "POST" })
+  .validator((input: { de: string; texto: string; emoji?: string }) =>
+    z
+      .object({
+        de: deviceSchema,
+        texto: z.string().trim().min(1).max(NOTA_MAX),
+        emoji: z.string().max(16).optional(),
+      })
+      .parse(input),
   )
   .handler(async ({ data }) => {
+    try {
+      const { insertNota } = await import("./cloud.server");
+      const nota: NotaSnoopy = {
+        id: `${Date.now()}-${Math.round(Math.random() * 1e9)}`,
+        de: data.de,
+        texto: data.texto,
+        emoji: data.emoji,
+        createdAt: Date.now(),
+      };
+      await insertNota(nota);
+      // El contenido no va en el aviso: se lee solo dentro de la app, y luego se borra.
+      const { sendPushToAll } = await import("./push.server");
+      const { sent } = await sendPushToAll(
+        {
+          title: `${data.emoji || "🐶"} Snoopy te trae una nota`,
+          body: "Ábrela y léela antes de que se borre 💌",
+          url: `/mascota?nota=${nota.id}`,
+          tag: `nota-${nota.id}`,
+        },
+        data.de,
+      ).catch(() => ({ sent: 0 }));
+      return { ok: true, avisos: sent };
+    } catch (e) {
+      console.error("No se pudo enviar la nota:", e);
+      return { ok: false, avisos: 0 };
+    }
+  });
+
+/** Notas que le llegaron a este celular y todavía no se leyeron. */
+export const listarNotas = createServerFn({ method: "GET" })
+  .validator((device: string) => deviceSchema.parse(device))
+  .handler(async ({ data }) => {
+    try {
+      const { listNotasPara } = await import("./cloud.server");
+      return { ok: true, notas: (await listNotasPara(data)) as NotaSnoopy[] };
+    } catch (e) {
+      console.error("No se pudieron leer las notas:", e);
+      return { ok: false, notas: [] as NotaSnoopy[] };
+    }
+  });
+
+/** Borra notas ya leídas: son temporales, no quedan guardadas. */
+export const borrarNotas = createServerFn({ method: "POST" })
+  .validator((ids: string[]) => z.array(z.string().min(1).max(200)).max(50).parse(ids))
+  .handler(async ({ data }) => {
+    try {
+      const { deleteNotas } = await import("./cloud.server");
+      await deleteNotas(data);
+      return { ok: true };
+    } catch (e) {
+      console.error("No se pudieron borrar las notas:", e);
+      return { ok: false };
+    }
+  });
+
+/**
+ * Guarda la lista de cartas (conserva fotos, eventos y música existentes).
+ * Acepta la lista sola o `{ cartas, de }` para no avisarle a quien la escribió.
+ */
+export const saveCartas = createServerFn({ method: "POST" })
+  .validator((input: SavedLetter[] | { cartas: SavedLetter[]; de?: string }) => {
+    const cartas = z.array(letterSchema).max(500);
+    const parsed = Array.isArray(input)
+      ? { cartas: cartas.parse(input) }
+      : z.object({ cartas, de: deviceSchema.optional() }).parse(input);
+    return parsed as { cartas: SavedLetter[]; de?: string };
+  })
+  .handler(async ({ data: { cartas: data, de } }) => {
     const { patchStore } = await import("./cloud.server");
     try {
       const { cartas: previas } = await patchStore({ cartas: data });
@@ -188,12 +288,15 @@ export const saveCartas = createServerFn({ method: "POST" })
       if (nuevas.length > 0) {
         const { sendPushToAll } = await import("./push.server");
         const carta = nuevas[nuevas.length - 1]!;
-        await sendPushToAll({
-          title: "💌 Nueva carta para ti",
-          body: carta.title || "Alguien te escribió una carta",
-          url: `/bienvenida?open=${carta.id}`,
-          tag: carta.id,
-        });
+        await sendPushToAll(
+          {
+            title: "💌 Nueva carta para ti",
+            body: carta.title || "Alguien te escribió una carta",
+            url: `/bienvenida?open=${carta.id}`,
+            tag: carta.id,
+          },
+          de,
+        ).catch((e) => console.error("No se pudo avisar de la carta nueva:", e));
       }
       return { ok: true };
     } catch (e) {

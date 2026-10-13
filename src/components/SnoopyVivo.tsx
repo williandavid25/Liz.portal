@@ -327,6 +327,8 @@ export function SnoopyVivo({
           )}
           {/* Brillo que se mueve con el giro: da volumen. */}
           <span className="sv-brillo" style={mascara} />
+          {/* Luz del ambiente (noche lila o sol del patio): lo integra a la escena. */}
+          <span className="sv-ambiente" style={mascara} />
         </div>
       </div>
     </div>
@@ -336,22 +338,20 @@ export function SnoopyVivo({
 export const SNOOPY_CSS = `
 .sv-raiz { position: absolute; inset: 0; perspective: 640px; }
 .sv-balanceo, .sv-3d, .sv-capa, .sv-mira { position: absolute; inset: 0; transform-style: preserve-3d; }
-.sv-balanceo { animation: sv-balanceo 7s ease-in-out infinite; will-change: transform; }
+.sv-balanceo { animation: sv-balanceo 9s cubic-bezier(.45,.05,.55,.95) infinite; will-change: transform; }
 .sv-caminando .sv-balanceo { animation: sv-caminar-balanceo 0.84s ease-in-out infinite; }
-.sv-3d {
-  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
-  transition: transform 0.45s cubic-bezier(.2,.8,.3,1);
-}
+/* El giro lo suaviza un resorte en MascotaGame (sin transición CSS encima). */
+.sv-3d { transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); }
 .sv-pieza { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
 .sv-entera { filter: drop-shadow(0 8px 10px rgba(0,0,0,0.3)); }
 .sv-capa > .sv-pieza { filter: drop-shadow(0 4px 5px rgba(0,0,0,0.18)); }
 
 /* Profundidad de cada pieza: al girar se separan como en 3D. */
-.sv-cola { translate: 0 0 -18px; animation: sv-cola 0.55s ease-in-out infinite alternate; }
+.sv-cola { translate: 0 0 -18px; animation: sv-cola 0.55s cubic-bezier(.45,0,.55,1) infinite alternate; }
 .sv-cuerpo { translate: 0 0 0; }
 .sv-oreja { translate: 0 0 -8px; }
-.sv-oreja-i { animation: sv-oreja-i 3.1s ease-in-out infinite; }
-.sv-oreja-d { animation: sv-oreja-d 3.4s ease-in-out infinite; }
+.sv-oreja-i { animation: sv-oreja-i 3.1s cubic-bezier(.45,.05,.55,.95) infinite; }
+.sv-oreja-d { animation: sv-oreja-d 3.4s cubic-bezier(.45,.05,.55,.95) infinite; }
 .sv-pata { translate: 0 0 14px; }
 .sv-pata-i { animation: sv-pata 4.6s ease-in-out infinite; }
 .sv-pata-d { animation: sv-pata 4.6s ease-in-out 2.3s infinite; }
@@ -361,12 +361,9 @@ export const SNOOPY_CSS = `
 .sv-pose-comiendo .sv-pata-d { animation: sv-pata-comiendo 1.1s ease-in-out 0.55s infinite; }
 .sv-pose-espalda .sv-pata-i { animation: sv-pata-caminando 0.42s ease-in-out infinite; }
 .sv-pose-espalda .sv-pata-d { animation: sv-pata-caminando 0.42s ease-in-out 0.21s infinite; }
-.sv-cabeza { translate: 0 0 26px; animation: sv-cabeza 5.2s ease-in-out infinite; }
+.sv-cabeza { translate: 0 0 26px; animation: sv-cabeza 5.2s cubic-bezier(.45,.05,.55,.95) infinite; }
 .sv-cabeza-fija { translate: 0 0 2px; }
-.sv-mira {
-  translate: var(--hx, 0px) var(--hy, 0px);
-  transition: translate 0.45s cubic-bezier(.2,.8,.3,1);
-}
+.sv-mira { translate: var(--hx, 0px) var(--hy, 0px); }
 
 /* Párpados: color del pelaje, cierran de arriba hacia abajo. */
 .sv-parpado {
@@ -374,7 +371,7 @@ export const SNOOPY_CSS = `
   background: linear-gradient(#c3cce6, #eef0f4 70%, #f6f1ea);
   box-shadow: inset 0 -1.5px 0 rgba(30,20,20,0.55);
   transform: scaleY(0); transform-origin: 50% 0%;
-  animation: sv-parpadeo 4.8s ease-in-out infinite;
+  animation: sv-parpadeo 7.2s cubic-bezier(.4,0,.6,1) infinite;
 }
 .sv-parpado + .sv-parpado { animation-delay: 0.04s; }
 
@@ -402,6 +399,22 @@ export const SNOOPY_CSS = `
   translate: 0 0 30px;
 }
 
+.sv-ambiente {
+  position: absolute; inset: 0; pointer-events: none;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  mix-blend-mode: soft-light;
+  translate: 0 0 31px;
+  transition: opacity 0.7s ease;
+  background:
+    radial-gradient(circle at 82% 12%, rgba(170,150,255,0.34), transparent 55%),
+    linear-gradient(to top, rgba(40,26,96,0.3), transparent 55%);
+}
+.patio .sv-ambiente {
+  background:
+    radial-gradient(circle at 22% 8%, rgba(255,222,150,0.42), transparent 58%),
+    linear-gradient(to top, rgba(70,100,40,0.22), transparent 42%);
+}
+
 /* Estados de ánimo */
 .sv-triste .sv-oreja-i { animation: sv-oreja-i-triste 4.5s ease-in-out infinite; }
 .sv-triste .sv-oreja-d { animation: sv-oreja-d-triste 4.5s ease-in-out infinite; }
@@ -424,7 +437,11 @@ export const SNOOPY_CSS = `
 .sv-enojado .sv-mira::before { left: 39%; transform: rotate(16deg); }
 .sv-enojado .sv-mira::after { left: 55%; transform: rotate(-16deg); }
 
-@keyframes sv-balanceo { 0%, 100% { transform: rotateY(-5deg); } 50% { transform: rotateY(5deg); } }
+/* Balanceo: gira apenas y pasa el peso de una pata a la otra. */
+@keyframes sv-balanceo {
+  0%, 100% { transform: rotateY(-3.5deg) rotateZ(-0.35deg) translateX(-0.3%); }
+  50% { transform: rotateY(3.5deg) rotateZ(0.35deg) translateX(0.3%); }
+}
 @keyframes sv-caminar-balanceo {
   0%, 100% { transform: translate3d(0, 0, 0) rotateZ(-1.2deg) rotateY(-3deg); }
   25% { transform: translate3d(0, -0.8%, 0) rotateZ(1deg) rotateY(2deg); }
@@ -467,7 +484,11 @@ export const SNOOPY_CSS = `
   0%, 100% { transform: rotate(-2deg) translateX(-0.5%); }
   50% { transform: rotate(2deg) translateX(0.5%); }
 }
-@keyframes sv-parpadeo { 0%, 91%, 100% { transform: scaleY(0); } 94% { transform: scaleY(1); } 97% { transform: scaleY(0); } }
+/* Parpadeo natural: uno rápido y, al rato, uno doble. */
+@keyframes sv-parpadeo {
+  0%, 38%, 41.5%, 86%, 88.4%, 90.4%, 92.8%, 100% { transform: scaleY(0); }
+  39.7%, 87.2%, 91.6% { transform: scaleY(1); }
+}
 @keyframes sv-jadeo {
   0%, 62%, 100% { transform: scaleY(0); }
   66% { transform: scaleY(0.75); } 70% { transform: scaleY(0.35); }

@@ -12,10 +12,12 @@ import {
   HeartPulse,
   House,
   Lamp,
+  Mail,
   Mic,
   MicOff,
   Moon,
   Pencil,
+  Send,
   Smile,
   Sun,
   Trees,
@@ -35,6 +37,8 @@ import {
   type Progreso,
 } from "@/lib/logros-mascota";
 import { enablePush } from "@/lib/push-client";
+import { abrirNota, cerrarNota, mandarNota, useNotasRecibidas } from "@/lib/notas-client";
+import { NOTA_MAX, type NotaSnoopy } from "@/lib/cloud";
 import { SNOOPY_CSS, SnoopyVivo, imgPose, type Pose } from "@/components/SnoopyVivo";
 import { WeatherPanel } from "@/components/WeatherPanel";
 
@@ -46,13 +50,13 @@ type StatKey = "hambre" | "felicidad" | "higiene" | "energia";
 type Stats = Record<StatKey, number>;
 type Escena = "dormitorio" | "patio";
 type TipoAccion = "alimentar" | "banar" | "dormir" | "pasear";
-type Anim = "respirar" | "bounce" | "wiggle" | "breathe" | "shake" | "walk" | "tilt";
+type Anim = "respirar" | "bounce" | "wiggle" | "breathe" | "shake" | "walk" | "tilt" | "entregar";
 type Orientacion = "v" | "h";
 
 interface Accion {
   /** Cada toque crea una acción nueva; los temporizadores viejos no la cortan. */
   id: number;
-  tipo: Exclude<TipoAccion, "dormir">;
+  tipo: Exclude<TipoAccion, "dormir"> | "nota";
   pose: Pose;
   anim: Anim;
   dur: number;
@@ -215,7 +219,10 @@ const ANIM_CLASE: Record<Anim, string> = {
   shake: "mg-shake",
   walk: "mg-walk",
   tilt: "mg-tilt",
+  entregar: "mg-entregar",
 };
+
+const EMOJIS_NOTA = ["💌", "💛", "🌙", "🌻", "🐶", "✨"] as const;
 
 const FRASES_CARICIA = ["¡Jiji! 💛", "¡Me haces cosquillas!", "¡Te quiero! ❤️", "¡Otra vez! 🐾"];
 const FRASES_TRISTE: Record<StatKey, string> = {
@@ -268,8 +275,15 @@ const anclaEstilo = (a: Ancla): CSSProperties => ({
   width: `min(${a.s * 100}%, 46cqh)`,
 });
 
-export function MascotaGame() {
+export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
   const navigate = useNavigate();
+  const notas = useNotasRecibidas();
+  const [notaAbierta, setNotaAbierta] = useState<NotaSnoopy | null>(null);
+  const [escribiendo, setEscribiendo] = useState(false);
+  const [textoNota, setTextoNota] = useState("");
+  const [emojiNota, setEmojiNota] = useState<string>(EMOJIS_NOTA[0]);
+  const [enviandoNota, setEnviandoNota] = useState(false);
+  const [sobreVolando, setSobreVolando] = useState(0);
   const [stats, setStats] = useState<Stats>(INICIAL);
   const [escena, setEscena] = useState<Escena>("dormitorio");
   const [orient, setOrient] = useState<Orientacion>("v");
@@ -546,26 +560,74 @@ export function MascotaGame() {
 
   /* ---------------- Giro 3D: Snoopy sigue tu dedo o el mouse ---------------- */
 
-  const raf = useRef(0);
+  // La mirada sigue al dedo con un resorte amortiguado: acelera, frena y se
+  // asienta con inercia (como un modelo animado), en vez de saltar de golpe.
+  // Las variables se escriben solo en Snoopy, no en toda la página.
+  const snoopyRef = useRef<HTMLButtonElement>(null);
+  const mirada = useRef({ x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0, raf: 0, ultimo: 0 });
+  const animarMirada = useCallback(() => {
+    const m = mirada.current;
+    if (m.raf || !snoopyRef.current) return;
+    let previo = performance.now();
+    const paso = (t: number) => {
+      const el = snoopyRef.current;
+      if (!el) {
+        m.raf = 0;
+        return;
+      }
+      const dt = Math.min(0.05, (t - previo) / 1000);
+      previo = t;
+      const k = 60; // rigidez
+      const c = 2 * Math.sqrt(k) * 0.92; // casi crítico: sin rebote exagerado
+      m.vx += ((m.tx - m.x) * k - m.vx * c) * dt;
+      m.vy += ((m.ty - m.y) * k - m.vy * c) * dt;
+      m.x += m.vx * dt;
+      m.y += m.vy * dt;
+      el.style.setProperty("--ry", `${(m.x * 26).toFixed(2)}deg`);
+      el.style.setProperty("--rx", `${(-m.y * 14).toFixed(2)}deg`);
+      el.style.setProperty("--hx", `${(m.x * 2).toFixed(2)}%`);
+      el.style.setProperty("--hy", `${(m.y * 1.4).toFixed(2)}%`);
+      const quieto =
+        Math.abs(m.tx - m.x) < 0.002 &&
+        Math.abs(m.ty - m.y) < 0.002 &&
+        Math.abs(m.vx) < 0.01 &&
+        Math.abs(m.vy) < 0.01;
+      m.raf = quieto ? 0 : requestAnimationFrame(paso);
+    };
+    m.raf = requestAnimationFrame(paso);
+  }, []);
+  const mirarHacia = useCallback(
+    (x: number, y: number) => {
+      mirada.current.tx = Math.max(-0.5, Math.min(0.5, x));
+      mirada.current.ty = Math.max(-0.5, Math.min(0.5, y));
+      animarMirada();
+    },
+    [animarMirada],
+  );
   const mirar = (e: React.PointerEvent) => {
     const el = raizRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width - 0.5;
-    const y = (e.clientY - r.top) / r.height - 0.5;
-    cancelAnimationFrame(raf.current);
-    raf.current = requestAnimationFrame(() => {
-      el.style.setProperty("--ry", `${(x * 26).toFixed(2)}deg`);
-      el.style.setProperty("--rx", `${(-y * 14).toFixed(2)}deg`);
-      el.style.setProperty("--hx", `${(x * 2).toFixed(2)}%`);
-      el.style.setProperty("--hy", `${(y * 1.4).toFixed(2)}%`);
-    });
+    mirada.current.ultimo = Date.now();
+    mirarHacia((e.clientX - r.left) / r.width - 0.5, (e.clientY - r.top) / r.height - 0.5);
   };
-  const soltarMirada = () => {
-    const el = raizRef.current;
-    if (!el) return;
-    for (const v of ["--ry", "--rx", "--hx", "--hy"]) el.style.removeProperty(v);
-  };
+  const soltarMirada = () => mirarHacia(0, 0);
+
+  // Si nadie lo toca, de vez en cuando mira a su alrededor por su cuenta.
+  useEffect(() => {
+    if (!listo || dormido) {
+      mirarHacia(0, 0);
+      return;
+    }
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = window.setInterval(() => {
+      if (Date.now() - mirada.current.ultimo < 5000) return;
+      if (Math.random() < 0.35) mirarHacia(0, 0);
+      else mirarHacia((Math.random() - 0.5) * 0.42, (Math.random() - 0.5) * 0.22);
+    }, 3200);
+    return () => window.clearInterval(id);
+  }, [listo, dormido, mirarHacia]);
+  useEffect(() => () => cancelAnimationFrame(mirada.current.raf), []);
 
   /* ---------------- Estado visible ---------------- */
 
@@ -762,6 +824,68 @@ export function MascotaGame() {
     return () => window.removeEventListener("keydown", fn);
   }, [panelLogros]);
 
+  /* ---------------- Notas de Snoopy (de un celular al otro) ---------------- */
+
+  // Cuando llega una nota nueva, Snoopy la anuncia y aparece el sobre.
+  const notasVistas = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!listo) return;
+    const vistas = notasVistas.current;
+    notasVistas.current = new Set(notas.map((n) => n.id));
+    const nuevas = vistas ? notas.filter((n) => !vistas.has(n.id)) : notas;
+    if (nuevas.length === 0) return;
+    decir(
+      nuevas.length > 1
+        ? `¡Te traje ${nuevas.length} notas! Tócalas 💌`
+        : "¡Te llegó una nota! Toca el sobre 💌",
+      4200,
+    );
+    sonar("logro");
+    lanzar(["💌", "✨", "💛"], 8);
+  }, [listo, notas, decir, sonar, lanzar]);
+
+  const leerNota = useCallback(
+    (n: NotaSnoopy) => {
+      // Desde aquí ya cuenta como leída: si se cierra la app, igual se borra.
+      abrirNota(n.id);
+      setNotaAbierta(n);
+      sonar("caricia");
+    },
+    [sonar],
+  );
+
+  // Al tocar el aviso del celular se abre directo esa nota.
+  const notaInicialAbierta = useRef(false);
+  useEffect(() => {
+    if (!listo || !notaInicial || notaInicialAbierta.current) return;
+    const n = notas.find((x) => x.id === notaInicial);
+    if (n) {
+      notaInicialAbierta.current = true;
+      leerNota(n);
+    }
+  }, [listo, notaInicial, notas, leerNota]);
+
+  const cerrarNotaAbierta = useCallback(() => {
+    if (!notaAbierta) return;
+    setNotaAbierta(null);
+    void cerrarNota(notaAbierta.id);
+    lanzar(["🍃", "✨", "💛"], 7);
+    decir("Nota leída… y se fue con el viento 🍃", 2800);
+    if (notaInicial) void navigate({ to: "/mascota", search: {}, replace: true });
+  }, [notaAbierta, notaInicial, navigate, lanzar, decir]);
+
+  // Escape cierra la nota (y la borra) o el editor.
+  useEffect(() => {
+    if (!notaAbierta && !escribiendo) return;
+    const fn = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (notaAbierta) cerrarNotaAbierta();
+      else setEscribiendo(false);
+    };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, [notaAbierta, escribiendo, cerrarNotaAbierta]);
+
   /* ---------------- Acciones ---------------- */
 
   /** Apaga el micrófono sin decir nada (para cuando se va a dormir). */
@@ -881,6 +1005,42 @@ export function MascotaGame() {
       sonar("caricia");
       decir(`${elegir(FRASES_CARICIA)} +${CARICIA_FELICIDAD}%`, 1800);
     }
+  };
+
+  const enviarNotaSnoopy = async () => {
+    const texto = textoNota.trim();
+    if (!texto || enviandoNota) return;
+    setEnviandoNota(true);
+    const r = await mandarNota(texto, emojiNota).catch(() => ({ ok: false, avisos: 0 }));
+    setEnviandoNota(false);
+    if (!r.ok) {
+      sonar("triste");
+      decir("No pude llevarla… revisa tu internet 📶", 3400);
+      return;
+    }
+    setTextoNota("");
+    setEscribiendo(false);
+    if (dormido) setDormido(false);
+    // Salta contento y el sobre sale volando hacia el otro celular.
+    if (accion?.tipo !== "pasear") {
+      const id = iniciarAccion({ tipo: "nota", pose: "frente", anim: "entregar", dur: 1800 });
+      programar(() => {
+        if (accionRef.current !== id) return;
+        accionRef.current = 0;
+        setAccion(null);
+      }, 1800);
+    }
+    const vuelo = ++idRef.current;
+    setSobreVolando(vuelo);
+    programar(() => setSobreVolando((v) => (v === vuelo ? 0 : v)), 1700);
+    sonar("pasear");
+    lanzar([emojiNota, "✨", "💛"], 8);
+    decir(
+      r.avisos > 0
+        ? "¡Ya se la llevé! Le llegó el aviso 💌"
+        : "¡Nota enviada! La verá al abrir la app 💌",
+      3400,
+    );
   };
 
   const guardarNombre = () => {
@@ -1026,6 +1186,7 @@ export function MascotaGame() {
           ))}
 
           <button
+            ref={snoopyRef}
             type="button"
             onClick={acariciar}
             aria-label={dormido ? `${nombre} está durmiendo` : `Acariciar a ${nombre}`}
@@ -1044,7 +1205,15 @@ export function MascotaGame() {
               <span
                 className={`mg-sombra absolute bottom-[-1%] left-1/2 h-[7%] rounded-[50%] ${
                   sombraAncha ? "w-[80%]" : "w-[58%]"
-                } ${anim === "respirar" || anim === "breathe" ? "mg-sombra-respira" : ""}`}
+                } ${
+                  anim === "respirar" || anim === "breathe"
+                    ? "mg-sombra-respira"
+                    : anim === "walk"
+                      ? "mg-sombra-camina"
+                      : anim === "bounce" || anim === "entregar"
+                        ? "mg-sombra-salta"
+                        : ""
+                }`}
                 aria-hidden="true"
               />
               <div className={`absolute inset-0 ${ANIM_CLASE[anim]}`}>
@@ -1098,6 +1267,39 @@ export function MascotaGame() {
               className="block aspect-[3/2] w-full object-cover"
             />
           </button>
+        )}
+        {notas.length > 0 && !notaAbierta && (
+          <button
+            type="button"
+            onClick={() => leerNota(notas[0]!)}
+            aria-label={`Abrir nota nueva${notas.length > 1 ? ` (${notas.length})` : ""}`}
+            className="mg-nota-aviso absolute z-20 w-[min(104px,25vw)] -translate-x-1/2 translate-y-[-105%] sm:w-32"
+            style={{ left: `${ancla.x * 100 + 15}%`, top: `${ancla.y * 100}%` }}
+          >
+            <span className="mg-nota-flota block overflow-hidden rounded-md shadow-2xl">
+              <img
+                src="/cartas/sobre.webp"
+                alt=""
+                width={640}
+                height={426}
+                className="block aspect-[3/2] w-full object-cover"
+              />
+            </span>
+            <span className="absolute -right-2 -top-2 grid h-6 min-w-6 place-items-center rounded-full bg-rose-500 px-1.5 text-xs font-bold text-white shadow-lg">
+              {notas[0]!.emoji || "💌"}
+              {notas.length > 1 ? ` ${notas.length}` : ""}
+            </span>
+          </button>
+        )}
+        {sobreVolando > 0 && (
+          <img
+            key={sobreVolando}
+            src="/cartas/sobre.webp"
+            alt=""
+            aria-hidden="true"
+            className="mg-sobre-vuela pointer-events-none absolute z-20 w-[min(90px,22vw)] rounded-md shadow-2xl"
+            style={{ left: `${ancla.x * 100}%`, top: `${ancla.y * 100 - 30}%` }}
+          />
         )}
         <div className="pointer-events-none absolute inset-0" aria-hidden="true">
           {MOTAS.map(([x, y, delay, dur], i) => (
@@ -1234,6 +1436,16 @@ export function MascotaGame() {
                 </span>
                 <button
                   type="button"
+                  onClick={() => setEscribiendo(true)}
+                  className="mg-pastilla flex items-center gap-1 rounded-full px-2 py-0.5 transition hover:bg-white/30"
+                  aria-label={`Mandar una nota con ${nombre}`}
+                  title="Mandar una nota al otro celular"
+                >
+                  <Mail size={12} className="text-pink-200" />
+                  Nota
+                </button>
+                <button
+                  type="button"
                   onClick={() => setPanelLogros(true)}
                   className="mg-pastilla flex items-center gap-1 rounded-full px-2 py-0.5 transition hover:bg-white/30"
                   aria-label={`Logros: ${progreso.logros.length} de ${LOGROS.length}`}
@@ -1342,6 +1554,127 @@ export function MascotaGame() {
           </div>
         )}
       </div>
+
+      {/* Escribir una nota: Snoopy se la lleva al otro celular. */}
+      {escribiendo && (
+        <div
+          className="mg-panel-fondo fixed inset-0 z-[66] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => !enviandoNota && setEscribiendo(false)}
+        >
+          <form
+            role="dialog"
+            aria-modal="true"
+            aria-label="Escribir una nota"
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => {
+              e.preventDefault();
+              void enviarNotaSnoopy();
+            }}
+            className="mg-panel mg-vidrio-oscuro flex w-full max-w-sm flex-col gap-3 rounded-3xl px-5 pb-5 pt-4 text-white"
+          >
+            <div className="flex items-center justify-between">
+              <p className="flex items-center gap-2 text-lg font-bold leading-tight">
+                <Mail size={18} className="text-pink-200" /> Nota con {nombre}
+              </p>
+              <button
+                type="button"
+                onClick={() => setEscribiendo(false)}
+                aria-label="Cerrar"
+                className="grid h-9 w-9 place-items-center rounded-full bg-white/15 transition hover:bg-white/25"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-xs text-white/70">
+              Le llega un aviso al otro celular. Es temporal: cuando la lea y la cierre, se borra
+              para siempre.
+            </p>
+            <textarea
+              autoFocus
+              value={textoNota}
+              onChange={(e) => setTextoNota(e.target.value.slice(0, NOTA_MAX))}
+              maxLength={NOTA_MAX}
+              rows={5}
+              placeholder="Escribe algo bonito…"
+              aria-label="Texto de la nota"
+              className="mg-papel w-full resize-none rounded-2xl px-4 py-3 text-lg leading-relaxed text-[#3a260f] outline-none placeholder:text-[#3a260f]/45 focus:ring-2 focus:ring-pink-300"
+            />
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex gap-1" role="radiogroup" aria-label="Sello de la nota">
+                {EMOJIS_NOTA.map((em) => (
+                  <button
+                    key={em}
+                    type="button"
+                    role="radio"
+                    aria-checked={emojiNota === em}
+                    onClick={() => setEmojiNota(em)}
+                    className={`grid h-8 w-8 place-items-center rounded-full text-base transition ${
+                      emojiNota === em ? "bg-white/30 ring-2 ring-pink-200" : "hover:bg-white/15"
+                    }`}
+                  >
+                    {em}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[11px] tabular-nums text-white/55">
+                {textoNota.length}/{NOTA_MAX}
+              </span>
+            </div>
+            <button
+              type="submit"
+              disabled={!textoNota.trim() || enviandoNota}
+              className="flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-pink-400 to-rose-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:brightness-110 disabled:opacity-45"
+            >
+              <Send size={16} />
+              {enviandoNota ? "Enviando…" : `Que ${nombre} la lleve`}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* Leer una nota recibida: al cerrarla se borra. */}
+      {notaAbierta && (
+        <div
+          className="mg-panel-fondo fixed inset-0 z-[66] flex items-center justify-center bg-black/65 p-5 backdrop-blur-sm"
+          onClick={cerrarNotaAbierta}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Nota recibida"
+            onClick={(e) => e.stopPropagation()}
+            className="mg-nota-abre w-full max-w-sm"
+          >
+            <div className="mg-papel relative rounded-2xl px-6 pb-6 pt-7 text-[#3a260f] shadow-2xl">
+              <span className="absolute -top-5 left-1/2 grid h-10 w-10 -translate-x-1/2 place-items-center rounded-full bg-rose-500 text-xl shadow-lg">
+                {notaAbierta.emoji || "💌"}
+              </span>
+              <p className="mb-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-[#7a5729]/80">
+                {nombre} te trajo esta nota
+              </p>
+              <p className="max-h-[50svh] overflow-y-auto whitespace-pre-wrap break-words text-xl leading-relaxed">
+                {notaAbierta.texto}
+              </p>
+              <p className="mt-4 text-right text-[11px] text-[#7a5729]/70">
+                {new Date(notaAbierta.createdAt).toLocaleString("es-ES", {
+                  day: "numeric",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+            </div>
+            <button
+              type="button"
+              autoFocus
+              onClick={cerrarNotaAbierta}
+              className="mx-auto mt-4 flex items-center gap-2 rounded-full bg-white/90 px-5 py-2.5 text-sm font-bold text-[#3a260f] shadow-lg transition hover:bg-white"
+            >
+              <Check size={16} /> Ya la leí · cerrar y borrar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Panel de logros */}
       {panelLogros && (
@@ -1535,24 +1868,35 @@ const CSS = `
   transition: left 0.6s ease, top 0.6s ease, width 0.6s ease;
   -webkit-tap-highlight-color: transparent;
 }
+/* Sombra de contacto en dos capas: núcleo oscuro bajo las patas y penumbra
+   amplia y suave. Se encoge cuando Snoopy se despega del piso. */
 .mg-sombra {
   translate: -50% 0;
-  background: radial-gradient(ellipse at center, rgba(0,0,0,0.55), rgba(0,0,0,0) 70%);
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.38) 32%, rgba(0,0,0,0) 70%);
 }
-.mg-pop { animation: mg-popIn 0.35s cubic-bezier(.2,.9,.3,1.3) both; transform-origin: 50% 100%; }
+.mg-sombra::after {
+  content: ""; position: absolute; inset: -70% -28%; border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(12,10,40,0.26), rgba(12,10,40,0) 68%);
+}
+/* Cambio de pose: se asienta con un leve aplastar y estirar, sin saltos bruscos. */
+.mg-pop { animation: mg-asentar 0.55s cubic-bezier(.22,1,.36,1) both; transform-origin: 50% 100%; }
 
-.mg-respirar { animation: mg-respirar 3.6s ease-in-out infinite; transform-origin: 50% 100%; }
-.mg-bounce { animation: mg-bounce 0.5s ease-in-out infinite; transform-origin: 50% 100%; }
-.mg-wiggle { animation: mg-wiggle 0.45s ease-in-out infinite alternate; transform-origin: 50% 100%; }
-.mg-breathe { animation: mg-breathe 4s ease-in-out infinite; transform-origin: 50% 100%; }
-.mg-shake { animation: mg-shake 0.6s ease-in-out infinite; }
-.mg-walk { animation: mg-walk 0.42s ease-in-out infinite; transform-origin: 50% 100%; }
-.mg-tilt { animation: mg-tilt 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
-.mg-sombra-respira { animation: mg-sombra-respira 3.6s ease-in-out infinite; }
+/* Curvas tipo seno (ease-in-out suave) para todo lo que respira o se mece. */
+.mg-respirar { animation: mg-respirar 3.8s cubic-bezier(.45,.05,.55,.95) infinite; transform-origin: 50% 100%; }
+.mg-bounce { animation: mg-bounce 0.62s linear infinite; transform-origin: 50% 100%; }
+.mg-wiggle { animation: mg-wiggle 0.95s cubic-bezier(.45,.05,.55,.95) infinite; transform-origin: 50% 100%; }
+.mg-breathe { animation: mg-breathe 4.6s cubic-bezier(.45,.05,.55,.95) infinite; transform-origin: 50% 100%; }
+.mg-shake { animation: mg-suspiro 3.4s cubic-bezier(.45,.05,.55,.95) infinite; transform-origin: 50% 100%; }
+.mg-walk { animation: mg-walk 0.42s linear infinite; transform-origin: 50% 100%; }
+.mg-tilt { animation: mg-tilt 2.8s cubic-bezier(.45,.05,.55,.95) infinite; transform-origin: 50% 100%; }
+.mg-entregar { animation: mg-entregar 0.9s linear 2 both; transform-origin: 50% 100%; }
+.mg-sombra-respira { animation: mg-sombra-respira 3.8s cubic-bezier(.45,.05,.55,.95) infinite; }
+.mg-sombra-camina { animation: mg-sombra-camina 0.42s linear infinite; }
+.mg-sombra-salta { animation: mg-sombra-salta 0.62s linear infinite; }
 
-/* Paseo: se va de espaldas o llega caminando */
-.mg-irse { animation: mg-irse 1.9s ease-in-out both; }
-.mg-llegar { animation: mg-llegar 1.9s ease-out both; }
+/* Paseo: se aleja hacia el fondo o llega caminando, con aceleración natural */
+.mg-irse { animation: mg-irse 1.9s cubic-bezier(.55,0,.45,1) both; }
+.mg-llegar { animation: mg-llegar 1.9s cubic-bezier(.22,1,.36,1) both; }
 
 /* Partículas y mensajes */
 .mg-particula { opacity: 0; animation: mg-goUp 2.6s ease-out both; text-shadow: 0 2px 6px rgba(0,0,0,0.3); }
@@ -1561,6 +1905,17 @@ const CSS = `
 .mg-carta-aviso {
   animation: mg-carta-aviso 0.55s cubic-bezier(.2,.9,.3,1.2) both;
   transform-origin: 50% 100%;
+}
+.mg-nota-aviso { animation: mg-carta-aviso 0.6s cubic-bezier(.2,.9,.3,1.2) both; transform-origin: 50% 100%; }
+.mg-nota-flota { animation: mg-nota-flota 3.2s cubic-bezier(.45,.05,.55,.95) 0.6s infinite; }
+.mg-sobre-vuela { translate: -50% 0; animation: mg-sobre-vuela 1.6s cubic-bezier(.5,0,.75,0) both; }
+.mg-nota-abre { animation: mg-nota-abre 0.5s cubic-bezier(.22,1,.36,1) both; }
+.mg-papel {
+  font-family: "Patrick Hand", cursive;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0, transparent 1.95rem, rgba(120,80,30,0.18) 1.95rem, rgba(120,80,30,0.18) 2rem),
+    linear-gradient(160deg, #fffaf0, #f6ecd8);
+  text-shadow: none;
 }
 
 /* Barras */
@@ -1642,34 +1997,95 @@ const CSS = `
 .mg-switch.encendido { background: #34d399; }
 .mg-switch.encendido::after { transform: translateX(16px); }
 
-@keyframes mg-respirar { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.012, 1.022); } }
-@keyframes mg-sombra-respira { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+/* Respirar: el pecho sube y el cuerpo se estira apenas (volumen, no "zoom"). */
+@keyframes mg-respirar {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  45% { transform: translateY(-0.25%) scale(1.008, 1.02); }
+}
+@keyframes mg-sombra-respira { 0%, 100% { transform: scale(1); opacity: 1; } 45% { transform: scale(1.03); opacity: 0.92; } }
+/* Comer: anticipación (se agacha), impulso, caída y amortiguación. */
 @keyframes mg-bounce {
-  0%, 100% { transform: translateY(0) scaleY(1) scaleX(1); }
-  30% { transform: translateY(0) scaleY(0.94) scaleX(1.04); }
-  60% { transform: translateY(-5%) scaleY(1.03) scaleX(0.98); }
+  0%, 100% { transform: translateY(0) scale(1, 1); animation-timing-function: cubic-bezier(.33,0,.67,1); }
+  22% { transform: translateY(0) scale(1.035, 0.95); animation-timing-function: cubic-bezier(.2,.7,.35,1); }
+  55% { transform: translateY(-4%) scale(0.985, 1.025); animation-timing-function: cubic-bezier(.6,0,.85,.4); }
+  82% { transform: translateY(0) scale(1.025, 0.97); animation-timing-function: cubic-bezier(.33,0,.67,1); }
 }
-@keyframes mg-wiggle { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
-@keyframes mg-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
-@keyframes mg-shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-3%); } 40% { transform: translateX(3%); }
-  60% { transform: translateX(-3%); } 80% { transform: translateX(3%); }
+@keyframes mg-sombra-salta {
+  0%, 22%, 100% { transform: scale(1); opacity: 1; animation-timing-function: cubic-bezier(.2,.7,.35,1); }
+  55% { transform: scale(0.84); opacity: 0.7; animation-timing-function: cubic-bezier(.6,0,.85,.4); }
+  82% { transform: scale(1.03); opacity: 1; }
 }
+/* Baño: se sacude el agua como un perro de verdad, con fuerza que se va apagando. */
+@keyframes mg-wiggle {
+  0%, 100% { transform: rotate(0) translateX(0); }
+  12% { transform: rotate(-5deg) translateX(-1%); }
+  28% { transform: rotate(4.5deg) translateX(1%); }
+  44% { transform: rotate(-3.2deg) translateX(-0.6%); }
+  60% { transform: rotate(2deg) translateX(0.4%); }
+  76% { transform: rotate(-0.9deg); }
+  88% { transform: rotate(0.3deg); }
+}
+/* Dormir: respiración lenta y profunda. */
+@keyframes mg-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  40%, 55% { transform: scale(1.012, 1.03); }
+}
+/* Triste: suspira, se hunde un poco y se mece despacio (antes temblaba). */
+@keyframes mg-suspiro {
+  0%, 100% { transform: translateY(0) rotate(0) scale(1, 1); }
+  30% { transform: translateY(0.6%) rotate(-1.2deg) scale(1.01, 0.985); }
+  62% { transform: translateY(1%) rotate(0.8deg) scale(0.996, 0.975); }
+}
+/* Caminar: rebote con contacto firme en cada paso (en sincronía con las patas). */
 @keyframes mg-walk {
-  0%, 100% { transform: translateY(0) rotate(-2deg); }
-  50% { transform: translateY(-3%) rotate(2deg); }
+  0%, 100% { transform: translateY(0) rotate(-1.4deg) scale(1.012, 0.99); animation-timing-function: cubic-bezier(.2,.6,.4,1); }
+  50% { transform: translateY(-2.6%) rotate(1.4deg) scale(0.996, 1.01); animation-timing-function: cubic-bezier(.6,0,.8,.4); }
 }
-@keyframes mg-tilt { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+@keyframes mg-sombra-camina {
+  0%, 100% { transform: scale(1); opacity: 1; animation-timing-function: cubic-bezier(.2,.6,.4,1); }
+  50% { transform: scale(0.9); opacity: 0.78; animation-timing-function: cubic-bezier(.6,0,.8,.4); }
+}
+/* Escuchar: ladea la cabeza, se queda un momento atento y vuelve. */
+@keyframes mg-tilt {
+  0%, 100% { transform: rotate(-3deg); }
+  38%, 58% { transform: rotate(3.5deg) translateY(-0.4%); }
+}
+/* Entregar una nota: pequeño salto contento. */
+@keyframes mg-entregar {
+  0%, 100% { transform: none; animation-timing-function: cubic-bezier(.33,0,.67,1); }
+  18% { transform: scale(1.04, 0.94); animation-timing-function: cubic-bezier(.2,.7,.35,1); }
+  45% { transform: translateY(-6%) rotate(-2.5deg) scale(0.97, 1.04); animation-timing-function: cubic-bezier(.6,0,.85,.4); }
+  68% { transform: translateY(0) scale(1.03, 0.97); animation-timing-function: cubic-bezier(.33,0,.67,1); }
+  84% { transform: scale(0.995, 1.008); }
+}
 @keyframes mg-irse {
   0% { transform: translateY(0) scale(1); opacity: 1; }
   65% { transform: translateY(-12%) scale(0.6); opacity: 0; }
   100% { transform: translateY(-12%) scale(0.6); opacity: 0; }
 }
 @keyframes mg-llegar {
-  0% { transform: translateX(-70%); opacity: 0; }
+  0% { transform: translateX(-70%) scale(0.92); opacity: 0; }
   25% { opacity: 1; }
-  100% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(0) scale(1); opacity: 1; }
+}
+@keyframes mg-asentar {
+  0% { opacity: 0.35; transform: translateY(1.5%) scale(0.97, 0.95); }
+  38% { opacity: 1; transform: translateY(0) scale(1.015, 0.985); }
+  68% { transform: scale(0.996, 1.008); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes mg-nota-flota {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-6%) rotate(2deg); }
+}
+@keyframes mg-sobre-vuela {
+  0% { transform: translate(0, 0) rotate(0) scale(0.6); opacity: 0; }
+  12% { transform: translate(0, -10px) rotate(-6deg) scale(1); opacity: 1; }
+  100% { transform: translate(55vw, -70vh) rotate(28deg) scale(0.45); opacity: 0; }
+}
+@keyframes mg-nota-abre {
+  0% { opacity: 0; transform: translateY(24px) rotate(-4deg) scale(0.9); }
+  100% { opacity: 1; transform: none; }
 }
 @keyframes mg-goUp {
   0% { transform: translate(0, 0) scale(0.6) rotate(0); opacity: 0; }
@@ -1716,8 +2132,8 @@ const CSS = `
 
 @media (prefers-reduced-motion: reduce) {
   .mg-kb, .mg-mota, .mg-respirar, .mg-breathe, .mg-tilt, .mg-shake, .mg-wiggle, .mg-bounce, .mg-walk,
-  .mg-sombra-respira, .mg-barra-baja, .mg-boton-necesita, .mg-mic-activo,
+  .mg-entregar, .mg-sombra-respira, .mg-sombra-camina, .mg-sombra-salta, .mg-nota-flota, .mg-barra-baja, .mg-boton-necesita, .mg-mic-activo,
   .mg-celebra-emoji, .mg-boton-cargando::before { animation: none; }
-  .mg-pop, .mg-toast, .mg-panel, .mg-celebra { animation-duration: 0.01s; }
+  .mg-pop, .mg-toast, .mg-panel, .mg-celebra, .mg-nota-abre, .mg-sobre-vuela { animation-duration: 0.01s; }
 }
 `;

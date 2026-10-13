@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Printer, Trash2, Plus, Save, Check, Pencil, Cloud, CloudOff } from "lucide-react";
 import { loadStoreShared, saveCartas, queuePendingCartas, type SavedLetter } from "@/lib/cloud";
+import { getDeviceId } from "@/lib/dispositivo";
 
 export const Route = createFileRoute("/bienvenida")({
   validateSearch: (search: Record<string, unknown>): { open?: string } => ({
@@ -194,10 +195,16 @@ function Bienvenida() {
   const persist = (next: SavedLetter[]) => {
     setLetters(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    saveCartas({ data: next }).catch((e) => {
-      console.error("No se pudo guardar en la nube:", e);
-      queuePendingCartas(next);
-    });
+    // El servidor responde { ok: false } (sin lanzar error) cuando la nube no
+    // responde: también hay que dejarlo pendiente, o el cambio se perdería.
+    saveCartas({ data: { cartas: next, de: getDeviceId() } })
+      .catch(() => ({ ok: false }))
+      .then((r) => {
+        if (!r.ok) {
+          console.error("No se pudo guardar en la nube; se reintentará.");
+          queuePendingCartas(next);
+        }
+      });
   };
 
   // Guardar la carta actual (nueva o edición de una existente)

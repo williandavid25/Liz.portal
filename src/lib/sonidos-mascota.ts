@@ -32,7 +32,8 @@ function audio(): { c: AudioContext; out: GainNode } | null {
     master.gain.value = 0.55;
     master.connect(ctx.destination);
   }
-  if (ctx.state === "suspended") void ctx.resume();
+  // En iPhone, tras una llamada el audio queda "interrupted" (no "suspended").
+  if (ctx.state !== "running") ctx.resume().catch(() => {});
   return { c: ctx, out: master! };
 }
 

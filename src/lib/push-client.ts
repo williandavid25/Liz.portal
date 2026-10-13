@@ -1,4 +1,5 @@
 import { getPushKey, savePushSubscription } from "./cloud";
+import { getDeviceId } from "./dispositivo";
 
 // Suscribe este celular a los avisos reales. Se llama cuando la persona
 // acepta los avisos; a partir de ahí recibe la notificación de una carta
@@ -16,9 +17,7 @@ export async function enablePush(): Promise<boolean> {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
     if (typeof Notification === "undefined") return false;
     const permission =
-      Notification.permission === "granted"
-        ? "granted"
-        : await Notification.requestPermission();
+      Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
     if (permission !== "granted") return false;
 
     const { key } = await getPushKey();
@@ -33,9 +32,19 @@ export async function enablePush(): Promise<boolean> {
         applicationServerKey: urlBase64ToUint8Array(key),
       }));
 
-    const res = await savePushSubscription({ data: sub.toJSON() as { endpoint: string } });
+    const res = await savePushSubscription({ data: { sub: sub.toJSON(), device: getDeviceId() } });
     return res.ok;
   } catch {
     return false;
   }
+}
+
+/**
+ * Si este celular ya dio permiso, vuelve a registrar su suscripción en
+ * silencio (sin preguntar nada). Repara las que se guardaron incompletas y
+ * anota a qué celular pertenecen.
+ */
+export async function refreshPushIfGranted(): Promise<void> {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  await enablePush();
 }

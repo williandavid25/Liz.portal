@@ -26,7 +26,11 @@ interface SpeechRecognitionLike {
   lang: string;
   continuous: boolean;
   interimResults: boolean;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null;
+  onresult:
+    | ((e: {
+        results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }>;
+      }) => void)
+    | null;
   onerror: (() => void) | null;
   onend: (() => void) | null;
   start(): void;
@@ -50,6 +54,8 @@ export class VozMascota {
   private bocaRaf = 0;
   private reco: SpeechRecognitionLike | null = null;
   private activo = false;
+  /** Sube en cada iniciar/detener: descarta un permiso que llega tarde. */
+  private gen = 0;
 
   constructor(private op: Opciones) {}
 
@@ -57,34 +63,49 @@ export class VozMascota {
     return (
       typeof window !== "undefined" &&
       !!navigator.mediaDevices?.getUserMedia &&
-      !!(window.AudioContext || (window as unknown as { webkitAudioContext?: unknown }).webkitAudioContext)
+      !!(
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: unknown }).webkitAudioContext
+      )
     );
   }
 
   /** Debe llamarse desde un toque/clic (requisito de audio en iPhone). */
   async iniciar() {
-    if (this.activo) return;
+    if (this.activo || this.ctx) return;
+    const turno = ++this.gen;
     const Ctx =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     // El AudioContext se crea dentro del mismo toque, antes de cualquier await.
     this.ctx = new Ctx();
+    let stream: MediaStream;
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({
+      stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
     } catch (e) {
-      await this.ctx.close().catch(() => {});
-      this.ctx = null;
+      if (turno === this.gen) {
+        await this.ctx?.close().catch(() => {});
+        this.ctx = null;
+      }
       throw e;
     }
+    // Se detuvo (o se salió de la página) mientras se pedía el permiso:
+    // se apaga el micrófono que acaba de abrirse.
+    if (turno !== this.gen || !this.ctx) {
+      stream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+    this.stream = stream;
     await this.ctx.resume().catch(() => {});
     this.activo = true;
 
     const ctx = this.ctx;
     this.source = ctx.createMediaStreamSource(this.stream);
     this.proc = ctx.createScriptProcessor(2048, 1, 1);
-    this.proc.onaudioprocess = (ev) => this.procesar(ev.inputBuffer.getChannelData(0), ctx.sampleRate);
+    this.proc.onaudioprocess = (ev) =>
+      this.procesar(ev.inputBuffer.getChannelData(0), ctx.sampleRate);
     this.source.connect(this.proc);
     this.proc.connect(ctx.destination); // necesario para que procese (la salida va en silencio)
 
@@ -97,6 +118,7 @@ export class VozMascota {
   }
 
   detener() {
+    this.gen++;
     this.activo = false;
     cancelAnimationFrame(this.bocaRaf);
     try {

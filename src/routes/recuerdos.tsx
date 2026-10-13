@@ -55,16 +55,22 @@ function Recuerdos() {
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [linkInput, setLinkInput] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Lista siempre al día: una subida tarda varios segundos y no debe guardar
+  // encima una copia vieja (eso borraba fotos de la nube).
+  const fotosRef = useRef<PhotoMeta[]>([]);
+  fotosRef.current = fotos;
+  // Hasta que no llegue la lista de la nube no se guarda nada encima.
+  const cargaInicial = useRef<Promise<unknown>>(Promise.resolve());
 
-  // Guarda en la nube + espejo local. Si falla (sin conexión), queda anotado
-  // para reintentarlo solo apenas vuelva el internet.
+  // Guarda en la nube + espejo local. Si falla (sin conexión o la nube no
+  // responde), queda anotado para reintentarlo solo apenas vuelva.
   const persist = async (next: PhotoMeta[]) => {
+    fotosRef.current = next;
     setFotos(next);
     localStorage.setItem(FOTOS_KEY, JSON.stringify(next));
-    try {
-      await saveFotos({ data: next });
-    } catch (e) {
-      console.error("No se pudo guardar en la nube:", e);
+    const r = await saveFotos({ data: next }).catch(() => ({ ok: false }));
+    if (!r.ok) {
+      console.error("No se pudo guardar en la nube; se reintentará.");
       queuePendingFotos(next);
     }
   };
@@ -81,7 +87,7 @@ function Recuerdos() {
     } catch {
       /* ignore */
     }
-    loadStoreShared()
+    cargaInicial.current = loadStoreShared()
       .then((s) => {
         if (!s.configured) {
           setCloudOn(false);
@@ -89,6 +95,7 @@ function Recuerdos() {
         }
         setCloudOn(true);
         if (s.fotos.length > 0) {
+          fotosRef.current = s.fotos;
           setFotos(s.fotos);
           localStorage.setItem(FOTOS_KEY, JSON.stringify(s.fotos));
         } else if (local.length > 0) {
@@ -130,7 +137,8 @@ function Recuerdos() {
         error = true;
       }
     }
-    if (nuevas.length) await persist([...nuevas, ...fotos]);
+    await cargaInicial.current.catch(() => {});
+    if (nuevas.length) await persist([...nuevas, ...fotosRef.current]);
     setBusy(false);
     setStatus(
       error
@@ -148,7 +156,15 @@ function Recuerdos() {
     setBusy(true);
     setStatus("Cargando vista previa…");
     const nuevas: PhotoMeta[] = [];
-    for (const url of parts) {
+    for (const raw of parts) {
+      // "www.sitio.com/foto.jpg" sin https:// no pasa la validación de la nube
+      // y bloqueaba todos los guardados siguientes.
+      const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+      try {
+        new URL(url);
+      } catch {
+        continue;
+      }
       const base = { id: `url-${Date.now()}-${Math.round(Math.random() * 1e9)}`, date: Date.now() };
       if (isImageUrl(url)) {
         nuevas.push({ ...base, url });
@@ -162,13 +178,14 @@ function Recuerdos() {
         }
       }
     }
-    await persist([...nuevas, ...fotos]);
+    await cargaInicial.current.catch(() => {});
+    if (nuevas.length) await persist([...nuevas, ...fotosRef.current]);
     setBusy(false);
-    setStatus(null);
+    setStatus(nuevas.length ? null : "Ese enlace no es válido.");
   };
 
   const handleDelete = async (id: string) => {
-    await persist(fotos.filter((f) => f.id !== id));
+    await persist(fotosRef.current.filter((f) => f.id !== id));
     setLightbox((cur) => (cur === id ? null : cur));
   };
 
@@ -238,7 +255,9 @@ function Recuerdos() {
           {hiddenCount > 0 && (
             <p className="mt-2 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
               <ImageOff size={14} /> {hiddenCount}{" "}
-              {hiddenCount === 1 ? "foto antigua no está disponible" : "fotos antiguas no están disponibles"}{" "}
+              {hiddenCount === 1
+                ? "foto antigua no está disponible"
+                : "fotos antiguas no están disponibles"}{" "}
               · vuelve a subirlas para verlas aquí
             </p>
           )}
@@ -274,7 +293,12 @@ function Recuerdos() {
               accept="image/*"
               multiple
               className="hidden"
-              onChange={(e) => handleFiles(e.target.files)}
+              onChange={(e) => {
+                const elegidos = Array.from(e.target.files ?? []);
+                // Permite volver a elegir el mismo archivo.
+                e.target.value = "";
+                void handleFiles(elegidos);
+              }}
             />
             <motion.div
               animate={busy ? { scale: [1, 1.1, 1] } : {}}

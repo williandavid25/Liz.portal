@@ -27,7 +27,9 @@ function getDbUrl(): string {
   ) {
     try {
       process.loadEnvFile();
-    } catch {}
+    } catch {
+      /* sin archivo .env: se usan las variables del entorno */
+    }
   }
   return (
     process.env.POSTGRES_URL ||
@@ -98,19 +100,43 @@ async function ensureSubsTable() {
       created_at timestamptz not null default now()
     )
   `;
+  // Qué celular es cada suscripción: así un aviso no le llega a quien lo mandó.
+  await db()`alter table push_subs add column if not exists device text`;
   subsTableReady = true;
+}
+
+// Notas de Snoopy: mensajes cortos de un celular al otro. Son temporales: se
+// borran apenas la otra persona las lee y las cierra (y, por si nadie las abre,
+// a los 7 días).
+const NOTA_VIDA_MS = 7 * 24 * 60 * 60 * 1000;
+let notasTableReady = false;
+async function ensureNotasTable() {
+  if (notasTableReady) return;
+  await db()`
+    create table if not exists notas_snoopy (
+      id text primary key,
+      de text not null,
+      texto text not null,
+      emoji text,
+      created_at bigint not null
+    )
+  `;
+  notasTableReady = true;
 }
 
 async function resetDb() {
   if (sql) {
     try {
       await sql.end({ timeout: 1 }).catch(() => {});
-    } catch {}
+    } catch {
+      /* la conexión ya estaba cerrada */
+    }
   }
   sql = null;
   tableReady = false;
   filesTableReady = false;
   subsTableReady = false;
+  notasTableReady = false;
 }
 
 const EMPTY: CloudStore = { cartas: [], fotos: [], eventos: [] };
@@ -182,13 +208,17 @@ export async function patchStore(patch: Partial<CloudStore>): Promise<CloudStore
   return prev;
 }
 
-export async function savePushSub(sub: { endpoint: string }): Promise<void> {
+export async function savePushSub(
+  sub: { endpoint: string } & Record<string, unknown>,
+  device?: string,
+): Promise<void> {
   try {
     await ensureSubsTable();
     const sqlc = db();
     await sqlc`
-      insert into push_subs (endpoint, sub) values (${sub.endpoint}, ${sqlc.json(sub as never)})
-      on conflict (endpoint) do update set sub = excluded.sub
+      insert into push_subs (endpoint, sub, device)
+      values (${sub.endpoint}, ${sqlc.json(sub as never)}, ${device ?? null})
+      on conflict (endpoint) do update set sub = excluded.sub, device = excluded.device
     `;
   } catch (err) {
     console.error("Error saving push sub:", err);
@@ -196,10 +226,13 @@ export async function savePushSub(sub: { endpoint: string }): Promise<void> {
   }
 }
 
-export async function listPushSubs(): Promise<unknown[]> {
+/** Suscripciones de avisos; con `exceptDevice` se salta el celular que envía. */
+export async function listPushSubs(exceptDevice?: string): Promise<unknown[]> {
   try {
     await ensureSubsTable();
-    const rows = await db()`select sub from push_subs`;
+    const rows = exceptDevice
+      ? await db()`select sub from push_subs where device is distinct from ${exceptDevice}`
+      : await db()`select sub from push_subs`;
     return rows.map((r) => {
       const s = r.sub as unknown;
       return typeof s === "string" ? JSON.parse(s) : s;
@@ -221,6 +254,49 @@ export async function deletePushSub(endpoint: string): Promise<void> {
   }
 }
 
+export interface NotaRow {
+  id: string;
+  de: string;
+  texto: string;
+  emoji?: string;
+  createdAt: number;
+}
+
+export async function insertNota(nota: NotaRow): Promise<void> {
+  await ensureNotasTable();
+  await db()`
+    insert into notas_snoopy (id, de, texto, emoji, created_at)
+    values (${nota.id}, ${nota.de}, ${nota.texto}, ${nota.emoji ?? null}, ${nota.createdAt})
+  `;
+}
+
+/** Notas que le llegaron a este celular (las que mandó el otro), más viejas primero. */
+export async function listNotasPara(device: string): Promise<NotaRow[]> {
+  await ensureNotasTable();
+  // Limpieza de las que nadie abrió en 7 días.
+  await db()`delete from notas_snoopy where created_at < ${Date.now() - NOTA_VIDA_MS}`;
+  const rows = await db()`
+    select id, de, texto, emoji, created_at from notas_snoopy
+    where de <> ${device}
+    order by created_at asc
+    limit 20
+  `;
+  return rows.map((r) => ({
+    id: r.id as string,
+    de: r.de as string,
+    texto: r.texto as string,
+    emoji: (r.emoji as string | null) ?? undefined,
+    createdAt: Number(r.created_at),
+  }));
+}
+
+export async function deleteNotas(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  await ensureNotasTable();
+  const sqlc = db();
+  await sqlc`delete from notas_snoopy where id in ${sqlc(ids)}`;
+}
+
 /**
  * Sube un archivo directamente a Supabase Storage (bucket 'fotos').
  * Devuelve la URL pública directa si tiene éxito, o null si falla.
@@ -228,23 +304,20 @@ export async function deletePushSub(endpoint: string): Promise<void> {
 export async function uploadToSupabaseStorage(
   filename: string,
   contentType: string,
-  bytes: Uint8Array
+  bytes: Uint8Array,
 ): Promise<string | null> {
   try {
     const cleanName = filename.replace(/[^a-zA-Z0-9.-]/g, "_");
-    const res = await fetch(
-      `${SUPABASE_URL}/storage/v1/object/fotos/${cleanName}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          apikey: SUPABASE_SERVICE_ROLE_KEY,
-          "Content-Type": contentType,
-          "x-upsert": "true",
-        },
-        body: bytes as unknown as BodyInit,
-      }
-    );
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/fotos/${cleanName}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        "Content-Type": contentType,
+        "x-upsert": "true",
+      },
+      body: bytes as unknown as BodyInit,
+    });
     if (!res.ok) {
       console.warn("Supabase storage upload failed with status:", res.status);
       return null;
@@ -273,7 +346,9 @@ export async function saveFileBytes(contentType: string, bytes: Uint8Array): Pro
 }
 
 /** Usado por la ruta /api/files/$id para servir de vuelta una foto guardada en base de datos. */
-export async function getFile(id: string): Promise<{ contentType: string; data: Uint8Array } | null> {
+export async function getFile(
+  id: string,
+): Promise<{ contentType: string; data: Uint8Array } | null> {
   try {
     await ensureFilesTable();
     const rows = await db()`select content_type, data from app_files where id = ${id}`;

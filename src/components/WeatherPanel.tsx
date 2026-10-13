@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Cloud,
   CloudLightning,
@@ -23,11 +23,13 @@ interface WeatherData {
 
 interface OpenMeteoResponse {
   current: {
+    time: string;
     temperature_2m: number;
     apparent_temperature: number;
     weather_code: number;
   };
   hourly: {
+    time: string[];
     precipitation_probability: number[];
   };
 }
@@ -69,7 +71,9 @@ async function readWeather(
   const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, { signal });
   if (!response.ok) throw new Error(`Weather request failed with status ${response.status}`);
   const data = (await response.json()) as OpenMeteoResponse;
-  const probability = data.hourly.precipitation_probability[0] ?? 0;
+  // La hora actual (antes se tomaba siempre la de medianoche).
+  const hora = data.hourly.time.indexOf(`${data.current.time.slice(0, 13)}:00`);
+  const probability = data.hourly.precipitation_probability[Math.max(0, hora)] ?? 0;
   return {
     temperature: Math.round(data.current.temperature_2m),
     apparentTemperature: Math.round(data.current.apparent_temperature),
@@ -121,8 +125,10 @@ export function WeatherPanel() {
       window.clearTimeout(fallbackTimer);
       void fetchFor(location);
     };
+    // Si la persona tarda en aceptar el permiso, se muestra el aviso pero la
+    // ubicación real sigue pudiendo llegar después.
     const fallbackTimer = window.setTimeout(() => {
-      locationChosen = true;
+      if (locationChosen) return;
       setLoading(false);
       setError("Activa la ubicación del móvil para consultar el clima de tu zona.");
     }, 5000);
@@ -152,11 +158,17 @@ export function WeatherPanel() {
     };
   }, []);
 
+  const cancelarClima = useRef<(() => void) | null>(null);
   useEffect(() => {
-    const cancel = loadWeather();
-    const refresh = window.setInterval(loadWeather, 15 * 60_000);
+    const cargar = () => {
+      cancelarClima.current?.();
+      cancelarClima.current = loadWeather();
+    };
+    cargar();
+    const refresh = window.setInterval(cargar, 15 * 60_000);
     return () => {
-      cancel?.();
+      cancelarClima.current?.();
+      cancelarClima.current = null;
       window.clearInterval(refresh);
     };
   }, [loadWeather]);

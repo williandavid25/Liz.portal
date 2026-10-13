@@ -6,12 +6,16 @@ import { deletePushSub, listPushSubs } from "./cloud.server";
 // Las claves VAPID viven en secretos del proyecto; la pública también la usa
 // el navegador para suscribirse.
 
-export async function sendPushToAll(payload: {
-  title: string;
-  body: string;
-  url?: string;
-  tag?: string;
-}): Promise<{ sent: number }> {
+export async function sendPushToAll(
+  payload: {
+    title: string;
+    body: string;
+    url?: string;
+    tag?: string;
+  },
+  /** Celular que lo envía: a él no le llega su propio aviso. */
+  exceptDevice?: string,
+): Promise<{ sent: number }> {
   const publicKey = process.env["VAPID_PUBLIC_KEY"];
   const privateJwk = process.env["VAPID_PRIVATE_JWK"];
   if (!publicKey || !privateJwk) return { sent: 0 };
@@ -25,7 +29,10 @@ export async function sendPushToAll(payload: {
   if (!privateKey) return { sent: 0 };
 
   const vapid = { subject: "mailto:avisos@liz.app", publicKey, privateKey };
-  const subs = (await listPushSubs()) as PushSubscription[];
+  const subs = ((await listPushSubs(exceptDevice)) as PushSubscription[]).filter(
+    // Suscripciones viejas guardadas sin claves no se pueden cifrar.
+    (s) => s?.endpoint && s.keys?.p256dh && s.keys?.auth,
+  );
   let sent = 0;
 
   await Promise.all(
