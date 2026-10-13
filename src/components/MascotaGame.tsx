@@ -240,7 +240,7 @@ function estadoEnviada(n: NotaEnviada): { texto: string; clase: string } {
     return { texto: "Sin conexión, reintentando…", clase: "text-amber-200" };
   if (n.pendiente) return { texto: "Enviando…", clase: "text-white/60" };
   if (n.leidaAt) return { texto: "Leída", clase: "text-pink-200" };
-  if (n.entregadaAt) return { texto: "Entregada ✓✓", clase: "text-sky-200" };
+  if (n.entregadaAt) return { texto: "En su celular · sin abrir", clase: "text-sky-200" };
   return { texto: "Enviada ✓", clase: "text-white/75" };
 }
 
@@ -943,13 +943,13 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     if (recien.length === 0) return;
     avisarNota(
       recien.length > 1
-        ? `${recien.length} notas entregadas ✓✓ · esperan a que las abra`
-        : "Entregada ✓✓ · espera a que la abra",
+        ? `${recien.length} notas en su celular · aún sin abrir`
+        : "Llegó a su celular · aún sin abrir",
       "ok",
       5000,
     );
     if (antes) {
-      decir("Tu nota ya llegó a su celular", 3200);
+      decir("Tu nota ya llegó a su celular. Se borrará cuando la lea", 3400);
       sonar("caricia");
     }
     programar(() => ocultarEnviadas(recien), 5200);
