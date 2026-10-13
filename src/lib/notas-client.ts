@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { borrarNotas, enviarNota, listarNotas, type NotaSnoopy } from "./cloud";
+import { borrarNotas, enviarNota, listarNotas, type NotaEnviada, type NotaSnoopy } from "./cloud";
 import { getDeviceId } from "./dispositivo";
 
 // Notas de Snoopy en el navegador: una sola lista compartida por toda la app
@@ -13,8 +13,11 @@ import { getDeviceId } from "./dispositivo";
 const POLL_MS = 20_000;
 const LEIDAS_KEY = "liz-notas-leidas";
 const VACIO: NotaSnoopy[] = [];
+const SIN_ENVIADAS: NotaEnviada[] = [];
 
 let notas: NotaSnoopy[] = VACIO;
+// Notas que mandó este celular: enviada → entregada → leída.
+let enviadas: NotaEnviada[] = SIN_ENVIADAS;
 const listeners = new Set<() => void>();
 let intervalo: number | null = null;
 let enCurso: Promise<void> | null = null;
@@ -44,6 +47,15 @@ function publicar(next: NotaSnoopy[]) {
   for (const fn of listeners) fn();
 }
 
+const firma = (xs: NotaEnviada[]) =>
+  xs.map((n) => `${n.id}:${n.entregadaAt ? 1 : 0}:${n.leidaAt ? 1 : 0}`).join("|");
+
+function publicarEnviadas(next: NotaEnviada[]) {
+  if (firma(next) === firma(enviadas)) return;
+  enviadas = next.length === 0 ? SIN_ENVIADAS : next;
+  for (const fn of listeners) fn();
+}
+
 async function borrarPendientes() {
   const pendientes = leerLeidas();
   if (pendientes.length === 0) return;
@@ -60,6 +72,7 @@ export function refrescarNotas(): Promise<void> {
     if (!r?.ok) return;
     const ocultas = new Set(leerLeidas());
     publicar(r.notas.filter((n) => !ocultas.has(n.id)));
+    publicarEnviadas(r.enviadas);
   })().finally(() => {
     enCurso = null;
   });
@@ -103,6 +116,15 @@ export function useNotasRecibidas(): NotaSnoopy[] {
   );
 }
 
+/** Estado de las notas que mandó este celular (la más nueva primero). */
+export function useNotasEnviadas(): NotaEnviada[] {
+  return useSyncExternalStore(
+    suscribir,
+    () => enviadas,
+    () => SIN_ENVIADAS,
+  );
+}
+
 /** Al abrirla: queda marcada en este celular (si se cierra la app, igual se borra). */
 export function abrirNota(id: string) {
   const leidas = leerLeidas();
@@ -117,5 +139,8 @@ export async function cerrarNota(id: string): Promise<void> {
 }
 
 export async function mandarNota(texto: string, emoji?: string) {
-  return enviarNota({ data: { de: getDeviceId(), texto, emoji } });
+  const r = await enviarNota({ data: { de: getDeviceId(), texto, emoji } });
+  // Que aparezca enseguida como "Enviada" en la lista.
+  if (r.ok) void refrescarNotas();
+  return r;
 }

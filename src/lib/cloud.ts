@@ -289,6 +289,15 @@ export interface NotaSnoopy {
 
 export const NOTA_MAX = 500;
 
+/** Lo que ve quien envía: si la nota llegó al otro celular y si ya se leyó. */
+export interface NotaEnviada {
+  id: string;
+  emoji?: string;
+  createdAt: number;
+  entregadaAt?: number;
+  leidaAt?: number;
+}
+
 /** Snoopy lleva una nota al otro celular (y le manda un aviso). */
 export const enviarNota = createServerFn({ method: "POST" })
   .validator((input: { de: string; texto: string; emoji?: string }) =>
@@ -329,26 +338,46 @@ export const enviarNota = createServerFn({ method: "POST" })
     }
   });
 
-/** Notas que le llegaron a este celular y todavía no se leyeron. */
+/** Notas recibidas sin leer y el estado de las que este celular envió. */
 export const listarNotas = createServerFn({ method: "GET" })
   .validator((device: string) => deviceSchema.parse(device))
   .handler(async ({ data }) => {
     try {
-      const { listNotasPara } = await import("./cloud.server");
-      return { ok: true, notas: (await listNotasPara(data)) as NotaSnoopy[] };
+      const { listNotasPara, listNotasEnviadas } = await import("./cloud.server");
+      const [notas, enviadas] = await Promise.all([listNotasPara(data), listNotasEnviadas(data)]);
+      return { ok: true, notas: notas as NotaSnoopy[], enviadas: enviadas as NotaEnviada[] };
     } catch (e) {
       console.error("No se pudieron leer las notas:", e);
-      return { ok: false, notas: [] as NotaSnoopy[] };
+      return { ok: false, notas: [] as NotaSnoopy[], enviadas: [] as NotaEnviada[] };
     }
   });
 
-/** Borra notas ya leídas: son temporales, no quedan guardadas. */
+/**
+ * Notas leídas y cerradas: se borra su texto para siempre y se le avisa a
+ * quien la mandó (aunque tenga la app cerrada).
+ */
 export const borrarNotas = createServerFn({ method: "POST" })
   .validator((ids: string[]) => z.array(z.string().min(1).max(200)).max(50).parse(ids))
   .handler(async ({ data }) => {
     try {
-      const { deleteNotas } = await import("./cloud.server");
-      await deleteNotas(data);
+      const { marcarNotasLeidas } = await import("./cloud.server");
+      const leidas = await marcarNotasLeidas(data);
+      if (leidas.length > 0) {
+        const { sendPushToAll } = await import("./push.server");
+        await Promise.all(
+          leidas.map((n) =>
+            sendPushToAll(
+              {
+                title: "💜 Leyó tu nota",
+                body: `Snoopy entregó tu nota ${n.emoji ?? "💌"} y ya la leyeron.`,
+                url: "/mascota",
+                tag: `leida-${n.id}`,
+              },
+              { onlyDevice: n.de },
+            ).catch(() => ({ sent: 0 })),
+          ),
+        );
+      }
       return { ok: true };
     } catch (e) {
       console.error("No se pudieron borrar las notas:", e);

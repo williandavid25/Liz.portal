@@ -37,7 +37,13 @@ import {
   type Progreso,
 } from "@/lib/logros-mascota";
 import { enablePush } from "@/lib/push-client";
-import { abrirNota, cerrarNota, mandarNota, useNotasRecibidas } from "@/lib/notas-client";
+import {
+  abrirNota,
+  cerrarNota,
+  mandarNota,
+  useNotasEnviadas,
+  useNotasRecibidas,
+} from "@/lib/notas-client";
 import { NOTA_MAX, guardarEstadoMascota, type NotaSnoopy } from "@/lib/cloud";
 import { getDeviceId } from "@/lib/dispositivo";
 import { SNOOPY_CSS, SnoopyVivo, imgPose, type Pose } from "@/components/SnoopyVivo";
@@ -279,6 +285,7 @@ const anclaEstilo = (a: Ancla): CSSProperties => ({
 export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
   const navigate = useNavigate();
   const notas = useNotasRecibidas();
+  const enviadas = useNotasEnviadas();
   const [notaAbierta, setNotaAbierta] = useState<NotaSnoopy | null>(null);
   const [escribiendo, setEscribiendo] = useState(false);
   const [textoNota, setTextoNota] = useState("");
@@ -866,6 +873,40 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
 
   /* ---------------- Notas de Snoopy (de un celular al otro) ---------------- */
 
+  // Quien envía se entera: Snoopy avisa cuando la nota llegó y cuando la leyeron.
+  const estadoEnviadas = useRef<Map<string, "enviada" | "entregada" | "leida"> | null>(null);
+  useEffect(() => {
+    if (!listo) return;
+    const antes = estadoEnviadas.current;
+    const ahora = new Map(
+      enviadas.map((n) => [
+        n.id,
+        n.leidaAt
+          ? ("leida" as const)
+          : n.entregadaAt
+            ? ("entregada" as const)
+            : ("enviada" as const),
+      ]),
+    );
+    estadoEnviadas.current = ahora;
+    if (!antes) return; // primera carga: solo se toma como punto de partida
+    let leida = false;
+    let entregada = false;
+    for (const [id, estado] of ahora) {
+      const previo = antes.get(id);
+      if (estado === "leida" && previo !== "leida") leida = true;
+      else if (estado === "entregada" && previo === "enviada") entregada = true;
+    }
+    if (leida) {
+      decir("¡Leyó tu nota! 💜", 3600);
+      sonar("logro");
+      lanzar(["💜", "💌", "✨"], 9);
+    } else if (entregada) {
+      decir("Tu nota ya llegó a su celular 📬", 3200);
+      sonar("caricia");
+    }
+  }, [listo, enviadas, decir, sonar, lanzar]);
+
   // Cuando llega una nota nueva, Snoopy la anuncia y aparece el sobre.
   const notasVistas = useRef<Set<string> | null>(null);
   useEffect(() => {
@@ -1204,17 +1245,33 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
         <div className="flex w-16 flex-col items-center gap-0.5 text-white">
           <button
             type="button"
-            onClick={() => setEscribiendo(true)}
-            aria-label={`Mandar una nota con ${nombre}`}
-            title="Mandar una nota al otro celular"
+            // Con una nota nueva, el botón la abre; si no, sirve para escribir.
+            onClick={() => (notas.length > 0 ? leerNota(notas[0]!) : setEscribiendo(true))}
+            aria-label={
+              notas.length > 0
+                ? `Tienes ${notas.length === 1 ? "una nota nueva" : `${notas.length} notas nuevas`}: ábrela`
+                : `Mandar una nota con ${nombre}`
+            }
+            title={
+              notas.length > 0 ? "Abrir la nota que te llegó" : "Mandar una nota al otro celular"
+            }
             className={`mg-boton mg-boton-transparente relative grid h-12 w-12 shrink-0 place-items-center overflow-visible rounded-full ${
               escribiendo ? "mg-boton-activo" : ""
             } ${enviandoNota ? "mg-boton-cargando" : ""}`}
           >
             <Mail size={22} strokeWidth={1.8} aria-hidden="true" className="text-pink-100" />
+            {notas.length > 0 && (
+              <span className="mg-nota-badge absolute -right-1 -top-1 z-[2] grid h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[11px] font-bold leading-none text-white">
+                {notas.length > 9 ? "9+" : notas.length}
+              </span>
+            )}
           </button>
-          <span className="whitespace-nowrap text-[10.5px] font-semibold leading-tight text-white/80">
-            Nota
+          <span
+            className={`whitespace-nowrap text-[10.5px] font-semibold leading-tight ${
+              notas.length > 0 ? "text-pink-200" : "text-white/80"
+            }`}
+          >
+            {notas.length > 0 ? "¡Nueva!" : "Nota"}
           </span>
         </div>
       </div>
@@ -1702,6 +1759,39 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
               <Send size={16} />
               {enviandoNota ? "Enviando…" : `Que ${nombre} la lleve`}
             </button>
+            {enviadas.length > 0 && (
+              <div className="border-t border-white/15 pt-2.5">
+                <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white/55">
+                  Tus notas
+                </p>
+                <ul className="space-y-1">
+                  {enviadas.slice(0, 3).map((n) => (
+                    <li key={n.id} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-white/70">
+                        {n.emoji || "💌"}{" "}
+                        {new Date(n.createdAt).toLocaleString("es-ES", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      <span
+                        className={`font-semibold ${
+                          n.leidaAt
+                            ? "text-pink-200"
+                            : n.entregadaAt
+                              ? "text-sky-200"
+                              : "text-white/60"
+                        }`}
+                      >
+                        {n.leidaAt ? "Leída 💜" : n.entregadaAt ? "Entregada ✓✓" : "Enviada ✓"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </form>
         </div>
       )}
@@ -1979,6 +2069,8 @@ const CSS = `
   transform-origin: 50% 100%;
 }
 .mg-nota-aviso { animation: mg-carta-aviso 0.6s cubic-bezier(.2,.9,.3,1.2) both; transform-origin: 50% 100%; }
+.mg-nota-badge { animation: mg-latido-badge 1.6s ease-in-out infinite; box-shadow: 0 0 0 2px rgba(15,19,40,0.6); }
+@keyframes mg-latido-badge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
 .mg-nota-flota { animation: mg-nota-flota 3.2s cubic-bezier(.45,.05,.55,.95) 0.6s infinite; }
 .mg-sobre-vuela { translate: -50% 0; animation: mg-sobre-vuela 1.6s cubic-bezier(.5,0,.75,0) both; }
 .mg-nota-abre { animation: mg-nota-abre 0.5s cubic-bezier(.22,1,.36,1) both; }

@@ -121,8 +121,13 @@ async function ensureNotasTable() {
       created_at bigint not null
     )
   `;
+  // Para que quien la envía sepa que llegó al otro celular y que se leyó.
+  await db()`alter table notas_snoopy add column if not exists entregada_at bigint`;
+  await db()`alter table notas_snoopy add column if not exists leida_at bigint`;
   notasTableReady = true;
 }
+// Lo que queda de una nota leída (sin texto) se guarda un día para avisar.
+const LEIDA_VIDA_MS = 24 * 60 * 60 * 1000;
 
 export async function resetDb() {
   if (sql) {
@@ -277,14 +282,27 @@ export async function insertNota(nota: NotaRow): Promise<void> {
 /** Notas que le llegaron a este celular (las que mandó el otro), más viejas primero. */
 export async function listNotasPara(device: string): Promise<NotaRow[]> {
   await ensureNotasTable();
-  // Limpieza de las que nadie abrió en 7 días.
-  await db()`delete from notas_snoopy where created_at < ${Date.now() - NOTA_VIDA_MS}`;
+  const ahora = Date.now();
+  // Limpieza: las que nadie abrió en 7 días y las marcas de "leída" de ayer.
+  await db()`
+    delete from notas_snoopy
+    where created_at < ${ahora - NOTA_VIDA_MS} or leida_at < ${ahora - LEIDA_VIDA_MS}
+  `;
   const rows = await db()`
     select id, de, texto, emoji, created_at from notas_snoopy
-    where de <> ${device}
+    where de <> ${device} and leida_at is null
     order by created_at asc
     limit 20
   `;
+  // Ya están en este celular: quedan como "entregadas".
+  const ids = rows.map((r) => r.id as string);
+  if (ids.length > 0) {
+    const sqlc = db();
+    await sqlc`
+      update notas_snoopy set entregada_at = ${ahora}
+      where id in ${sqlc(ids)} and entregada_at is null
+    `;
+  }
   return rows.map((r) => ({
     id: r.id as string,
     de: r.de as string,
@@ -294,11 +312,53 @@ export async function listNotasPara(device: string): Promise<NotaRow[]> {
   }));
 }
 
-export async function deleteNotas(ids: string[]): Promise<void> {
-  if (ids.length === 0) return;
+export interface NotaEnviadaRow {
+  id: string;
+  emoji?: string;
+  createdAt: number;
+  entregadaAt?: number;
+  leidaAt?: number;
+}
+
+/** Estado de las notas que mandó este celular (sin el texto). */
+export async function listNotasEnviadas(device: string): Promise<NotaEnviadaRow[]> {
+  await ensureNotasTable();
+  const rows = await db()`
+    select id, emoji, created_at, entregada_at, leida_at from notas_snoopy
+    where de = ${device}
+    order by created_at desc
+    limit 5
+  `;
+  return rows.map((r) => ({
+    id: r.id as string,
+    emoji: (r.emoji as string | null) ?? undefined,
+    createdAt: Number(r.created_at),
+    entregadaAt: r.entregada_at == null ? undefined : Number(r.entregada_at),
+    leidaAt: r.leida_at == null ? undefined : Number(r.leida_at),
+  }));
+}
+
+/**
+ * Nota leída y cerrada: se borra el texto para siempre y queda solo la marca
+ * de "leída" (un día) para avisarle a quien la mandó. Devuelve quién la envió.
+ */
+export async function marcarNotasLeidas(
+  ids: string[],
+): Promise<Array<{ id: string; de: string; emoji?: string }>> {
+  if (ids.length === 0) return [];
   await ensureNotasTable();
   const sqlc = db();
-  await sqlc`delete from notas_snoopy where id in ${sqlc(ids)}`;
+  const rows = await sqlc`
+    update notas_snoopy
+    set texto = , leida_at = ${Date.now()}, entregada_at = coalesce(entregada_at, ${Date.now()})
+    where id in ${sqlc(ids)} and leida_at is null
+    returning id, de, emoji
+  `;
+  return rows.map((r) => ({
+    id: r.id as string,
+    de: r.de as string,
+    emoji: (r.emoji as string | null) ?? undefined,
+  }));
 }
 
 /**
