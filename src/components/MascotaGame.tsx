@@ -284,6 +284,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
   const [textoNota, setTextoNota] = useState("");
   const [emojiNota, setEmojiNota] = useState<string>(EMOJIS_NOTA[0]);
   const [enviandoNota, setEnviandoNota] = useState(false);
+  const [notaLlena, setNotaLlena] = useState(false);
   const [sobreVolando, setSobreVolando] = useState(0);
   const [stats, setStats] = useState<Stats>(INICIAL);
   const [escena, setEscena] = useState<Escena>("dormitorio");
@@ -1058,6 +1059,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
       return;
     }
     setTextoNota("");
+    setNotaLlena(false);
     setEscribiendo(false);
     if (dormido) setDormido(false);
     // Salta contento y el sobre sale volando hacia el otro celular.
@@ -1610,7 +1612,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
       {/* Escribir una nota: Snoopy se la lleva al otro celular. */}
       {escribiendo && (
         <div
-          className="mg-panel-fondo fixed inset-0 z-[66] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          className="mg-panel-fondo fixed inset-0 z-[66] flex justify-center overflow-y-auto bg-black/60 px-4 pb-4 pt-[calc(env(safe-area-inset-top)+96px)] backdrop-blur-sm sm:pt-[calc(env(safe-area-inset-top)+116px)]"
           onClick={() => !enviandoNota && setEscribiendo(false)}
         >
           <form
@@ -1622,7 +1624,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
               e.preventDefault();
               void enviarNotaSnoopy();
             }}
-            className="mg-panel mg-vidrio-oscuro flex w-full max-w-sm flex-col gap-3 rounded-3xl px-5 pb-5 pt-4 text-white"
+            className="mg-panel mg-vidrio-oscuro my-auto flex h-fit w-full max-w-sm flex-col gap-3 rounded-3xl px-5 pb-5 pt-4 text-white"
           >
             <div className="flex items-center justify-between">
               <p className="flex items-center gap-2 text-lg font-bold leading-tight">
@@ -1641,18 +1643,35 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
               Le llega un aviso al otro celular. Es temporal: cuando la lea y la cierre, se borra
               para siempre.
             </p>
-            <textarea
-              autoFocus
-              value={textoNota}
-              onChange={(e) => setTextoNota(e.target.value.slice(0, NOTA_MAX))}
-              maxLength={NOTA_MAX}
-              rows={5}
-              placeholder="Escribe algo bonito…"
-              aria-label="Texto de la nota"
-              className="mg-papel w-full resize-none rounded-2xl px-4 py-3 text-lg leading-relaxed text-[#3a260f] outline-none placeholder:text-[#3a260f]/45 focus:ring-2 focus:ring-pink-300"
-            />
+            {/* Post-it morado: solo se escribe lo que cabe dentro del cuadro. */}
+            <div className="mg-postit mx-auto">
+              <textarea
+                autoFocus
+                value={textoNota}
+                onChange={(e) => {
+                  const el = e.target;
+                  const valor = el.value.slice(0, NOTA_MAX);
+                  // Si el texto nuevo ya no cabe en el cuadro, no se acepta.
+                  if (valor.length > textoNota.length && el.scrollHeight > el.clientHeight + 1) {
+                    el.value = textoNota;
+                    setNotaLlena(true);
+                    return;
+                  }
+                  setNotaLlena(false);
+                  setTextoNota(valor);
+                }}
+                maxLength={NOTA_MAX}
+                placeholder="Escribe algo bonito…"
+                aria-label="Texto de la nota"
+                className="mg-postit-texto"
+              />
+            </div>
             <div className="flex items-center justify-between gap-2">
-              <div className="flex gap-1" role="radiogroup" aria-label="Sello de la nota">
+              <div
+                className="flex gap-0.5 sm:gap-1"
+                role="radiogroup"
+                aria-label="Sello de la nota"
+              >
                 {EMOJIS_NOTA.map((em) => (
                   <button
                     key={em}
@@ -1668,8 +1687,11 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
                   </button>
                 ))}
               </div>
-              <span className="text-[11px] tabular-nums text-white/55">
-                {textoNota.length}/{NOTA_MAX}
+              <span
+                className="shrink-0 whitespace-nowrap text-[11px] font-semibold text-pink-200"
+                aria-live="polite"
+              >
+                {notaLlena ? "Nota llena ✍️" : ""}
               </span>
             </div>
             <button
@@ -1687,7 +1709,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
       {/* Leer una nota recibida: al cerrarla se borra. */}
       {notaAbierta && (
         <div
-          className="mg-panel-fondo fixed inset-0 z-[66] flex items-center justify-center bg-black/65 p-5 backdrop-blur-sm"
+          className="mg-panel-fondo fixed inset-0 z-[66] flex justify-center overflow-y-auto bg-black/65 px-5 pb-5 pt-[calc(env(safe-area-inset-top)+104px)] backdrop-blur-sm sm:pt-[calc(env(safe-area-inset-top)+124px)]"
           onClick={cerrarNotaAbierta}
         >
           <div
@@ -1695,27 +1717,25 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
             aria-modal="true"
             aria-label="Nota recibida"
             onClick={(e) => e.stopPropagation()}
-            className="mg-nota-abre w-full max-w-sm"
+            className="mg-nota-abre my-auto h-fit w-full max-w-sm"
           >
-            <div className="mg-papel relative rounded-2xl px-6 pb-6 pt-7 text-[#3a260f] shadow-2xl">
-              <span className="absolute -top-5 left-1/2 grid h-10 w-10 -translate-x-1/2 place-items-center rounded-full bg-rose-500 text-xl shadow-lg">
+            <p className="mb-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-white/80">
+              {nombre} te trajo esta nota
+            </p>
+            <div className="mg-postit mx-auto">
+              <span className="mg-postit-sello" aria-hidden="true">
                 {notaAbierta.emoji || "💌"}
               </span>
-              <p className="mb-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-[#7a5729]/80">
-                {nombre} te trajo esta nota
-              </p>
-              <p className="max-h-[50svh] overflow-y-auto whitespace-pre-wrap break-words text-xl leading-relaxed">
-                {notaAbierta.texto}
-              </p>
-              <p className="mt-4 text-right text-[11px] text-[#7a5729]/70">
-                {new Date(notaAbierta.createdAt).toLocaleString("es-ES", {
-                  day: "numeric",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
+              <p className="mg-postit-texto">{notaAbierta.texto}</p>
             </div>
+            <p className="mt-3 text-center text-[11px] text-white/60">
+              {new Date(notaAbierta.createdAt).toLocaleString("es-ES", {
+                day: "numeric",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
             <button
               type="button"
               autoFocus
@@ -1962,12 +1982,46 @@ const CSS = `
 .mg-nota-flota { animation: mg-nota-flota 3.2s cubic-bezier(.45,.05,.55,.95) 0.6s infinite; }
 .mg-sobre-vuela { translate: -50% 0; animation: mg-sobre-vuela 1.6s cubic-bezier(.5,0,.75,0) both; }
 .mg-nota-abre { animation: mg-nota-abre 0.5s cubic-bezier(.22,1,.36,1) both; }
-.mg-papel {
-  font-family: "Patrick Hand", cursive;
+/* Post-it morado translúcido. Todo se mide en cqw (ancho del cuadro): la letra
+   y el margen (~0,5 cm) quedan iguales en cualquier celular, así lo que cupo
+   al escribir cabe exacto al leer. */
+.mg-postit {
+  position: relative;
+  container-type: inline-size;
+  width: min(78vw, 300px);
+  aspect-ratio: 1;
+  border-radius: 2px;
   background:
-    repeating-linear-gradient(to bottom, transparent 0, transparent 1.95rem, rgba(120,80,30,0.18) 1.95rem, rgba(120,80,30,0.18) 2rem),
-    linear-gradient(160deg, #fffaf0, #f6ecd8);
-  text-shadow: none;
+    linear-gradient(to bottom, rgba(233,222,255,0.2) 0 12.5%, rgba(233,222,255,0) 13.5%),
+    linear-gradient(155deg, rgba(167,139,250,0.62), rgba(124,58,237,0.5) 70%, rgba(109,40,217,0.55));
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(221,214,254,0.35);
+  box-shadow:
+    0 22px 34px -14px rgba(25,8,55,0.75),
+    0 2px 6px rgba(25,8,55,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+  rotate: -1.2deg;
+}
+.mg-postit-texto {
+  position: absolute; inset: 0; margin: 0; display: block;
+  width: 100%; height: 100%;
+  padding: 7.5cqw 6.5cqw 6.5cqw;
+  font-family: "Patrick Hand", cursive;
+  font-size: 7cqw; line-height: 1.38;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(40,10,80,0.5);
+  background: transparent; border: 0; outline: none; resize: none;
+  overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere;
+  caret-color: #fbcfe8;
+}
+.mg-postit-texto::placeholder { color: rgba(255,255,255,0.6); }
+p.mg-postit-texto { overflow-y: auto; }
+.mg-postit-sello {
+  position: absolute; left: 50%; top: 0; translate: -50% -55%; z-index: 1;
+  display: grid; place-items: center; width: 12cqw; height: 12cqw;
+  border-radius: 999px; font-size: 6.5cqw;
+  background: rgba(244,63,94,0.92); box-shadow: 0 6px 14px rgba(0,0,0,0.35);
 }
 
 /* Barras */
