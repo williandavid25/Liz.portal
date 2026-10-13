@@ -154,10 +154,100 @@ export const resolvePreview = createServerFn({ method: "POST" })
 
 /** Clave pública para que el navegador pueda suscribirse a los avisos. */
 export const getPushKey = createServerFn({ method: "GET" }).handler(async () => {
-  return { key: process.env["VAPID_PUBLIC_KEY"] ?? null };
+  const { getVapidKeys } = await import("./avisos.server");
+  return { key: (await getVapidKeys())?.publicKey ?? null };
 });
 
 const deviceSchema = z.string().min(8).max(100);
+
+const statsSchema = z.object({
+  hambre: z.number().finite(),
+  felicidad: z.number().finite(),
+  higiene: z.number().finite(),
+  energia: z.number().finite(),
+});
+
+/** Sube el estado de Snoopy de este celular para avisar con la app cerrada. */
+export const guardarEstadoMascota = createServerFn({ method: "POST" })
+  .validator((input: unknown) =>
+    z
+      .object({
+        device: deviceSchema,
+        nombre: z.string().max(40),
+        stats: statsSchema,
+        statUpdatedAt: statsSchema,
+        dormido: z.boolean(),
+        avisos: z.boolean(),
+        tz: z.number().int().min(-900).max(900),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    try {
+      const { guardarEstado } = await import("./avisos.server");
+      await guardarEstado(data);
+      return { ok: true };
+    } catch (e) {
+      console.error("No se pudo guardar el estado de la mascota:", e);
+      return { ok: false };
+    }
+  });
+
+/**
+ * Deja listo el envío de avisos con la app cerrada: claves y el reloj que
+ * revisa a Snoopy cada 5 minutos (se programa solo, desde el sitio publicado).
+ */
+export const prepararAvisos = createServerFn({ method: "POST" }).handler(async () => {
+  try {
+    const { getRequestUrl } = await import("@tanstack/react-start/server");
+    const { asegurarReloj, getVapidKeys } = await import("./avisos.server");
+    const claves = await getVapidKeys();
+    const reloj = await asegurarReloj(getRequestUrl({ xForwardedHost: true }).origin);
+    return { ok: !!claves, reloj };
+  } catch (e) {
+    console.error("No se pudieron preparar los avisos:", e);
+    return { ok: false, reloj: false };
+  }
+});
+
+/**
+ * Ubicación aproximada (por la conexión) para el clima cuando el celular no da
+ * la ubicación exacta. En Vercel viene en las cabeceras; si no, se consulta
+ * un servicio gratuito por IP.
+ */
+export const ubicacionAproximada = createServerFn({ method: "GET" }).handler(async () => {
+  try {
+    const { getRequestHeader, getRequestIP } = await import("@tanstack/react-start/server");
+    const lat = Number(getRequestHeader("x-vercel-ip-latitude"));
+    const lon = Number(getRequestHeader("x-vercel-ip-longitude"));
+    const ciudad = getRequestHeader("x-vercel-ip-city");
+    if (Number.isFinite(lat) && Number.isFinite(lon) && (lat !== 0 || lon !== 0)) {
+      return {
+        latitude: lat,
+        longitude: lon,
+        label: ciudad ? decodeURIComponent(ciudad) : "Tu zona",
+      };
+    }
+    const ip = getRequestIP({ xForwardedFor: true });
+    const privada =
+      !ip || /^(::1|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|fe80|::ffff:127)/.test(ip);
+    const res = await fetch(`https://ipwho.is/${privada ? "" : encodeURIComponent(ip)}`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    const j = (await res.json()) as {
+      success?: boolean;
+      latitude?: number;
+      longitude?: number;
+      city?: string;
+    };
+    if (j.success && typeof j.latitude === "number" && typeof j.longitude === "number") {
+      return { latitude: j.latitude, longitude: j.longitude, label: j.city || "Tu zona" };
+    }
+  } catch (e) {
+    console.warn("No se pudo estimar la ubicación:", e);
+  }
+  return null;
+});
 
 // La suscripción completa: sin `keys` el servidor no puede cifrar el aviso.
 // (Antes el esquema solo pedía `endpoint` y zod descartaba las claves, así que
@@ -230,7 +320,7 @@ export const enviarNota = createServerFn({ method: "POST" })
           url: `/mascota?nota=${nota.id}`,
           tag: `nota-${nota.id}`,
         },
-        data.de,
+        { exceptDevice: data.de },
       ).catch(() => ({ sent: 0 }));
       return { ok: true, avisos: sent };
     } catch (e) {
@@ -295,7 +385,7 @@ export const saveCartas = createServerFn({ method: "POST" })
             url: `/bienvenida?open=${carta.id}`,
             tag: carta.id,
           },
-          de,
+          { exceptDevice: de },
         ).catch((e) => console.error("No se pudo avisar de la carta nueva:", e));
       }
       return { ok: true };

@@ -11,6 +11,7 @@ import {
   Sun,
   X,
 } from "lucide-react";
+import { ubicacionAproximada } from "@/lib/cloud";
 
 interface WeatherData {
   temperature: number;
@@ -87,6 +88,26 @@ async function readWeather(
   };
 }
 
+type Lugar = { latitude: number; longitude: number; label: string };
+const CACHE_KEY = "liz-clima-cache";
+const LUGAR_KEY = "liz-clima-lugar";
+
+function leer<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+function guardar(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* almacenamiento bloqueado */
+  }
+}
+
 export function WeatherPanel() {
   const VISIBILITY_KEY = "liz-weather-panel-visible";
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -100,78 +121,101 @@ export function WeatherPanel() {
     if (saved !== null) setVisible(saved === "true");
   }, []);
 
+  // Primero se muestra el último clima guardado (aparece al instante), luego
+  // se actualiza: ubicación exacta si el celular la da; si no la da (permiso
+  // negado, GPS apagado o tarda mucho), la ubicación aproximada por la
+  // conexión; y si tampoco, la última ubicación conocida.
   const loadWeather = useCallback(() => {
     const controller = new AbortController();
+    let terminado = false;
     setLoading(true);
     setError(null);
 
-    const fetchFor = (location: { latitude: number; longitude: number; label: string }) =>
-      readWeather(location.latitude, location.longitude, location.label, controller.signal)
-        .then((next) => {
-          setWeather(next);
-          setUsingFallback(false);
-        })
-        .catch((reason: unknown) => {
-          if (reason instanceof DOMException && reason.name === "AbortError") return;
-          console.warn("No se pudo cargar el clima:", reason);
-          setError("No se pudo consultar el clima");
-        })
-        .finally(() => setLoading(false));
-
-    let locationChosen = false;
-    const chooseLocation = (location: { latitude: number; longitude: number; label: string }) => {
-      if (locationChosen) return;
-      locationChosen = true;
-      window.clearTimeout(fallbackTimer);
-      void fetchFor(location);
+    const usar = async (lugar: Lugar, aproximada: boolean) => {
+      if (terminado) return;
+      terminado = true;
+      window.clearTimeout(tiempoGps);
+      try {
+        const next = await readWeather(
+          lugar.latitude,
+          lugar.longitude,
+          lugar.label,
+          controller.signal,
+        );
+        setWeather(next);
+        setUsingFallback(aproximada);
+        setError(null);
+        guardar(CACHE_KEY, { weather: next, aproximada, at: Date.now() });
+        if (!aproximada) guardar(LUGAR_KEY, lugar);
+      } catch (reason) {
+        if (reason instanceof DOMException && reason.name === "AbortError") return;
+        console.warn("No se pudo cargar el clima:", reason);
+        setError("No se pudo consultar el clima. Revisa tu internet.");
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
     };
-    // Si la persona tarda en aceptar el permiso, se muestra el aviso pero la
-    // ubicación real sigue pudiendo llegar después.
-    const fallbackTimer = window.setTimeout(() => {
-      if (locationChosen) return;
-      setLoading(false);
-      setError("Activa la ubicación del móvil para consultar el clima de tu zona.");
-    }, 5000);
 
-    if (!("geolocation" in navigator)) {
+    const respaldo = async () => {
+      if (terminado) return;
+      const aprox = await ubicacionAproximada().catch(() => null);
+      if (terminado || controller.signal.aborted) return;
+      if (aprox) return usar({ ...aprox, label: `Cerca de ${aprox.label}` }, true);
+      const ultimo = leer<Lugar>(LUGAR_KEY);
+      if (ultimo) return usar(ultimo, false);
+      terminado = true;
       setLoading(false);
-      setError("Este dispositivo no permite consultar su ubicación.");
-    } else
+      setError("No se pudo saber tu ubicación. Activa la ubicación y toca actualizar.");
+    };
+
+    // Si el GPS no responde en 8 s, se usa la ubicación aproximada.
+    const tiempoGps = window.setTimeout(() => void respaldo(), 8000);
+    if (!("geolocation" in navigator)) {
+      void respaldo();
+    } else {
       navigator.geolocation.getCurrentPosition(
         ({ coords }) =>
-          chooseLocation({
-            latitude: coords.latitude,
-            longitude: coords.longitude,
-            label: "Tu ubicación",
-          }),
-        () => {
-          locationChosen = true;
-          window.clearTimeout(fallbackTimer);
-          setLoading(false);
-          setError("Permite la ubicación para mostrar el clima de tu zona.");
-        },
-        { enableHighAccuracy: false, maximumAge: 15 * 60_000, timeout: 5000 },
+          void usar(
+            { latitude: coords.latitude, longitude: coords.longitude, label: "Tu ubicación" },
+            false,
+          ),
+        () => void respaldo(),
+        { enableHighAccuracy: false, maximumAge: 30 * 60_000, timeout: 7000 },
       );
+    }
     return () => {
+      terminado = true;
       controller.abort();
-      window.clearTimeout(fallbackTimer);
+      window.clearTimeout(tiempoGps);
     };
   }, []);
 
   const cancelarClima = useRef<(() => void) | null>(null);
+  const recargar = useCallback(() => {
+    cancelarClima.current?.();
+    cancelarClima.current = loadWeather();
+  }, [loadWeather]);
   useEffect(() => {
-    const cargar = () => {
-      cancelarClima.current?.();
-      cancelarClima.current = loadWeather();
+    const guardado = leer<{ weather: WeatherData; aproximada: boolean; at: number }>(CACHE_KEY);
+    if (guardado && Date.now() - guardado.at < 6 * 60 * 60_000) {
+      setWeather(guardado.weather);
+      setUsingFallback(guardado.aproximada);
+    }
+    recargar();
+    const refresh = window.setInterval(recargar, 15 * 60_000);
+    // Al volver a la app se actualiza si pasó un buen rato.
+    const alVolver = () => {
+      const g = leer<{ at: number }>(CACHE_KEY);
+      if (!document.hidden && (!g || Date.now() - g.at > 10 * 60_000)) recargar();
     };
-    cargar();
-    const refresh = window.setInterval(cargar, 15 * 60_000);
+    document.addEventListener("visibilitychange", alVolver);
     return () => {
       cancelarClima.current?.();
       cancelarClima.current = null;
       window.clearInterval(refresh);
+      document.removeEventListener("visibilitychange", alVolver);
     };
-  }, [loadWeather]);
+  }, [recargar]);
 
   // La posición la da la columna derecha de MascotaGame (clima arriba y el
   // botón de notas debajo), así el botón nunca tapa el panel.
@@ -208,7 +252,7 @@ export function WeatherPanel() {
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={loadWeather}
+            onClick={recargar}
             disabled={loading}
             aria-label="Actualizar clima"
             title="Actualizar clima"
@@ -249,7 +293,10 @@ export function WeatherPanel() {
             Lluvia: {weather.precipitationProbability}% · Sensación {weather.apparentTemperature}°C
           </p>
           <p className="mt-1 flex items-center justify-between gap-2 text-[10px] text-white/50">
-            <span>{usingFallback ? "Ubicación del móvil" : weather.location}</span>
+            <span className="truncate">
+              {weather.location}
+              {usingFallback ? " (aprox.)" : ""}
+            </span>
             <span>{weather.updatedAt}</span>
           </p>
         </>

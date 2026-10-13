@@ -1,10 +1,11 @@
 import { buildPushPayload, type PushSubscription } from "@block65/webcrypto-web-push";
 import { deletePushSub, listPushSubs } from "./cloud.server";
+import { getVapidKeys } from "./avisos.server";
 
 // Envío de avisos reales (Web Push, RFC 8291) desde el servidor a cada celular
 // que aceptó recibirlos. Funciona con la app instalada y cerrada.
-// Las claves VAPID viven en secretos del proyecto; la pública también la usa
-// el navegador para suscribirse.
+// Las claves VAPID salen de las variables del proyecto o, si no están, de las
+// que el servidor generó y guardó en la base (ver avisos.server.ts).
 
 export async function sendPushToAll(
   payload: {
@@ -13,23 +14,14 @@ export async function sendPushToAll(
     url?: string;
     tag?: string;
   },
-  /** Celular que lo envía: a él no le llega su propio aviso. */
-  exceptDevice?: string,
+  /** exceptDevice: a quien lo envía no le llega · onlyDevice: solo a ese celular. */
+  opts: { exceptDevice?: string; onlyDevice?: string } = {},
 ): Promise<{ sent: number }> {
-  const publicKey = process.env["VAPID_PUBLIC_KEY"];
-  const privateJwk = process.env["VAPID_PRIVATE_JWK"];
-  if (!publicKey || !privateJwk) return { sent: 0 };
+  const keys = await getVapidKeys();
+  if (!keys) return { sent: 0 };
 
-  let privateKey: string | undefined;
-  try {
-    privateKey = (JSON.parse(privateJwk) as { d?: string }).d;
-  } catch {
-    privateKey = undefined;
-  }
-  if (!privateKey) return { sent: 0 };
-
-  const vapid = { subject: "mailto:avisos@liz.app", publicKey, privateKey };
-  const subs = ((await listPushSubs(exceptDevice)) as PushSubscription[]).filter(
+  const vapid = { subject: "mailto:avisos@liz.app", ...keys };
+  const subs = ((await listPushSubs(opts)) as PushSubscription[]).filter(
     // Suscripciones viejas guardadas sin claves no se pueden cifrar.
     (s) => s?.endpoint && s.keys?.p256dh && s.keys?.auth,
   );

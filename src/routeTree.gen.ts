@@ -15,6 +15,7 @@ import { Route as CalendarioRouteImport } from './routes/calendario'
 import { Route as CartasRouteImport } from './routes/cartas'
 import { Route as MascotaRouteImport } from './routes/mascota'
 import { Route as RecuerdosRouteImport } from './routes/recuerdos'
+import { Route as ApiAvisosTickRouteImport } from './routes/api/avisos-tick'
 import { Route as ApiBlobUploadRouteImport } from './routes/api/blob-upload'
 import { Route as ApiFilesIdRouteImport } from './routes/api/files/$id'
 
@@ -48,6 +49,11 @@ const RecuerdosRoute = RecuerdosRouteImport.update({
   path: '/recuerdos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAvisosTickRoute = ApiAvisosTickRouteImport.update({
+  id: '/api/avisos-tick',
+  path: '/api/avisos-tick',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiBlobUploadRoute = ApiBlobUploadRouteImport.update({
   id: '/api/blob-upload',
   path: '/api/blob-upload',
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/cartas': typeof CartasRoute
   '/mascota': typeof MascotaRoute
   '/recuerdos': typeof RecuerdosRoute
+  '/api/avisos-tick': typeof ApiAvisosTickRoute
   '/api/blob-upload': typeof ApiBlobUploadRoute
   '/api/files/$id': typeof ApiFilesIdRoute
 }
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/cartas': typeof CartasRoute
   '/mascota': typeof MascotaRoute
   '/recuerdos': typeof RecuerdosRoute
+  '/api/avisos-tick': typeof ApiAvisosTickRoute
   '/api/blob-upload': typeof ApiBlobUploadRoute
   '/api/files/$id': typeof ApiFilesIdRoute
 }
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/cartas': typeof CartasRoute
   '/mascota': typeof MascotaRoute
   '/recuerdos': typeof RecuerdosRoute
+  '/api/avisos-tick': typeof ApiAvisosTickRoute
   '/api/blob-upload': typeof ApiBlobUploadRoute
   '/api/files/$id': typeof ApiFilesIdRoute
 }
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/cartas'
     | '/mascota'
     | '/recuerdos'
+    | '/api/avisos-tick'
     | '/api/blob-upload'
     | '/api/files/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/cartas'
     | '/mascota'
     | '/recuerdos'
+    | '/api/avisos-tick'
     | '/api/blob-upload'
     | '/api/files/$id'
   id:
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/cartas'
     | '/mascota'
     | '/recuerdos'
+    | '/api/avisos-tick'
     | '/api/blob-upload'
     | '/api/files/$id'
   fileRoutesById: FileRoutesById
@@ -130,6 +142,7 @@ export interface RootRouteChildren {
   CartasRoute: typeof CartasRoute
   MascotaRoute: typeof MascotaRoute
   RecuerdosRoute: typeof RecuerdosRoute
+  ApiAvisosTickRoute: typeof ApiAvisosTickRoute
   ApiBlobUploadRoute: typeof ApiBlobUploadRoute
   ApiFilesIdRoute: typeof ApiFilesIdRoute
 }
@@ -178,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecuerdosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/avisos-tick': {
+      id: '/api/avisos-tick'
+      path: '/api/avisos-tick'
+      fullPath: '/api/avisos-tick'
+      preLoaderRoute: typeof ApiAvisosTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/blob-upload': {
       id: '/api/blob-upload'
       path: '/api/blob-upload'
@@ -202,6 +222,7 @@ const rootRouteChildren: RootRouteChildren = {
   CartasRoute: CartasRoute,
   MascotaRoute: MascotaRoute,
   RecuerdosRoute: RecuerdosRoute,
+  ApiAvisosTickRoute: ApiAvisosTickRoute,
   ApiBlobUploadRoute: ApiBlobUploadRoute,
   ApiFilesIdRoute: ApiFilesIdRoute,
 }

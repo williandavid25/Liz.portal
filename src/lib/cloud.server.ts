@@ -46,7 +46,7 @@ function getDbUrl(): string {
 }
 
 let sql: ReturnType<typeof postgres> | null = null;
-function db() {
+export function db() {
   if (!sql) {
     const url = getDbUrl();
     sql = postgres(url, {
@@ -124,7 +124,7 @@ async function ensureNotasTable() {
   notasTableReady = true;
 }
 
-async function resetDb() {
+export async function resetDb() {
   if (sql) {
     try {
       await sql.end({ timeout: 1 }).catch(() => {});
@@ -226,13 +226,17 @@ export async function savePushSub(
   }
 }
 
-/** Suscripciones de avisos; con `exceptDevice` se salta el celular que envía. */
-export async function listPushSubs(exceptDevice?: string): Promise<unknown[]> {
+/** Suscripciones de avisos: sin el celular que envía, o solo las de un celular. */
+export async function listPushSubs(
+  opts: { exceptDevice?: string; onlyDevice?: string } = {},
+): Promise<unknown[]> {
   try {
     await ensureSubsTable();
-    const rows = exceptDevice
-      ? await db()`select sub from push_subs where device is distinct from ${exceptDevice}`
-      : await db()`select sub from push_subs`;
+    const rows = opts.onlyDevice
+      ? await db()`select sub from push_subs where device = ${opts.onlyDevice}`
+      : opts.exceptDevice
+        ? await db()`select sub from push_subs where device is distinct from ${opts.exceptDevice}`
+        : await db()`select sub from push_subs`;
     return rows.map((r) => {
       const s = r.sub as unknown;
       return typeof s === "string" ? JSON.parse(s) : s;

@@ -38,7 +38,8 @@ import {
 } from "@/lib/logros-mascota";
 import { enablePush } from "@/lib/push-client";
 import { abrirNota, cerrarNota, mandarNota, useNotasRecibidas } from "@/lib/notas-client";
-import { NOTA_MAX, type NotaSnoopy } from "@/lib/cloud";
+import { NOTA_MAX, guardarEstadoMascota, type NotaSnoopy } from "@/lib/cloud";
+import { getDeviceId } from "@/lib/dispositivo";
 import { SNOOPY_CSS, SnoopyVivo, imgPose, type Pose } from "@/components/SnoopyVivo";
 import { WeatherPanel } from "@/components/WeatherPanel";
 
@@ -456,6 +457,9 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
       }
       if (typeof g.sonido === "boolean") setSonido(g.sonido);
       if (typeof g.avisos === "boolean") setAvisos(g.avisos);
+      // Si este celular ya permite avisos, Snoopy avisa sin tener que activarlo.
+      else if (typeof Notification !== "undefined" && Notification.permission === "granted")
+        setAvisos(true);
       let n = g.nombre;
       if (!n) {
         const vieja = localStorage.getItem("liz-mascota");
@@ -522,6 +526,41 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
       /* almacenamiento lleno o bloqueado */
     }
   }, [listo, stats, escena, nombre, progreso, sonido, avisos, dormido]);
+
+  // Sube el estado al servidor para que avise aunque la app esté cerrada
+  // (hambre, baño, sueño y horas de comida). Se espera a que se calme y
+  // también se manda al salir de la app.
+  const estadoRef = useRef({ stats, dormido, nombre, avisos });
+  estadoRef.current = { stats, dormido, nombre, avisos };
+  const subirEstado = useCallback(() => {
+    const e = estadoRef.current;
+    void guardarEstadoMascota({
+      data: {
+        device: getDeviceId(),
+        nombre: e.nombre,
+        stats: e.stats,
+        statUpdatedAt: { ...statUpdatedAtRef.current },
+        dormido: e.dormido,
+        avisos: e.avisos,
+        tz: new Date().getTimezoneOffset(),
+      },
+    }).catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (!listo) return;
+    const t = window.setTimeout(subirEstado, 4000);
+    return () => window.clearTimeout(t);
+  }, [listo, stats, dormido, nombre, avisos, subirEstado]);
+  useEffect(() => {
+    if (!listo) return;
+    const alOcultar = () => document.hidden && subirEstado();
+    document.addEventListener("visibilitychange", alOcultar);
+    window.addEventListener("pagehide", subirEstado);
+    return () => {
+      document.removeEventListener("visibilitychange", alOcultar);
+      window.removeEventListener("pagehide", subirEstado);
+    };
+  }, [listo, subirEstado]);
 
   useEffect(() => {
     const id = window.setInterval(() => {
