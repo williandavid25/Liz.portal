@@ -41,6 +41,8 @@ import {
   abrirNota,
   cerrarNota,
   mandarNota,
+  alLeerseUnaNota,
+  ocultarEnviadas,
   useNotasEnviadas,
   useNotasRecibidas,
 } from "@/lib/notas-client";
@@ -925,41 +927,58 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
 
   /* ---------------- Notas de Snoopy (de un celular al otro) ---------------- */
 
-  // Quien envía se entera: Snoopy avisa cuando la nota llegó y cuando la leyeron.
-  const estadoEnviadas = useRef<Map<string, "enviada" | "entregada" | "leida"> | null>(null);
+  // Quien envía se entera cuando la nota llegó al otro celular. Una vez visto
+  // el aviso, la nota sale de su lista: solo sigue esperando en la nube.
+  const estadoEnviadas = useRef<Map<string, "enviada" | "entregada"> | null>(null);
   useEffect(() => {
     if (!listo) return;
     const antes = estadoEnviadas.current;
     const ahora = new Map(
-      enviadas.map((n) => [
-        n.id,
-        n.leidaAt
-          ? ("leida" as const)
-          : n.entregadaAt
-            ? ("entregada" as const)
-            : ("enviada" as const),
-      ]),
+      enviadas.map((n) => [n.id, n.entregadaAt ? ("entregada" as const) : ("enviada" as const)]),
     );
     estadoEnviadas.current = ahora;
-    if (!antes) return; // primera carga: solo se toma como punto de partida
-    let leida = false;
-    let entregada = false;
-    for (const [id, estado] of ahora) {
-      const previo = antes.get(id);
-      if (estado === "leida" && previo !== "leida") leida = true;
-      else if (estado === "entregada" && previo === "enviada") entregada = true;
-    }
-    if (leida) {
-      avisarNota("¡Leyó tu nota!", "leida", 5000);
-      decir("¡Leyó tu nota! 💜", 3600);
-      sonar("logro");
-      lanzar(["corazon", "destello"], 10);
-    } else if (entregada) {
-      avisarNota("Entregada ✓✓ · ya está en su celular", "ok", 4500);
-      decir("Tu nota ya llegó a su celular 📬", 3200);
+    const recien = [...ahora]
+      .filter(([id, e]) => e === "entregada" && antes?.get(id) !== "entregada")
+      .map(([id]) => id);
+    if (recien.length === 0) return;
+    avisarNota(
+      recien.length > 1
+        ? `${recien.length} notas entregadas ✓✓ · esperan a que las abra`
+        : "Entregada ✓✓ · espera a que la abra",
+      "ok",
+      5000,
+    );
+    if (antes) {
+      decir("Tu nota ya llegó a su celular", 3200);
       sonar("caricia");
     }
-  }, [listo, enviadas, decir, sonar, lanzar, avisarNota]);
+    programar(() => ocultarEnviadas(recien), 5200);
+  }, [listo, enviadas, decir, sonar, avisarNota, programar]);
+
+  // Al cerrar el panel, las entregadas que se vieron ahí también salen.
+  const panelAbierto = useRef(false);
+  useEffect(() => {
+    if (panelAbierto.current && !panelNotas) {
+      ocultarEnviadas(enviadas.filter((n) => n.entregadaAt).map((n) => n.id));
+    }
+    panelAbierto.current = panelNotas;
+  }, [panelNotas, enviadas]);
+
+  // La leyó y la cerró: se borró de la nube. Solo queda este aviso.
+  useEffect(
+    () =>
+      alLeerseUnaNota((cuantas) => {
+        avisarNota(
+          cuantas > 1 ? `Leyó ${cuantas} notas · ya se borraron` : "¡Leyó tu nota! · ya se borró",
+          "leida",
+          5000,
+        );
+        decir("¡Leyó tu nota!", 3600);
+        sonar("logro");
+        lanzar(["corazon", "destello"], 10);
+      }),
+    [avisarNota, decir, sonar, lanzar],
+  );
 
   // Cuando llega una nota nueva, Snoopy la anuncia y aparece el sobre.
   const notasVistas = useRef<Set<string> | null>(null);
@@ -1443,12 +1462,10 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
                 )}
 
                 <p className="mb-1 mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white/55">
-                  Enviadas
+                  En camino
                 </p>
                 {enviadas.length === 0 ? (
-                  <p className="mb-2 px-1 py-1.5 text-xs text-white/55">
-                    Aún no has enviado notas.
-                  </p>
+                  <p className="mb-2 px-1 py-1.5 text-xs text-white/55">No hay notas en camino.</p>
                 ) : (
                   <ul className="mb-2 space-y-1">
                     {enviadas.map((n) => {

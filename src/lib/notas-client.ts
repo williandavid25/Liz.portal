@@ -15,6 +15,9 @@ const LEIDAS_KEY = "liz-notas-leidas";
 // Notas escritas que todavía no llegaron al servidor (sin conexión o lento):
 // se guardan aquí y se reenvían solas, sin duplicarse.
 const COLA_KEY = "liz-notas-por-enviar";
+// Notas enviadas que ya se vieron como "Entregada": desaparecen de la lista
+// (no queda registro; la nota solo espera en la nube a que la abran).
+const VISTAS_KEY = "liz-notas-entregadas-vistas";
 const LIMITE_ENVIO_MS = 20_000;
 const REINTENTO_MS = 8_000;
 const VACIO: NotaSnoopy[] = [];
@@ -104,6 +107,46 @@ const firma = (xs: NotaEnviada[]) =>
     .join("|");
 
 /** Lo que ve quien envía: primero las que van en camino, luego las del servidor. */
+function leerVistas(): Set<string> {
+  try {
+    const v = JSON.parse(localStorage.getItem(VISTAS_KEY) || "[]");
+    return new Set(Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+let vistas = leerVistas();
+
+function guardarVistas() {
+  // Solo se recuerdan las que siguen esperando en la nube.
+  const vivas = new Set(enviadasServidor.map((n) => n.id));
+  const lista = [...vistas].filter((id) => vivas.size === 0 || vivas.has(id)).slice(-50);
+  vistas = new Set(lista);
+  try {
+    if (lista.length === 0) localStorage.removeItem(VISTAS_KEY);
+    else localStorage.setItem(VISTAS_KEY, JSON.stringify(lista));
+  } catch {
+    /* almacenamiento bloqueado */
+  }
+}
+
+/** Quien envía ya vio que se entregaron: se quitan de su lista. */
+export function ocultarEnviadas(ids: string[]) {
+  if (ids.length === 0) return;
+  for (const id of ids) vistas.add(id);
+  guardarVistas();
+  recalcularEnviadas();
+}
+
+// Aviso cuando una nota entregada desaparece de la nube: la leyeron y se borró.
+const oyentesLeida = new Set<(cuantas: number) => void>();
+export function alLeerseUnaNota(fn: (cuantas: number) => void) {
+  oyentesLeida.add(fn);
+  return () => {
+    oyentesLeida.delete(fn);
+  };
+}
+
 function recalcularEnviadas() {
   const enCamino: NotaEnviada[] = cola.map((c) => ({
     id: c.id,
@@ -112,17 +155,26 @@ function recalcularEnviadas() {
     pendiente: c.fallos > 0 ? "error" : "enviando",
   }));
   const ids = new Set(enCamino.map((n) => n.id));
-  const next = [...enCamino.reverse(), ...enviadasServidor.filter((n) => !ids.has(n.id))].slice(
-    0,
-    5,
-  );
+  const next = [
+    ...enCamino.reverse(),
+    ...enviadasServidor.filter((n) => !ids.has(n.id) && !(n.entregadaAt && vistas.has(n.id))),
+  ].slice(0, 8);
   if (firma(next) === firma(enviadas)) return;
   enviadas = next.length === 0 ? SIN_ENVIADAS : next;
   for (const fn of listeners) fn();
 }
 
+let servidorCargado = false;
 function publicarEnviadas(next: NotaEnviada[]) {
+  // Una nota que ya estaba entregada y ya no está en la nube = la leyeron.
+  if (servidorCargado && next.length < 20) {
+    const siguen = new Set(next.map((n) => n.id));
+    const leidas = enviadasServidor.filter((n) => n.entregadaAt && !siguen.has(n.id)).length;
+    if (leidas > 0) for (const fn of oyentesLeida) fn(leidas);
+  }
+  servidorCargado = true;
   enviadasServidor = next;
+  guardarVistas();
   recalcularEnviadas();
 }
 
