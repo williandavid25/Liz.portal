@@ -1153,7 +1153,30 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
       onPointerLeave={soltarMirada}
     >
       <style>{CSS + SNOOPY_CSS}</style>
-      <WeatherPanel />
+      {/* Columna derecha: el clima y, justo debajo, el botón de notas. */}
+      <div
+        className={`mg-contenido absolute right-4 top-[calc(env(safe-area-inset-top)+260px)] z-10 flex flex-col items-end gap-3 sm:right-6 sm:top-[calc(env(safe-area-inset-top)+286px)] ${
+          listo ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <WeatherPanel />
+        <div className="flex w-16 flex-col items-center gap-0.5 text-white">
+          <button
+            type="button"
+            onClick={() => setEscribiendo(true)}
+            aria-label={`Mandar una nota con ${nombre}`}
+            title="Mandar una nota al otro celular"
+            className={`mg-boton mg-boton-transparente relative grid h-12 w-12 shrink-0 place-items-center overflow-visible rounded-full ${
+              escribiendo ? "mg-boton-activo" : ""
+            } ${enviandoNota ? "mg-boton-cargando" : ""}`}
+          >
+            <Mail size={22} strokeWidth={1.8} aria-hidden="true" className="text-pink-100" />
+          </button>
+          <span className="whitespace-nowrap text-[10.5px] font-semibold leading-tight text-white/80">
+            Nota
+          </span>
+        </div>
+      </div>
 
       {/* Fondo difuminado de pantalla completa (se ve detrás de los controles). */}
       <div className="absolute inset-0" aria-hidden="true">
@@ -1434,16 +1457,6 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
                   <HeartPulse size={12} className="text-rose-300" />
                   {bienestar}%
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setEscribiendo(true)}
-                  className="mg-pastilla flex items-center gap-1 rounded-full px-2 py-0.5 transition hover:bg-white/30"
-                  aria-label={`Mandar una nota con ${nombre}`}
-                  title="Mandar una nota al otro celular"
-                >
-                  <Mail size={12} className="text-pink-200" />
-                  Nota
-                </button>
                 <button
                   type="button"
                   onClick={() => setPanelLogros(true)}

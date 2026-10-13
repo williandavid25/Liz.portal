@@ -173,8 +173,9 @@ export function WeatherPanel() {
     };
   }, [loadWeather]);
 
-  const position =
-    "absolute right-4 top-[calc(env(safe-area-inset-top)+260px)] z-10 sm:right-6 sm:top-[calc(env(safe-area-inset-top)+286px)]";
+  // La posición la da la columna derecha de MascotaGame (clima arriba y el
+  // botón de notas debajo), así el botón nunca tapa el panel.
+  const position = "relative";
 
   if (!visible) {
     return (
@@ -195,7 +196,7 @@ export function WeatherPanel() {
 
   return (
     <aside
-      className={`mg-clima mg-vidrio ${position} w-[min(220px,calc(100%-2rem))] rounded-2xl px-3 py-2.5 text-white`}
+      className={`mg-clima mg-vidrio ${position} w-[min(220px,calc(100vw-2rem))] rounded-2xl px-3 py-2.5 text-white`}
       aria-live="polite"
       aria-label="Pronóstico del clima"
     >
