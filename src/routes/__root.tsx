@@ -297,7 +297,13 @@ function AppShell() {
     return () => window.removeEventListener("online", onOnline);
   }, []);
 
-  const playTrack = (targetUrl?: string) => {
+  const playTrack = (targetUrl?: string, forzar = false) => {
+    // Con la música en pausa (Mi mascota, micrófono, Aprender) los intentos
+    // automáticos no suenan: quedan anotados para cuando se libere.
+    if (!forzar && motivosPausa.current.size > 0) {
+      sonabaAntes.current = true;
+      return;
+    }
     const activeUrl = (targetUrl ?? musicUrl).trim() || DEFAULT_MUSIC;
     const ytId = extractYouTubeId(activeUrl);
 
@@ -351,47 +357,52 @@ function AppShell() {
     setIsPlaying(false);
   };
 
-  // Otras páginas (Mi mascota, al usar el micrófono) piden pausar la música y
-  // luego reanudarla. Mientras está suspendida, ningún toque la vuelve a
-  // prender (ver "desbloqueo pasivo" más abajo).
-  const musicaSuspendida = useRef(false);
+  // Pausas con motivo: la página de Mi mascota, el micrófono ("Háblale") y
+  // Snoopy Learn. La música vuelve solo cuando no queda ningún motivo y solo
+  // si estaba sonando antes. (Antes era un único interruptor: al terminar de
+  // usar el micrófono la música volvía aunque siguieras en Mi mascota.)
+  const motivosPausa = useRef(new Set<string>());
   const sonabaAntes = useRef(false);
   const isPlayingRef = useRef(false);
   isPlayingRef.current = isPlaying;
   const controlRef = useRef({ playTrack, pauseTrack });
   controlRef.current = { playTrack, pauseTrack };
 
+  const pausarPor = useCallback((motivo: string) => {
+    const pausas = motivosPausa.current;
+    if (pausas.has(motivo)) return;
+    if (pausas.size === 0) sonabaAntes.current = isPlayingRef.current;
+    pausas.add(motivo);
+    controlRef.current.pauseTrack();
+  }, []);
+  const liberarPor = useCallback((motivo: string) => {
+    const pausas = motivosPausa.current;
+    if (!pausas.delete(motivo) || pausas.size > 0) return;
+    if (sonabaAntes.current) controlRef.current.playTrack();
+  }, []);
+
   // La página de Mascota tiene sus propios efectos de sonido: la música
   // principal se detiene al entrar y solo vuelve si estaba sonando antes.
   useEffect(() => {
     if (pathname !== "/mascota") return;
-    if (!musicaSuspendida.current) {
-      musicaSuspendida.current = true;
-      sonabaAntes.current = isPlayingRef.current;
-      controlRef.current.pauseTrack();
-    }
-    return () => {
-      if (!musicaSuspendida.current) return;
-      musicaSuspendida.current = false;
-      if (sonabaAntes.current) controlRef.current.playTrack();
-    };
-  }, [pathname]);
+    pausarPor("mascota");
+    return () => liberarPor("mascota");
+  }, [pathname, pausarPor, liberarPor]);
 
+  // Otras partes piden pausar/reanudar: "pausar" a secas (micrófono) o
+  // { accion, motivo } (por ejemplo Snoopy Learn).
   useEffect(() => {
     const onMusica = (e: Event) => {
-      const accion = (e as CustomEvent<"pausar" | "reanudar">).detail;
-      if (accion === "pausar" && !musicaSuspendida.current) {
-        musicaSuspendida.current = true;
-        sonabaAntes.current = isPlayingRef.current;
-        controlRef.current.pauseTrack();
-      } else if (accion === "reanudar" && musicaSuspendida.current) {
-        musicaSuspendida.current = false;
-        if (sonabaAntes.current) controlRef.current.playTrack();
-      }
+      const d = (
+        e as CustomEvent<"pausar" | "reanudar" | { accion: "pausar" | "reanudar"; motivo: string }>
+      ).detail;
+      const { accion, motivo } = typeof d === "string" ? { accion: d, motivo: "voz" } : d;
+      if (accion === "pausar") pausarPor(motivo);
+      else liberarPor(motivo);
     };
     window.addEventListener("liz:musica", onMusica);
     return () => window.removeEventListener("liz:musica", onMusica);
-  }, []);
+  }, [pausarPor, liberarPor]);
 
   // Carga inicial: espejo local primero, luego la nube verificando validez
   useEffect(() => {
@@ -516,6 +527,10 @@ function AppShell() {
       events: {
         onReady: (e: { target: YTPlayer }) => {
           try {
+            if (motivosPausa.current.size > 0) {
+              sonabaAntes.current = true;
+              return;
+            }
             e.target.playVideo();
             setIsPlaying(true);
           } catch (error) {
@@ -540,7 +555,7 @@ function AppShell() {
   // Desbloqueo pasivo de autoplay al primer toque/tecla del usuario
   useEffect(() => {
     const handleFirstInteraction = () => {
-      if (musicaSuspendida.current) return;
+      if (motivosPausa.current.size > 0) return;
       if (youtubeId) {
         if (ytPlayerRef.current && typeof ytPlayerRef.current.getPlayerState === "function") {
           try {
@@ -590,7 +605,7 @@ function AppShell() {
     setMusicError(null);
     saveMusic(nextUrl);
     setPanel(null);
-    playTrack(nextUrl);
+    playTrack(nextUrl, true);
   };
 
   const uploadMusicFile = async (file: File) => {
@@ -623,7 +638,7 @@ function AppShell() {
       if (finalUrl) {
         setDraftMusicUrl(finalUrl);
         saveMusic(finalUrl);
-        playTrack(finalUrl);
+        playTrack(finalUrl, true);
       }
     } catch (err) {
       console.error("No se pudo subir la música:", err);
@@ -762,8 +777,10 @@ function AppShell() {
         <button
           type="button"
           onClick={() => {
-            if (isPlaying) pauseTrack();
-            else playTrack(musicUrl || DEFAULT_MUSIC);
+            if (isPlaying) {
+              pauseTrack();
+              sonabaAntes.current = false;
+            } else playTrack(musicUrl || DEFAULT_MUSIC, true);
           }}
           className={`p-2.5 rounded-full transition-all duration-300 hover:scale-105 flex items-center justify-center border ${
             isHome
@@ -931,7 +948,7 @@ function AppShell() {
                   if (isPlaying) {
                     pauseTrack();
                   } else {
-                    playTrack(draftMusicUrl.trim() || musicUrl || DEFAULT_MUSIC);
+                    playTrack(draftMusicUrl.trim() || musicUrl || DEFAULT_MUSIC, true);
                   }
                 }}
                 className="flex items-center gap-1 text-xs font-bold text-primary hover:underline px-2 py-1 rounded-lg hover:bg-primary/10 transition"
@@ -1003,7 +1020,6 @@ function AppShell() {
         // Sin canción decidida aún no hay src: no se descarga nada de más.
         src={youtubeId || !musicUrl ? undefined : musicUrl}
         loop
-        autoPlay
         preload="auto"
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}

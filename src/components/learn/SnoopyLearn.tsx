@@ -13,6 +13,8 @@ import {
   Shield,
   Sparkles,
   Trophy,
+  Volume2,
+  VolumeX,
   X,
   Zap,
 } from "lucide-react";
@@ -45,6 +47,50 @@ import {
 } from "@/lib/learn/contenido";
 import type { ContenidoTrack, Dia, Premio, Track } from "@/lib/learn/tipos";
 import { TarjetaVocab, VistaEjercicio, type Respuesta } from "./Ejercicios";
+import {
+  callar,
+  desbloquearVoz,
+  hablar,
+  pareceIngles,
+  partirComillas,
+  type Segmento,
+} from "@/lib/learn/voz";
+
+const VOZ_KEY = "snoopy-learn-voz";
+
+/** Lo que la voz lee al aparecer cada paso (nunca la respuesta). */
+function lecturaDe(paso: Paso, track: Track): Segmento[] {
+  const ingles = track === "english";
+  if (paso.tipo === "vocab") {
+    return [
+      { texto: "Palabra nueva.", idioma: "es" },
+      { texto: paso.vocab.term, idioma: ingles ? "en" : "es" },
+      { texto: paso.vocab.translation, idioma: "es" },
+    ];
+  }
+  const ej = paso.ej;
+  switch (ej.type) {
+    case "multiple_choice":
+      return ingles && pareceIngles(ej.question)
+        ? [{ texto: ej.question, idioma: "en" }]
+        : // En "¿Cómo se dice 'Buenos días'…?" lo de las comillas está en español.
+          partirComillas(ej.question, ingles && !/c[oó]mo se (dice|escribe)/i.test(ej.question));
+    case "fill_blank":
+      return [
+        { texto: "Completa la frase.", idioma: "es" },
+        { texto: ej.sentence, idioma: ingles ? "en" : "es" },
+      ];
+    case "word_order":
+      return ingles && ej.translation
+        ? [
+            { texto: "Ordena la frase en inglés:", idioma: "es" },
+            { texto: ej.translation, idioma: "es" },
+          ]
+        : [{ texto: "Ordena las palabras para formar la frase.", idioma: "es" }];
+    case "word_match":
+      return [{ texto: "Une cada pareja.", idioma: "es" }];
+  }
+}
 
 // Snoopy Learn: Snoopy le da a la persona una tarea por día, con preguntas de
 // UNA EN UNA. Cada materia (Inglés / Laboratorio) tiene su propia racha y sus
@@ -129,6 +175,19 @@ export default function SnoopyLearn({
   const [errorCarga, setErrorCarga] = useState(false);
   const [vista, setVista] = useState<Vista>({ tipo: "inicio" });
 
+  // La música del sitio se pausa para concentrarse; vuelve al salir.
+  useEffect(() => {
+    const musica = (accion: "pausar" | "reanudar") =>
+      window.dispatchEvent(
+        new CustomEvent("liz:musica", { detail: { accion, motivo: "aprender" } }),
+      );
+    musica("pausar");
+    return () => {
+      callar();
+      musica("reanudar");
+    };
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem("snoopy-learn-track", track);
@@ -170,6 +229,7 @@ export default function SnoopyLearn({
         setVista({ tipo: "sinCorazones", dia });
         return;
       }
+      desbloquearVoz();
       const pasos =
         dia.day_type === "lesson" ? pasosLeccion(dia, !repaso) : pasosTest(contenido, dia);
       sonar("pasear");
@@ -676,12 +736,41 @@ function Sesion({
   const estado = useLearn();
   const corazones = corazonesActuales(estado.tracks[track]).corazones;
   const usaCorazones = !esTest && !repaso;
+  const [vozActiva, setVozActiva] = useState(() => {
+    try {
+      return localStorage.getItem(VOZ_KEY) !== "off";
+    } catch {
+      return true;
+    }
+  });
+  const cambiarVoz = () => {
+    const v = !vozActiva;
+    setVozActiva(v);
+    try {
+      localStorage.setItem(VOZ_KEY, v ? "on" : "off");
+    } catch {
+      /* ignorar */
+    }
+    if (!v) callar();
+  };
 
   const paso = cola[i]!;
+  const leer = useCallback(() => hablar(lecturaDe(paso, track)), [paso, track]);
+
+  // La voz lee cada pregunta apenas aparece (antes de responder).
+  useEffect(() => {
+    if (!vozActiva) return;
+    const t = window.setTimeout(leer, 350);
+    return () => {
+      window.clearTimeout(t);
+      callar();
+    };
+  }, [paso.key, vozActiva, leer]);
   const progreso = (i + (revision ? 1 : 0)) / cola.length;
 
   const comprobar = () => {
     if (paso.tipo !== "ejercicio" || revision) return;
+    callar();
     const ej = paso.ej;
     const bien =
       ej.type === "word_match"
@@ -801,6 +890,18 @@ function Sesion({
           ) : (
             <span className="text-xs font-bold text-white/60">{esTest ? "Test" : "Repaso"}</span>
           )}
+          <button
+            type="button"
+            onClick={cambiarVoz}
+            aria-pressed={vozActiva}
+            aria-label={vozActiva ? "Silenciar la voz que lee" : "Activar la voz que lee"}
+            title={vozActiva ? "Voz activada" : "Voz silenciada"}
+            className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition ${
+              vozActiva ? "bg-white/15 text-white" : "bg-white/5 text-white/45"
+            }`}
+          >
+            {vozActiva ? <Volume2 size={17} /> : <VolumeX size={17} />}
+          </button>
         </div>
       </div>
 
@@ -813,9 +914,15 @@ function Sesion({
               alt=""
               className="lrn-flotar h-12 w-12 object-contain"
             />
-            <p className="lrn-globo rounded-2xl bg-white/10 px-3 py-2 text-sm font-semibold text-white/90">
+            <button
+              type="button"
+              onClick={leer}
+              title="Tocar para escuchar otra vez"
+              className="lrn-globo flex items-center gap-1.5 rounded-2xl bg-white/10 px-3 py-2 text-left text-sm font-semibold text-white/90 transition hover:bg-white/15 active:scale-[0.98]"
+            >
               {instruccion}
-            </p>
+              <Volume2 size={14} className="shrink-0 opacity-60" aria-hidden="true" />
+            </button>
           </div>
           <>
             <motion.div

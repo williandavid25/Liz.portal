@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Volume2 } from "lucide-react";
 import type { Ejercicio, Vocabulario } from "@/lib/learn/tipos";
+import { hablar } from "@/lib/learn/voz";
 
 // Cada tipo de ejercicio en su propia pantalla. El componente solo reporta la
 // respuesta elegida; corregir y avanzar lo decide la sesión.
@@ -13,12 +14,7 @@ export type Respuesta = number | string | string[] | null;
 /** Pronuncia con la voz del celular (gratis, sin descargar audios). */
 export function pronunciar(texto: string, lang = "en-US") {
   try {
-    if (typeof speechSynthesis === "undefined") return;
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(texto.replace(/…/g, ""));
-    u.lang = lang;
-    u.rate = 0.9;
-    speechSynthesis.speak(u);
+    hablar([{ texto, idioma: lang.startsWith("en") ? "en" : "es" }]);
   } catch {
     /* sin lector de voz */
   }
