@@ -105,7 +105,12 @@ export interface EstadoMascota {
   /** Minutos de Date#getTimezoneOffset() del celular (para las horas de comida). */
   tz: number;
   /** Snoopy Learn: para recordar la tarea del día y no perder la racha. */
-  aprender?: { racha: number; ultimoDia: string | null; empezado: boolean };
+  aprender?: {
+    racha: number;
+    ultimoDia: string | null;
+    empezado: boolean;
+    dias?: { english: number; laboratory: number };
+  };
 }
 
 let mascotaReady = false;
@@ -265,31 +270,51 @@ export async function asegurarReloj(origenPeticion: string): Promise<boolean> {
   ) {
     return false;
   }
-  const url = `${origen.origin}/api/avisos-tick`;
-  if ((await getConfig("tick_url")) === url) return true;
-
-  const token = await tickToken();
-  const sqlc = db();
-  try {
-    await sqlc`create extension if not exists pg_net`;
-    await sqlc`create extension if not exists pg_cron`;
-    await sqlc`select cron.unschedule(jobid) from cron.job where jobname = 'liz-avisos'`;
-    const headers = JSON.stringify({ "Content-Type": "application/json", "x-liz-tick": token });
-    await sqlc`
-      select cron.schedule(
-        'liz-avisos',
-        '*/5 * * * *',
-        format(
-          'select net.http_post(url := %L, headers := %L::jsonb, body := %L::jsonb, timeout_milliseconds := 25000)',
-          ${url}::text, ${headers}::text, '{}'::text
+  // Dos relojes: avisos cada 5 minutos y contenido nuevo de Snoopy Learn una
+  // vez al día (13:00 UTC = 08:00 en Ecuador).
+  const relojes = [
+    {
+      nombre: "liz-avisos",
+      clave: "tick_url",
+      ruta: "/api/avisos-tick",
+      cron: "*/5 * * * *",
+      espera: 25000,
+    },
+    {
+      nombre: "liz-learn",
+      clave: "learn_url",
+      ruta: "/api/learn-generar",
+      cron: "0 13 * * *",
+      espera: 290000,
+    },
+  ];
+  let todoBien = true;
+  for (const r of relojes) {
+    const url = `${origen.origin}${r.ruta}`;
+    if ((await getConfig(r.clave)) === url) continue;
+    const token = await tickToken();
+    const sqlc = db();
+    try {
+      await sqlc`create extension if not exists pg_net`;
+      await sqlc`create extension if not exists pg_cron`;
+      await sqlc`select cron.unschedule(jobid) from cron.job where jobname = ${r.nombre}`;
+      const headers = JSON.stringify({ "Content-Type": "application/json", "x-liz-tick": token });
+      await sqlc`
+        select cron.schedule(
+          ${r.nombre}::text,
+          ${r.cron}::text,
+          format(
+            'select net.http_post(url := %L, headers := %L::jsonb, body := %L::jsonb, timeout_milliseconds := %s)',
+            ${url}::text, ${headers}::text, '{}'::text, ${r.espera}::int
+          )
         )
-      )
-    `;
-    await setConfig("tick_url", url);
-    console.log("Reloj de avisos programado:", url);
-    return true;
-  } catch (e) {
-    console.error("No se pudo programar el reloj de avisos (pg_cron):", e);
-    return false;
+      `;
+      await setConfig(r.clave, url);
+      console.log("Reloj programado:", r.nombre, url);
+    } catch (e) {
+      console.error(`No se pudo programar el reloj ${r.nombre} (pg_cron):`, e);
+      todoBien = false;
+    }
   }
+  return todoBien;
 }

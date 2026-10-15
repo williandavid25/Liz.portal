@@ -7,7 +7,12 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
-  nitro: { preset: "vercel" },
+  nitro: {
+    preset: "vercel",
+    // Generar una semana de lecciones con Claude puede tardar más de un minuto.
+    vercel: { functionRules: { "/api/learn-generar": { maxDuration: 300 } } },
+    // La configuración de Lovable no declara "vercel", pero Nitro sí la usa.
+  } as { preset: string },
   // three.js (galaxia/océano) pesa ~1.6 MB por sí solo; se carga solo al bajar
   // a esas secciones, así que el aviso de "chunk grande" no aplica aquí.
   vite: { build: { chunkSizeWarningLimit: 2000 } },

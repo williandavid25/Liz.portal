@@ -97,8 +97,15 @@ export interface ProgresoTrack {
   corazonesDesde: number;
   escudos: number;
   xp: number;
-  /** Metas de racha ya premiadas (7, 14, 30, 50, 100). */
+  /** Metas de racha ya premiadas (7, 14, 30, 50, 100…). */
   metas: number[];
+  /**
+   * Cómo le va con cada pregunta (clave = "día-índice"): aciertos, fallos y
+   * última vez que la vio. Con esto se arma el repaso inteligente del día.
+   */
+  items: Record<string, { a: number; f: number; u: number }>;
+  /** Último día (fecha local) en que hizo el repaso del día. */
+  ultimoRepaso: string | null;
 }
 
 export interface EstadoLearn {

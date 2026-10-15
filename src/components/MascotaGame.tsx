@@ -651,6 +651,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
           racha: e.tarea.racha,
           ultimoDia: e.tarea.ultimoDia,
           empezado: e.tarea.empezado,
+          dias: e.tarea.dias,
         },
       },
     }).catch(() => {});

@@ -33,6 +33,7 @@ import {
   infoRacha,
   leerLearn,
   perderCorazon,
+  registrarRespuesta,
   repararRacha,
   useLearn,
 } from "@/lib/learn/progreso";
@@ -43,10 +44,14 @@ import {
   pasosLeccion,
   pasosTest,
   respuestaCorrecta,
+  diaRepaso,
+  pasosRepasoDiario,
   type Paso,
 } from "@/lib/learn/contenido";
+import { pendientesLearn, revisarModuloLearn } from "@/lib/cloud";
 import type { ContenidoTrack, Dia, Premio, Track } from "@/lib/learn/tipos";
 import { TarjetaVocab, VistaEjercicio, type Respuesta } from "./Ejercicios";
+import { FondoLearn } from "./FondoLearn";
 import {
   callar,
   desbloquearVoz,
@@ -58,12 +63,15 @@ import {
 
 const VOZ_KEY = "snoopy-learn-voz";
 
-/** Lo que la voz lee al aparecer cada paso (nunca la respuesta). */
+/**
+ * Lo que la voz lee al aparecer cada paso: solo lo que se enseña o la
+ * pregunta, sin instrucciones ("Palabra nueva", "Completa la frase"…) y nunca
+ * la respuesta.
+ */
 function lecturaDe(paso: Paso, track: Track): Segmento[] {
   const ingles = track === "english";
   if (paso.tipo === "vocab") {
     return [
-      { texto: "Palabra nueva.", idioma: "es" },
       { texto: paso.vocab.term, idioma: ingles ? "en" : "es" },
       { texto: paso.vocab.translation, idioma: "es" },
     ];
@@ -76,19 +84,12 @@ function lecturaDe(paso: Paso, track: Track): Segmento[] {
         : // En "¿Cómo se dice 'Buenos días'…?" lo de las comillas está en español.
           partirComillas(ej.question, ingles && !/c[oó]mo se (dice|escribe)/i.test(ej.question));
     case "fill_blank":
-      return [
-        { texto: "Completa la frase.", idioma: "es" },
-        { texto: ej.sentence, idioma: ingles ? "en" : "es" },
-      ];
+      return [{ texto: ej.sentence, idioma: ingles ? "en" : "es" }];
     case "word_order":
-      return ingles && ej.translation
-        ? [
-            { texto: "Ordena la frase en inglés:", idioma: "es" },
-            { texto: ej.translation, idioma: "es" },
-          ]
-        : [{ texto: "Ordena las palabras para formar la frase.", idioma: "es" }];
+      // La frase a traducir (en Inglés); en Laboratorio no hay pregunta que leer.
+      return ej.translation ? [{ texto: ej.translation, idioma: "es" }] : [];
     case "word_match":
-      return [{ texto: "Une cada pareja.", idioma: "es" }];
+      return [];
   }
 }
 
@@ -222,6 +223,15 @@ export default function SnoopyLearn({
   const empezar = useCallback(
     (dia: Dia) => {
       if (!contenido) return;
+      if (dia.day_id === 0) {
+        // Repaso inteligente del día: no gasta corazones, sí cuenta para la racha.
+        const pasos = pasosRepasoDiario(contenido, leerLearn().tracks[track]);
+        if (pasos.length === 0) return;
+        desbloquearVoz();
+        sonar("pasear");
+        setVista({ tipo: "sesion", dia, pasos, repaso: true });
+        return;
+      }
       const repaso = t.completados.includes(dia.day_id) && dia.day_type === "lesson";
       const { corazones } = corazonesActuales(leerLearn().tracks[track]);
       // Sin corazones solo se puede repasar (y así se gana uno).
@@ -252,6 +262,7 @@ export default function SnoopyLearn({
       aria-label="Snoopy Learn"
     >
       <style>{CSS}</style>
+      <FondoLearn track={track} />
       <div className="lrn-fondo pointer-events-none absolute inset-0" aria-hidden="true" />
       {/* Sin esperar animaciones de salida: si una no termina (app en segundo
           plano, celular lento), la pantalla siguiente igual aparece. */}
@@ -264,6 +275,11 @@ export default function SnoopyLearn({
             contenido={contenido}
             errorCarga={errorCarga}
             onEmpezar={empezar}
+            onRecargar={() =>
+              cargarTrack(track, true)
+                .then(setContenido)
+                .catch(() => {})
+            }
             onCerrar={onCerrar}
             nombre={nombre}
           />
@@ -321,6 +337,7 @@ function Inicio({
   contenido,
   errorCarga,
   onEmpezar,
+  onRecargar,
   onCerrar,
   nombre,
 }: {
@@ -329,6 +346,7 @@ function Inicio({
   contenido: ContenidoTrack | null;
   errorCarga: boolean;
   onEmpezar: (d: Dia) => void;
+  onRecargar: () => void;
   onCerrar: () => void;
   nombre: string;
 }) {
@@ -460,72 +478,86 @@ function Inicio({
           ) : !contenido ? (
             <div className="lrn-tarjeta lrn-cargando h-40 rounded-3xl" aria-label="Cargando" />
           ) : diaActual ? (
-            <TareaHoy
-              dia={diaActual}
-              hechaHoy={racha.hechaHoy}
-              nombre={nombre}
-              onEmpezar={() => onEmpezar(diaActual)}
-            />
+            <>
+              <TareaHoy
+                dia={diaActual}
+                hechaHoy={racha.hechaHoy}
+                nombre={nombre}
+                onEmpezar={() => onEmpezar(diaActual)}
+              />
+              {t.completados.length > 0 && (
+                <RepasoHoy
+                  principal={false}
+                  hecho={t.ultimoRepaso === hoy}
+                  onEmpezar={() => onEmpezar(diaRepaso(track))}
+                />
+              )}
+            </>
           ) : (
-            <div className="lrn-tarjeta rounded-3xl p-5">
-              <p className="text-lg font-bold">¡Completaste todo lo disponible! 🎉</p>
-              <p className="mt-1 text-sm text-white/70">
-                Pronto llegan más días. Mientras tanto, repasa cualquier lección para ganar
-                corazones y XP.
-              </p>
-            </div>
+            // Sin días nuevos todavía: la tarea del día es el repaso inteligente.
+            <RepasoHoy
+              principal
+              hecho={t.ultimoRepaso === hoy}
+              nombre={nombre}
+              onEmpezar={() => onEmpezar(diaRepaso(track))}
+            />
           )}
 
           {/* Camino de días */}
           {contenido && (
             <div ref={caminoRef} className="mt-2 flex flex-col items-center gap-3 py-2">
-              <p className="self-start text-[11px] font-bold uppercase tracking-[0.16em] text-white/50">
-                Fase 1 · Fundamentos
-              </p>
               {contenido.days.map((d, i) => {
+                const nuevaFase = i === 0 || contenido.days[i - 1]!.phase !== d.phase;
                 const hecho = t.completados.includes(d.day_id);
                 const actual = d.day_id === t.dia;
                 const bloqueado = d.day_id > t.dia;
                 const lado = [0, 1, 0, -1][i % 4]!;
                 return (
-                  <motion.button
-                    key={d.day_id}
-                    type="button"
-                    data-actual={actual}
-                    disabled={bloqueado}
-                    onClick={() => onEmpezar(d)}
-                    initial={{ opacity: 0, scale: 0.85 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{
-                      delay: Math.min(i, 10) * 0.03,
-                      type: "spring",
-                      stiffness: 300,
-                      damping: 24,
-                    }}
-                    style={{ translate: `${lado * 56}px 0` }}
-                    className="group flex flex-col items-center gap-1"
-                    aria-label={`Día ${d.day_id}: ${d.title}${hecho ? " (completado)" : bloqueado ? " (bloqueado)" : ""}`}
-                  >
-                    <span
-                      className={`lrn-nodo ${hecho ? "hecho" : actual ? "actual" : "bloqueado"} ${d.day_type === "test" ? "test" : ""}`}
+                  <div key={d.day_id} className="flex w-full flex-col items-center gap-3">
+                    {nuevaFase && (
+                      <p className="self-start text-[11px] font-bold uppercase tracking-[0.16em] text-white/50">
+                        Fase {d.phase} · {d.phase_name}
+                      </p>
+                    )}
+                    <motion.button
+                      key={d.day_id}
+                      type="button"
+                      data-actual={actual}
+                      disabled={bloqueado}
+                      onClick={() => onEmpezar(d)}
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{
+                        delay: Math.min(i, 10) * 0.03,
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 24,
+                      }}
+                      style={{ translate: `${lado * 56}px 0` }}
+                      className="group flex flex-col items-center gap-1"
+                      aria-label={`Día ${d.day_id}: ${d.title}${hecho ? " (completado)" : bloqueado ? " (bloqueado)" : ""}`}
                     >
-                      {bloqueado ? (
-                        <Lock size={20} />
-                      ) : d.day_type === "test" ? (
-                        <Trophy size={22} />
-                      ) : hecho ? (
-                        <Check size={24} strokeWidth={3} />
-                      ) : (
-                        <Star />
-                      )}
-                      {actual && <span className="lrn-onda" aria-hidden="true" />}
-                    </span>
-                    <span
-                      className={`max-w-[9rem] text-center text-[11px] font-semibold leading-tight ${bloqueado ? "text-white/35" : "text-white/80"}`}
-                    >
-                      Día {d.day_id} · {d.title}
-                    </span>
-                  </motion.button>
+                      <span
+                        className={`lrn-nodo ${hecho ? "hecho" : actual ? "actual" : "bloqueado"} ${d.day_type === "test" ? "test" : ""}`}
+                      >
+                        {bloqueado ? (
+                          <Lock size={20} />
+                        ) : d.day_type === "test" ? (
+                          <Trophy size={22} />
+                        ) : hecho ? (
+                          <Check size={24} strokeWidth={3} />
+                        ) : (
+                          <Star />
+                        )}
+                        {actual && <span className="lrn-onda" aria-hidden="true" />}
+                      </span>
+                      <span
+                        className={`max-w-[9rem] text-center text-[11px] font-semibold leading-tight ${bloqueado ? "text-white/35" : "text-white/80"}`}
+                      >
+                        Día {d.day_id} · {d.title}
+                      </span>
+                    </motion.button>
+                  </div>
                 );
               })}
               {contenido.days.length < TOTAL_DIAS && (
@@ -540,6 +572,8 @@ function Inicio({
               )}
             </div>
           )}
+
+          <ModulosPendientes onAprobado={onRecargar} />
 
           {/* Insignias */}
           {estado.insignias.length > 0 && (
@@ -697,6 +731,206 @@ function TareaHoy({
   );
 }
 
+function RepasoHoy({
+  principal,
+  hecho,
+  nombre = "Snoopy",
+  onEmpezar,
+}: {
+  principal: boolean;
+  hecho: boolean;
+  nombre?: string;
+  onEmpezar: () => void;
+}) {
+  if (!principal) {
+    return (
+      <button
+        type="button"
+        onClick={onEmpezar}
+        className="lrn-tarjeta flex items-center gap-3 rounded-3xl p-4 text-left transition hover:bg-white/10"
+      >
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/10">
+          <RotateCcw size={20} className="text-[var(--acento)]" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-extrabold">Repaso del día</span>
+          <span className="block text-xs text-white/60">
+            {hecho
+              ? "Ya repasaste hoy ✓ · puedes repetirlo"
+              : "5 preguntas de lo que más te cuesta"}
+          </span>
+        </span>
+      </button>
+    );
+  }
+  return (
+    <div className="lrn-tarjeta lrn-destacada relative overflow-hidden rounded-3xl p-4">
+      <div className="flex gap-3">
+        <img
+          src="/mascota/frente.webp"
+          alt=""
+          className="lrn-flotar h-16 w-16 shrink-0 object-contain"
+        />
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--acento)]">
+            {hecho ? "Repaso de hoy cumplido" : `${nombre} te dejó una tarea`}
+          </p>
+          <p className="mt-0.5 text-lg font-extrabold leading-tight">Repaso del día</p>
+          <p className="text-sm text-white/70">
+            Ya completaste todos los días disponibles. Mientras llegan nuevos, repasa lo que más te
+            cuesta para no olvidarlo.
+          </p>
+        </div>
+      </div>
+      <p className="mt-2 text-xs text-white/55">5 preguntas, una por una · cuenta para tu racha</p>
+      <button
+        type="button"
+        onClick={onEmpezar}
+        className="lrn-boton-principal mt-3 w-full rounded-2xl py-3.5 text-[15px] font-extrabold"
+      >
+        {hecho ? "Repasar otra vez" : "Empezar el repaso"}
+      </button>
+    </div>
+  );
+}
+
+type Pendiente = Awaited<ReturnType<typeof pendientesLearn>>["modulos"][number];
+
+/** Módulos generados por la IA que esperan revisión antes de aparecer. */
+function ModulosPendientes({ onAprobado }: { onAprobado: () => void }) {
+  const [datos, setDatos] = useState<{ activo: boolean; modulos: Pendiente[] } | null>(null);
+  const [viendo, setViendo] = useState<Pendiente | null>(null);
+  const [ocupado, setOcupado] = useState<string | null>(null);
+  const cargar = useCallback(() => {
+    pendientesLearn()
+      .then((r) => r.ok && setDatos({ activo: r.activo, modulos: r.modulos }))
+      .catch(() => {});
+  }, []);
+  useEffect(cargar, [cargar]);
+
+  const revisar = async (m: Pendiente, accion: "aprobar" | "descartar") => {
+    setOcupado(m.id);
+    const r = await revisarModuloLearn({ data: { id: m.id, accion } }).catch(() => ({ ok: false }));
+    setOcupado(null);
+    setViendo(null);
+    if (r.ok) {
+      sonar(accion === "aprobar" ? "logro" : "caricia");
+      if (accion === "aprobar") onAprobado();
+    }
+    cargar();
+  };
+
+  if (!datos) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      {datos.modulos.map((m) => (
+        <div key={m.id} className="lrn-tarjeta rounded-3xl border-amber-300/40 p-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-amber-200">
+            Contenido nuevo para revisar · {m.track === "english" ? "Inglés" : "Laboratorio"}
+          </p>
+          <p className="mt-1 text-[15px] font-extrabold leading-tight">{m.titulo}</p>
+          <p className="text-xs text-white/60">
+            Días {m.desde}–{m.hasta} · escrito por Snoopy con IA
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setViendo(m)}
+              className="flex-1 rounded-2xl bg-white/10 py-2.5 text-sm font-bold hover:bg-white/15"
+            >
+              Ver
+            </button>
+            <button
+              type="button"
+              disabled={ocupado === m.id}
+              onClick={() => void revisar(m, "aprobar")}
+              className="lrn-boton-principal flex-1 rounded-2xl py-2.5 text-sm font-extrabold disabled:opacity-50"
+            >
+              Aprobar
+            </button>
+          </div>
+        </div>
+      ))}
+      {!datos.activo && (
+        <p className="px-2 text-center text-[11px] text-white/40">
+          Contenido automático con IA: apagado (falta la clave ANTHROPIC_API_KEY en Vercel).
+        </p>
+      )}
+
+      {viendo && (
+        <div className="fixed inset-0 z-[95] flex flex-col bg-[#0b1026]/95 backdrop-blur-sm">
+          <div className="flex items-center justify-between px-4 pb-2 pt-[calc(env(safe-area-inset-top)+14px)]">
+            <p className="text-sm font-extrabold">{viendo.titulo}</p>
+            <button
+              type="button"
+              onClick={() => setViendo(null)}
+              aria-label="Cerrar vista previa"
+              className="grid h-10 w-10 place-items-center rounded-full bg-white/10"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+            <div className="mx-auto flex max-w-md flex-col gap-3">
+              {viendo.dias.map((d) => (
+                <div key={d.day_id} className="lrn-tarjeta rounded-2xl p-3">
+                  <p className="text-sm font-extrabold">
+                    Día {d.day_id} · {d.title}
+                  </p>
+                  {d.day_type === "lesson" ? (
+                    <>
+                      <p className="mt-1 text-xs text-white/60">
+                        {d.lesson.vocabulary.map((v) => `${v.term} = ${v.translation}`).join(" · ")}
+                      </p>
+                      <ul className="mt-2 space-y-1">
+                        {d.exercises.map((e, k) => (
+                          <li key={k} className="text-xs text-white/80">
+                            <span className="text-white/45">{k + 1}.</span>{" "}
+                            {"question" in e
+                              ? e.question
+                              : "sentence" in e
+                                ? e.sentence
+                                : e.type === "word_order"
+                                  ? e.correct
+                                  : "Unir parejas"}{" "}
+                            <span className="text-emerald-300">→ {respuestaCorrecta(e)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <p className="mt-1 text-xs text-white/60">
+                      Test de repaso de la semana ({d.total_questions} preguntas)
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mx-auto flex w-full max-w-md gap-2 px-4 pb-[calc(env(safe-area-inset-bottom)+16px)] pt-2">
+            <button
+              type="button"
+              disabled={ocupado === viendo.id}
+              onClick={() => void revisar(viendo, "descartar")}
+              className="flex-1 rounded-2xl bg-rose-500/20 py-3.5 text-sm font-bold text-rose-100 ring-1 ring-rose-300/40 disabled:opacity-50"
+            >
+              Descartar
+            </button>
+            <button
+              type="button"
+              disabled={ocupado === viendo.id}
+              onClick={() => void revisar(viendo, "aprobar")}
+              className="lrn-boton-principal flex-1 rounded-2xl py-3.5 text-sm font-extrabold disabled:opacity-50"
+            >
+              Aprobar y publicar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ================= Sesión (una pregunta a la vez) ================= */
 
 function Sesion({
@@ -777,6 +1011,9 @@ function Sesion({
         ? !errorPareja
         : esCorrecta(ej, respuesta as string | number | string[]);
     setRevision({ correcta: bien });
+    if (paso.ref && !paso.repaso) {
+      guardarLearn(registrarRespuesta(leerLearn(), track, paso.ref, bien));
+    }
     if (bien) {
       if (!paso.repaso) aciertos.current += 1;
       sonar("logro");
@@ -822,7 +1059,12 @@ function Sesion({
               pasoPct: dia.pass_score_pct,
               premioTest: { primero: dia.reward_first_try, repetido: dia.reward_retry },
             })
-          : completarDia(leerLearn(), track, { ...base, esTest: false, xpLeccion: dia.xp_reward });
+          : completarDia(leerLearn(), track, {
+              ...base,
+              esTest: false,
+              esRepasoDiario: dia.day_id === 0,
+              xpLeccion: dia.xp_reward,
+            });
       guardarLearn(r.estado);
       onFin(r.premio, aciertos.current, totalEjercicios);
       return;
@@ -1124,12 +1366,16 @@ function Resultado({
         {premio.aprobado
           ? dia.day_type === "test"
             ? "¡Test aprobado!"
-            : "¡Tarea cumplida!"
+            : dia.day_id === 0
+              ? "¡Repaso cumplido!"
+              : "¡Tarea cumplida!"
           : "Casi lo logras"}
       </p>
       <p className="mt-1 text-sm text-white/70">
         {premio.aprobado
-          ? `Día ${dia.day_id} · ${dia.title}`
+          ? dia.day_id === 0
+            ? dia.title
+            : `Día ${dia.day_id} · ${dia.title}`
           : `Necesitas ${dia.day_type === "test" ? dia.pass_score_pct : 70}% y lograste ${pct}%. Repasa y vuelve a intentarlo.`}
       </p>
 
@@ -1363,11 +1609,25 @@ const nombreDescanso = (c: number) =>
 
 const CSS = `
 .lrn-raiz { background: var(--fondo-c); font-family: Karla, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+/* Foto de fondo de la materia + velo para que el texto se lea bien. */
+.lrn-foto-borrador { filter: blur(18px) saturate(1.1); transform: scale(1.12); }
+.lrn-foto-img {
+  opacity: 0; transition: opacity 0.9s ease;
+  animation: lrn-camara 38s cubic-bezier(.45,.05,.55,.95) infinite alternate;
+  transform-origin: 50% 40%;
+}
+.lrn-foto-img.visible { opacity: 1; }
+/* Textos del camino legibles sobre cualquier foto. */
+.lrn-raiz [data-actual] > span:last-child { text-shadow: 0 1px 3px rgba(0,0,0,0.85), 0 0 10px rgba(0,0,0,0.5); }
+@keyframes lrn-camara { from { transform: scale(1.02) translate3d(0, 0, 0); } to { transform: scale(1.1) translate3d(-1.2%, -1%, 0); } }
 .lrn-fondo {
   background:
-    radial-gradient(120% 70% at 85% -10%, color-mix(in srgb, var(--acento) 30%, transparent), transparent 60%),
-    radial-gradient(90% 60% at -10% 20%, var(--fondo-b), transparent 70%),
-    linear-gradient(180deg, var(--fondo-a), var(--fondo-c));
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--fondo-c) 62%, transparent) 0%,
+      color-mix(in srgb, var(--fondo-a) 34%, transparent) 30%,
+      color-mix(in srgb, var(--fondo-a) 30%, transparent) 55%,
+      color-mix(in srgb, var(--fondo-c) 72%, transparent) 100%),
+    radial-gradient(120% 70% at 85% -10%, color-mix(in srgb, var(--acento) 18%, transparent), transparent 60%);
   transition: background 0.5s ease;
 }
 .lrn-tarjeta {
@@ -1420,6 +1680,6 @@ button:not(:disabled):active .lrn-nodo { transform: translateY(4px); box-shadow:
 @keyframes lrn-sacudir { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-6px); } 40%, 60% { transform: translateX(6px); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .lrn-flotar, .lrn-llama svg, .lrn-onda, .lrn-cargando { animation: none !important; }
+  .lrn-flotar, .lrn-llama svg, .lrn-onda, .lrn-cargando, .lrn-foto-img { animation: none !important; }
 }
 `;

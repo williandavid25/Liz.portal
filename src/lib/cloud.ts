@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { Dia } from "./learn/tipos";
 
 // Almacenamiento en la nube:
 // - Cartas, fotos (metadatos), eventos y música: una sola fila en Postgres
@@ -187,6 +188,10 @@ export const guardarEstadoMascota = createServerFn({ method: "POST" })
               .regex(/^\d{4}-\d{2}-\d{2}$/)
               .nullable(),
             empezado: z.boolean(),
+            // Día al que llegó en cada materia (para generar contenido a tiempo).
+            dias: z
+              .object({ english: z.number().int().min(1), laboratory: z.number().int().min(1) })
+              .optional(),
           })
           .optional(),
       })
@@ -283,6 +288,51 @@ export const savePushSubscription = createServerFn({ method: "POST" })
       return { ok: true };
     } catch (e) {
       console.error("No se pudo guardar la suscripción de avisos:", e);
+      return { ok: false };
+    }
+  });
+
+/* ---------------- Snoopy Learn: módulos en la nube ---------------- */
+
+const trackSchema = z.enum(["english", "laboratory"]);
+
+/** Días publicados en la nube para una materia (se suman a los de la app). */
+export const modulosLearn = createServerFn({ method: "GET" })
+  .validator((track: "english" | "laboratory") => trackSchema.parse(track))
+  .handler(async ({ data }) => {
+    try {
+      const { diasPublicados } = await import("./learn.server");
+      const { reintentar } = await import("./cloud.server");
+      return { ok: true, dias: (await reintentar(() => diasPublicados(data))) as Dia[] };
+    } catch (e) {
+      console.error("No se pudieron leer los módulos:", e);
+      return { ok: false, dias: [] as Dia[] };
+    }
+  });
+
+/** Módulos nuevos esperando aprobación (y si la generación automática está activa). */
+export const pendientesLearn = createServerFn({ method: "GET" }).handler(async () => {
+  try {
+    const { modulosPendientes, generadorActivo } = await import("./learn.server");
+    return { ok: true, activo: generadorActivo(), modulos: await modulosPendientes() };
+  } catch (e) {
+    console.error("No se pudieron leer los módulos pendientes:", e);
+    return { ok: false, activo: false, modulos: [] };
+  }
+});
+
+export const revisarModuloLearn = createServerFn({ method: "POST" })
+  .validator((input: { id: string; accion: "aprobar" | "descartar" }) =>
+    z
+      .object({ id: z.string().min(1).max(120), accion: z.enum(["aprobar", "descartar"]) })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    try {
+      const { revisarModulo } = await import("./learn.server");
+      return { ok: await revisarModulo(data.id, data.accion) };
+    } catch (e) {
+      console.error("No se pudo revisar el módulo:", e);
       return { ok: false };
     }
   });

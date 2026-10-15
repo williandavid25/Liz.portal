@@ -12,13 +12,18 @@ export const RECARGA_MS = 30 * 60_000;
 export const COSTO_ESCUDO = 10;
 export const MAX_ESCUDOS = 2;
 export const COSTO_REPARAR = 30;
-export const METAS = [7, 14, 30, 50, 100] as const;
+export const METAS = [7, 14, 30, 50, 100, 150, 200, 250, 300, 365] as const;
 export const PREMIOS_META: Record<number, { gemas: number; insignia: string }> = {
   7: { gemas: 15, insignia: "One Week Warrior" },
   14: { gemas: 20, insignia: "Two Weeks Strong" },
   30: { gemas: 40, insignia: "Monthly Master" },
   50: { gemas: 80, insignia: "Fifty Days of Fire" },
   100: { gemas: 150, insignia: "Century Snoopy Champion" },
+  150: { gemas: 180, insignia: "150 Days Unstoppable" },
+  200: { gemas: 220, insignia: "200 Days Legend" },
+  250: { gemas: 260, insignia: "250 Days Master Mind" },
+  300: { gemas: 320, insignia: "300 Days Superstar" },
+  365: { gemas: 500, insignia: "One Year with Snoopy" },
 };
 const XP_PERFECTO = 5;
 const XP_REPASO = 5;
@@ -66,6 +71,8 @@ export function trackInicial(ahora = Date.now()): ProgresoTrack {
     escudos: 0,
     xp: 0,
     metas: [],
+    items: {},
+    ultimoRepaso: null,
   };
 }
 
@@ -178,6 +185,8 @@ export function infoRacha(t: ProgresoTrack, hoy = fechaLocal()): InfoRacha {
 export interface Resultado {
   dia: number;
   esTest: boolean;
+  /** Repaso inteligente del día (no avanza días; sí cuenta para la racha). */
+  esRepasoDiario?: boolean;
   aciertos: number;
   total: number;
   errores: number;
@@ -210,12 +219,23 @@ export function completarDia(
 
   const pct = r.total > 0 ? (r.aciertos / r.total) * 100 : 0;
   const aprobado = !r.esTest || pct >= (r.pasoPct ?? 70);
-  const repaso = t.completados.includes(r.dia);
+  const repaso = !r.esRepasoDiario && t.completados.includes(r.dia);
   let xp = 0;
   let gemasGanadas = 0;
   let corazonExtra = false;
 
-  if (r.esTest) {
+  if (r.esRepasoDiario) {
+    xp += r.xpLeccion ?? 10;
+    if (t.ultimoRepaso !== hoy) gemasGanadas += 1;
+    if (r.errores === 0) {
+      xp += XP_PERFECTO;
+      if (t.corazones < CORAZONES_MAX) {
+        t = ganarCorazon(t, ahora);
+        corazonExtra = true;
+      }
+    }
+    t = { ...t, ultimoRepaso: hoy };
+  } else if (r.esTest) {
     const primeraVez = !t.testsIntentados.includes(r.dia);
     t = { ...t, testsIntentados: [...new Set([...t.testsIntentados, r.dia])] };
     if (aprobado && !t.testsAprobados.includes(r.dia)) {
@@ -246,10 +266,12 @@ export function completarDia(
   }
 
   // Avanza al día siguiente solo si completó el día actual (y aprobó si es test).
-  if (aprobado && !t.completados.includes(r.dia)) {
-    t = { ...t, completados: [...t.completados, r.dia].sort((a, b) => a - b) };
+  if (!r.esRepasoDiario) {
+    if (aprobado && !t.completados.includes(r.dia)) {
+      t = { ...t, completados: [...t.completados, r.dia].sort((a, b) => a - b) };
+    }
+    if (aprobado && r.dia >= t.dia) t = { ...t, dia: r.dia + 1 };
   }
-  if (aprobado && r.dia >= t.dia) t = { ...t, dia: r.dia + 1 };
 
   // Racha: cuenta el primer día completado (lección o test aprobado) de cada fecha.
   const rachaAntes = infoRacha(t, hoy).racha;
@@ -294,6 +316,23 @@ export function completarDia(
       aprobado,
     },
   };
+}
+
+/** Anota cómo le fue con una pregunta (para el repaso inteligente). */
+export function registrarRespuesta(
+  estado: EstadoLearn,
+  track: Track,
+  clave: string,
+  correcta: boolean,
+  ahora = Date.now(),
+): EstadoLearn {
+  const t = estado.tracks[track];
+  const previo = t.items[clave] ?? { a: 0, f: 0, u: 0 };
+  const items = {
+    ...t.items,
+    [clave]: { a: previo.a + (correcta ? 1 : 0), f: previo.f + (correcta ? 0 : 1), u: ahora },
+  };
+  return { ...estado, tracks: { ...estado.tracks, [track]: { ...t, items } } };
 }
 
 export function comprarEscudo(estado: EstadoLearn, track: Track): EstadoLearn | null {
@@ -378,6 +417,7 @@ export function resumenLearn(e: EstadoLearn, hoy = fechaLocal()) {
     racha: Math.max(...infos.map((i) => i.racha)),
     hechaHoy: infos.some((i) => i.hechaHoy),
     empezado: TRACKS.some((t) => e.tracks[t].completados.length > 0),
+    dias: { english: e.tracks.english.dia, laboratory: e.tracks.laboratory.dia },
     ultimoDia:
       TRACKS.map((t) => e.tracks[t].ultimoDia)
         .filter((x): x is string => !!x)

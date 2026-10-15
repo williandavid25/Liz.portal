@@ -1,0 +1,492 @@
+{
+  "track": "english",
+  "nombre": "Inglés",
+  "modulo": { "id": "english-m2", "titulo": "Módulo 2 · La vida diaria" },
+  "days": [
+    {
+      "day_id": 15,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "What time is it?",
+      "subtitle": "La hora en inglés",
+      "snoopy_tip": "Snoopy dice: 'Es hora de… ¡aprender!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "What time is it?",
+            "translation": "¿Qué hora es?",
+            "example_en": "Excuse me, what time is it?",
+            "example_es": "Disculpe, ¿qué hora es?"
+          },
+          {
+            "term": "It's seven o'clock",
+            "translation": "Son las siete en punto",
+            "example_en": "It's seven o'clock, time to work.",
+            "example_es": "Son las siete en punto, hora de trabajar."
+          },
+          {
+            "term": "Half past",
+            "translation": "Y media",
+            "example_en": "It's half past eight.",
+            "example_es": "Son las ocho y media."
+          },
+          {
+            "term": "Quarter to",
+            "translation": "Menos cuarto",
+            "example_en": "It's quarter to nine.",
+            "example_es": "Son las nueve menos cuarto."
+          }
+        ],
+        "grammar_note": "Para la hora se usa 'It's…'. 'O'clock' solo va con horas exactas."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué significa 'What time is it?'",
+          "options": ["¿Qué día es hoy?", "¿Qué hora es?", "¿Cuánto cuesta?", "¿Dónde estás?"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "It's seven ___, time to work.",
+          "correct": "o'clock",
+          "options": ["o'clock", "half", "quarter"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "'It's half past eight' es…",
+          "options": ["8:00", "8:15", "8:30", "7:30"],
+          "correct_index": 2,
+          "explanation": "'Half past' significa 'y media'."
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["O'clock", "En punto"],
+            ["Half past", "Y media"],
+            ["Quarter to", "Menos cuarto"],
+            ["Quarter past", "Y cuarto"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["time", "What", "it", "is"],
+          "correct": "What time is it",
+          "translation": "¿Qué hora es?"
+        }
+      ]
+    },
+    {
+      "day_id": 16,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "The weather",
+      "subtitle": "¿Cómo está el clima?",
+      "snoopy_tip": "Snoopy dice: 'Cuando está sunny, duermo en el techo de mi casita.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Sunny",
+            "translation": "Soleado",
+            "example_en": "It's sunny today.",
+            "example_es": "Hoy está soleado."
+          },
+          {
+            "term": "Rainy",
+            "translation": "Lluvioso",
+            "example_en": "It's rainy in Quito.",
+            "example_es": "Está lluvioso en Quito."
+          },
+          {
+            "term": "Cold",
+            "translation": "Frío",
+            "example_en": "It's very cold tonight.",
+            "example_es": "Hace mucho frío esta noche."
+          },
+          {
+            "term": "Hot",
+            "translation": "Caluroso / caliente",
+            "example_en": "It's hot in the summer.",
+            "example_es": "Hace calor en el verano."
+          }
+        ],
+        "grammar_note": "Para el clima se usa 'It's…': It's cold (hace frío), It's sunny (está soleado)."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Cómo se dice 'Hace frío'?",
+          "options": ["It's hot", "It's cold", "It's sunny", "It's rainy"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "Take an umbrella, it's ___.",
+          "correct": "rainy",
+          "options": ["rainy", "sunny", "hot"],
+          "explanation": "Umbrella = paraguas: se usa cuando llueve."
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué significa 'sunny'?",
+          "options": ["Nublado", "Soleado", "Ventoso", "Lluvioso"],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Sunny", "Soleado"],
+            ["Rainy", "Lluvioso"],
+            ["Cold", "Frío"],
+            ["Hot", "Caluroso"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["today", "It's", "sunny"],
+          "correct": "It's sunny today",
+          "translation": "Hoy está soleado"
+        }
+      ]
+    },
+    {
+      "day_id": 17,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Places",
+      "subtitle": "Lugares de la ciudad",
+      "snoopy_tip": "Snoopy dice: 'Mi lugar favorito es la panadería… the bakery.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Hospital",
+            "translation": "Hospital",
+            "example_en": "She works at the hospital.",
+            "example_es": "Ella trabaja en el hospital."
+          },
+          {
+            "term": "Pharmacy",
+            "translation": "Farmacia",
+            "example_en": "The pharmacy is open.",
+            "example_es": "La farmacia está abierta."
+          },
+          {
+            "term": "Waiting room",
+            "translation": "Sala de espera",
+            "example_en": "Please wait in the waiting room.",
+            "example_es": "Por favor espere en la sala de espera."
+          },
+          {
+            "term": "Bank",
+            "translation": "Banco",
+            "example_en": "The bank is near the park.",
+            "example_es": "El banco está cerca del parque."
+          }
+        ],
+        "grammar_note": "Near = cerca de, next to = al lado de, in front of = frente a."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué significa 'pharmacy'?",
+          "options": ["Panadería", "Farmacia", "Banco", "Escuela"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "Please wait in the waiting ___.",
+          "correct": "room",
+          "options": ["room", "bank", "park"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "'The bank is near the park' significa…",
+          "options": [
+            "El banco está lejos del parque",
+            "El banco está cerca del parque",
+            "El parque está en el banco",
+            "El banco está cerrado"
+          ],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Hospital", "Hospital"],
+            ["Pharmacy", "Farmacia"],
+            ["Waiting room", "Sala de espera"],
+            ["Near", "Cerca de"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["at", "She", "hospital", "works", "the"],
+          "correct": "She works at the hospital",
+          "translation": "Ella trabaja en el hospital"
+        }
+      ]
+    },
+    {
+      "day_id": 18,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Daily routine",
+      "subtitle": "Tu día en presente simple",
+      "snoopy_tip": "Snoopy dice: 'I wake up, I eat, I sleep… ¡mi rutina perfecta!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Wake up",
+            "translation": "Despertarse",
+            "example_en": "I wake up at six.",
+            "example_es": "Me despierto a las seis."
+          },
+          {
+            "term": "Have breakfast",
+            "translation": "Desayunar",
+            "example_en": "I have breakfast at seven.",
+            "example_es": "Desayuno a las siete."
+          },
+          {
+            "term": "Go to work",
+            "translation": "Ir al trabajo",
+            "example_en": "She goes to work by bus.",
+            "example_es": "Ella va al trabajo en bus."
+          },
+          {
+            "term": "Go to bed",
+            "translation": "Ir a dormir",
+            "example_en": "We go to bed at ten.",
+            "example_es": "Nos vamos a dormir a las diez."
+          }
+        ],
+        "grammar_note": "En presente simple, con he/she/it el verbo lleva -s: I work → she works; I go → she goes."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "She ___ to work by bus.",
+          "options": ["go", "goes", "going", "gone"],
+          "correct_index": 1,
+          "explanation": "Con 'she' el verbo lleva -s o -es: goes."
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "I ___ up at six.",
+          "correct": "wake",
+          "options": ["wake", "wakes", "go"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué significa 'go to bed'?",
+          "options": ["Despertarse", "Ir a dormir", "Ir al trabajo", "Desayunar"],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Wake up", "Despertarse"],
+            ["Have breakfast", "Desayunar"],
+            ["Go to work", "Ir al trabajo"],
+            ["Go to bed", "Ir a dormir"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["breakfast", "I", "at", "have", "seven"],
+          "correct": "I have breakfast at seven",
+          "translation": "Desayuno a las siete"
+        }
+      ]
+    },
+    {
+      "day_id": 19,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Question words",
+      "subtitle": "What, where, when, who",
+      "snoopy_tip": "Snoopy dice: 'Where is my food? ¡La pregunta más importante!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "What",
+            "translation": "Qué / cuál",
+            "example_en": "What is your name?",
+            "example_es": "¿Cuál es tu nombre?"
+          },
+          {
+            "term": "Where",
+            "translation": "Dónde",
+            "example_en": "Where is the lab?",
+            "example_es": "¿Dónde está el laboratorio?"
+          },
+          {
+            "term": "When",
+            "translation": "Cuándo",
+            "example_en": "When is your birthday?",
+            "example_es": "¿Cuándo es tu cumpleaños?"
+          },
+          {
+            "term": "Who",
+            "translation": "Quién",
+            "example_en": "Who is your doctor?",
+            "example_es": "¿Quién es tu doctor?"
+          }
+        ],
+        "grammar_note": "La palabra de pregunta va al inicio: Where + is + the lab?"
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué palabra pregunta por un lugar?",
+          "options": ["What", "Where", "When", "Who"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "___ is your birthday? — In May.",
+          "correct": "When",
+          "options": ["When", "Where", "Who"],
+          "explanation": "La respuesta es una fecha: se pregunta con 'When'."
+        },
+        {
+          "type": "multiple_choice",
+          "question": "'Who is your doctor?' pregunta por…",
+          "options": ["Un lugar", "Una persona", "Una hora", "Un objeto"],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["What", "Qué"],
+            ["Where", "Dónde"],
+            ["When", "Cuándo"],
+            ["Who", "Quién"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["the", "Where", "lab", "is"],
+          "correct": "Where is the lab",
+          "translation": "¿Dónde está el laboratorio?"
+        }
+      ]
+    },
+    {
+      "day_id": 20,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "At the doctor",
+      "subtitle": "Síntomas comunes",
+      "snoopy_tip": "Snoopy dice: 'I have a headache… ¡de tanto estudiar!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Fever",
+            "translation": "Fiebre",
+            "example_en": "I have a fever.",
+            "example_es": "Tengo fiebre."
+          },
+          {
+            "term": "Cough",
+            "translation": "Tos",
+            "example_en": "He has a bad cough.",
+            "example_es": "Él tiene una tos fuerte."
+          },
+          {
+            "term": "Headache",
+            "translation": "Dolor de cabeza",
+            "example_en": "She has a headache.",
+            "example_es": "Ella tiene dolor de cabeza."
+          },
+          {
+            "term": "Medicine",
+            "translation": "Medicina / medicamento",
+            "example_en": "Take this medicine twice a day.",
+            "example_es": "Tome esta medicina dos veces al día."
+          }
+        ],
+        "grammar_note": "Los síntomas van con 'have': I have a fever, she has a cough."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Cómo se dice 'Tengo fiebre'?",
+          "options": ["I am fever", "I have a fever", "I has a fever", "I fever"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "She has a ___. Her head hurts.",
+          "correct": "headache",
+          "options": ["headache", "cough", "fever"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "'Take this medicine twice a day' significa…",
+          "options": [
+            "Tome esta medicina una vez",
+            "Tome esta medicina dos veces al día",
+            "No tome medicina",
+            "Compre esta medicina"
+          ],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Fever", "Fiebre"],
+            ["Cough", "Tos"],
+            ["Headache", "Dolor de cabeza"],
+            ["Medicine", "Medicina"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["a", "I", "fever", "have"],
+          "correct": "I have a fever",
+          "translation": "Tengo fiebre"
+        }
+      ]
+    },
+    {
+      "day_id": 21,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "test",
+      "title": "TEST 3 — Snoopy Challenge",
+      "subtitle": "Repaso de la semana 3",
+      "snoopy_tip": "Snoopy dice: '¡Tres semanas! Ya hablas de tu día en inglés.'",
+      "reviews_days": [15, 16, 17, 18, 19, 20],
+      "total_questions": 10,
+      "pass_score_pct": 70,
+      "reward_first_try": { "xp": 50, "badge": "Week 3 Champion", "gems": 5 },
+      "reward_retry": { "xp": 25, "badge": null }
+    }
+  ]
+}

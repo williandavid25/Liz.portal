@@ -1,0 +1,431 @@
+{
+  "track": "laboratory",
+  "nombre": "Laboratorio",
+  "modulo": { "id": "laboratory-m2", "titulo": "Módulo 2 · Pruebas de rutina" },
+  "days": [
+    {
+      "day_id": 15,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Coagulación",
+      "subtitle": "TP, TTPa e INR",
+      "snoopy_tip": "Snoopy dice: 'Tubo celeste lleno hasta la línea, ¡sin excusas!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "TP (tiempo de protrombina)",
+            "translation": "Evalúa la vía extrínseca y común de la coagulación."
+          },
+          {
+            "term": "INR",
+            "translation": "Forma estandarizada del TP; se usa para controlar a pacientes con warfarina."
+          },
+          {
+            "term": "TTPa",
+            "translation": "Tiempo de tromboplastina parcial activada: vía intrínseca; controla el tratamiento con heparina no fraccionada."
+          },
+          {
+            "term": "Proporción 9:1",
+            "translation": "9 partes de sangre por 1 de citrato: el tubo celeste debe llenarse hasta la marca."
+          }
+        ],
+        "grammar_note": "Un tubo de citrato con poca sangre tiene exceso de anticoagulante y alarga falsamente los tiempos."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué prueba se usa para controlar a un paciente que toma warfarina?",
+          "options": ["TTPa", "INR", "Hemograma", "Glucosa"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "El tubo de citrato lleva una proporción sangre:anticoagulante de ___.",
+          "correct": "9:1",
+          "options": ["9:1", "1:1", "4:1"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "Si el tubo celeste queda con poca sangre, los tiempos de coagulación…",
+          "options": ["Se acortan", "Se alargan falsamente", "No cambian", "Salen negativos"],
+          "correct_index": 1,
+          "explanation": "Sobra citrato para tan poca sangre."
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["TP", "Vía extrínseca"],
+            ["TTPa", "Vía intrínseca"],
+            ["INR", "Control de warfarina"],
+            ["Citrato", "Tubo celeste"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["hasta", "Llena", "la", "marca", "el", "tubo"],
+          "correct": "Llena el tubo hasta la marca"
+        }
+      ]
+    },
+    {
+      "day_id": 16,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Grupos sanguíneos",
+      "subtitle": "Sistema ABO y Rh",
+      "snoopy_tip": "Snoopy dice: 'O negativo regala a todos; AB positivo recibe de todos.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Sistema ABO",
+            "translation": "Grupos A, B, AB y O, según los antígenos en el glóbulo rojo."
+          },
+          {
+            "term": "Factor Rh",
+            "translation": "Positivo si el glóbulo rojo tiene el antígeno D; negativo si no lo tiene."
+          },
+          { "term": "Donante universal", "translation": "O negativo (para glóbulos rojos)." },
+          { "term": "Receptor universal", "translation": "AB positivo (para glóbulos rojos)." }
+        ],
+        "grammar_note": "Antes de una transfusión siempre se hacen tipificación y pruebas cruzadas."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Cuál es el donante universal de glóbulos rojos?",
+          "options": ["AB positivo", "O negativo", "A positivo", "B negativo"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "El receptor universal de glóbulos rojos es el grupo ___.",
+          "correct": "AB positivo",
+          "options": ["AB positivo", "O negativo", "A negativo"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "Una persona Rh positivo tiene en sus glóbulos rojos el antígeno…",
+          "options": ["A", "B", "D", "O"],
+          "correct_index": 2
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["O negativo", "Donante universal"],
+            ["AB positivo", "Receptor universal"],
+            ["Antígeno D", "Factor Rh"],
+            ["A, B, AB, O", "Sistema ABO"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["donante", "O", "universal", "negativo", "es"],
+          "correct": "O negativo es donante universal"
+        }
+      ]
+    },
+    {
+      "day_id": 17,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Perfil lipídico",
+      "subtitle": "Colesterol y triglicéridos",
+      "snoopy_tip": "Snoopy dice: 'El HDL es el bueno: mientras más alto, mejor.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          { "term": "Colesterol total", "translation": "Deseable: menos de 200 mg/dL." },
+          {
+            "term": "HDL",
+            "translation": "Colesterol 'bueno': protege el corazón; conviene que esté alto."
+          },
+          {
+            "term": "LDL",
+            "translation": "Colesterol 'malo': se deposita en las arterias; conviene que esté bajo."
+          },
+          {
+            "term": "Triglicéridos",
+            "translation": "Normal: menos de 150 mg/dL. Suben mucho después de comer."
+          }
+        ],
+        "grammar_note": "Para el perfil lipídico clásico se pide un ayuno de 9 a 12 horas. Los valores pueden variar según el laboratorio."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Cuál es el colesterol 'bueno'?",
+          "options": ["LDL", "HDL", "Triglicéridos", "VLDL"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "El colesterol total deseable es menor de ___ mg/dL.",
+          "correct": "200",
+          "options": ["200", "100", "300"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "Si el paciente comió antes del examen, lo que más sube es…",
+          "options": ["HDL", "Triglicéridos", "Hemoglobina", "Plaquetas"],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["HDL", "Colesterol bueno"],
+            ["LDL", "Colesterol malo"],
+            ["Triglicéridos", "Menos de 150"],
+            ["Colesterol total", "Menos de 200"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["es", "El", "colesterol", "HDL", "bueno", "el"],
+          "correct": "El HDL es el colesterol bueno"
+        }
+      ]
+    },
+    {
+      "day_id": 18,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Función renal",
+      "subtitle": "Creatinina y urea",
+      "snoopy_tip": "Snoopy dice: 'Los riñones filtran todo, ¡igual que yo filtro las galletas!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Creatinina",
+            "translation": "Desecho del músculo que eliminan los riñones; si sube, el riñón filtra menos."
+          },
+          {
+            "term": "Urea / BUN",
+            "translation": "Desecho de las proteínas; también evalúa la función renal."
+          },
+          {
+            "term": "Filtración glomerular (TFG)",
+            "translation": "Cuánta sangre filtran los riñones por minuto; se estima con la creatinina."
+          },
+          {
+            "term": "Valor aproximado de creatinina",
+            "translation": "0,6 – 1,2 mg/dL en adultos (varía según sexo, masa muscular y laboratorio)."
+          }
+        ],
+        "grammar_note": "Creatinina alta = el riñón está filtrando menos."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "Si la creatinina en sangre sube, suele indicar que los riñones…",
+          "options": ["Filtran más", "Filtran menos", "No tienen relación", "Producen glucosa"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "La filtración glomerular se estima a partir de la ___.",
+          "correct": "creatinina",
+          "options": ["creatinina", "glucosa", "hemoglobina"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿De dónde proviene la creatinina?",
+          "options": ["Del hígado", "Del músculo", "De los huesos", "De la piel"],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Creatinina", "Desecho del músculo"],
+            ["Urea", "Desecho de proteínas"],
+            ["TFG", "Filtración renal"],
+            ["Riñones", "Filtran la sangre"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["la", "Los", "sangre", "filtran", "riñones"],
+          "correct": "Los riñones filtran la sangre"
+        }
+      ]
+    },
+    {
+      "day_id": 19,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Coproparasitario",
+      "subtitle": "Examen de heces",
+      "snoopy_tip": "Snoopy dice: 'No es el examen más bonito, ¡pero salva vidas!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Muestra fresca",
+            "translation": "Se analiza pronto para ver parásitos vivos y en movimiento."
+          },
+          {
+            "term": "Frasco limpio y seco",
+            "translation": "Sin mezclar con orina ni agua, que dañan los parásitos."
+          },
+          {
+            "term": "Muestras seriadas",
+            "translation": "Generalmente 3 muestras en días distintos: los parásitos no salen todos los días."
+          },
+          {
+            "term": "Examen directo",
+            "translation": "Se observa la muestra al microscopio con solución salina y lugol."
+          }
+        ],
+        "grammar_note": "Un solo resultado negativo no descarta parásitos; por eso se piden muestras seriadas."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Por qué se piden muestras seriadas?",
+          "options": [
+            "Para tener más cantidad",
+            "Porque los parásitos no se eliminan todos los días",
+            "Por costumbre",
+            "Para hacer cultivo"
+          ],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "La muestra de heces no debe mezclarse con ___.",
+          "correct": "orina",
+          "options": ["orina", "lugol", "solución salina"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "Para ver parásitos en movimiento, la muestra debe estar…",
+          "options": ["Congelada", "Fresca", "Seca", "Con alcohol"],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Muestra fresca", "Parásitos en movimiento"],
+            ["Seriadas", "Varios días"],
+            ["Lugol", "Tiñe para observar"],
+            ["Frasco", "Limpio y seco"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["frasco", "Usa", "un", "limpio"],
+          "correct": "Usa un frasco limpio"
+        }
+      ]
+    },
+    {
+      "day_id": 20,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Control de calidad",
+      "subtitle": "Confiar en los resultados",
+      "snoopy_tip": "Snoopy dice: 'Primero los controles, después los pacientes.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Exactitud",
+            "translation": "Qué tan cerca está el resultado del valor verdadero."
+          },
+          {
+            "term": "Precisión",
+            "translation": "Qué tan parecidos salen los resultados al repetir la prueba."
+          },
+          {
+            "term": "Controles",
+            "translation": "Muestras con valor conocido (normal y patológico) que se corren antes que los pacientes."
+          },
+          {
+            "term": "Reglas de Westgard",
+            "translation": "Reglas para decidir si una corrida de controles se acepta o se rechaza."
+          }
+        ],
+        "grammar_note": "Si los controles fallan, no se reportan resultados de pacientes hasta corregir el problema."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué mide la precisión?",
+          "options": [
+            "La cercanía al valor verdadero",
+            "Qué tan reproducibles son los resultados",
+            "La velocidad del equipo",
+            "El costo de la prueba"
+          ],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "Los controles se corren ___ que las muestras de pacientes.",
+          "correct": "antes",
+          "options": ["antes", "después", "nunca"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "Si los controles salen fuera de rango, lo correcto es…",
+          "options": [
+            "Reportar igual",
+            "No reportar pacientes hasta corregir",
+            "Repetir solo a un paciente",
+            "Ignorarlo"
+          ],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Exactitud", "Cerca del valor real"],
+            ["Precisión", "Resultados repetibles"],
+            ["Control", "Valor conocido"],
+            ["Westgard", "Aceptar o rechazar"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["los", "Corre", "primero", "controles"],
+          "correct": "Corre primero los controles"
+        }
+      ]
+    },
+    {
+      "day_id": 21,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "test",
+      "title": "TEST 3 — Snoopy Challenge",
+      "subtitle": "Repaso de la semana 3",
+      "snoopy_tip": "Snoopy dice: '¡Tres semanas! Ya sabes más que muchos.'",
+      "reviews_days": [15, 16, 17, 18, 19, 20],
+      "total_questions": 10,
+      "pass_score_pct": 70,
+      "reward_first_try": { "xp": 50, "badge": "Lab Week 3 Champion", "gems": 5 },
+      "reward_retry": { "xp": 25, "badge": null }
+    }
+  ]
+}

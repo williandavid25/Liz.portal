@@ -17,6 +17,7 @@ import { Route as MascotaRouteImport } from './routes/mascota'
 import { Route as RecuerdosRouteImport } from './routes/recuerdos'
 import { Route as ApiAvisosTickRouteImport } from './routes/api/avisos-tick'
 import { Route as ApiBlobUploadRouteImport } from './routes/api/blob-upload'
+import { Route as ApiLearnGenerarRouteImport } from './routes/api/learn-generar'
 import { Route as ApiFilesIdRouteImport } from './routes/api/files/$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -59,6 +60,11 @@ const ApiBlobUploadRoute = ApiBlobUploadRouteImport.update({
   path: '/api/blob-upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiLearnGenerarRoute = ApiLearnGenerarRouteImport.update({
+  id: '/api/learn-generar',
+  path: '/api/learn-generar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiFilesIdRoute = ApiFilesIdRouteImport.update({
   id: '/api/files/$id',
   path: '/api/files/$id',
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/recuerdos': typeof RecuerdosRoute
   '/api/avisos-tick': typeof ApiAvisosTickRoute
   '/api/blob-upload': typeof ApiBlobUploadRoute
+  '/api/learn-generar': typeof ApiLearnGenerarRoute
   '/api/files/$id': typeof ApiFilesIdRoute
 }
 export interface FileRoutesByTo {
@@ -85,6 +92,7 @@ export interface FileRoutesByTo {
   '/recuerdos': typeof RecuerdosRoute
   '/api/avisos-tick': typeof ApiAvisosTickRoute
   '/api/blob-upload': typeof ApiBlobUploadRoute
+  '/api/learn-generar': typeof ApiLearnGenerarRoute
   '/api/files/$id': typeof ApiFilesIdRoute
 }
 export interface FileRoutesById {
@@ -97,6 +105,7 @@ export interface FileRoutesById {
   '/recuerdos': typeof RecuerdosRoute
   '/api/avisos-tick': typeof ApiAvisosTickRoute
   '/api/blob-upload': typeof ApiBlobUploadRoute
+  '/api/learn-generar': typeof ApiLearnGenerarRoute
   '/api/files/$id': typeof ApiFilesIdRoute
 }
 export interface FileRouteTypes {
@@ -110,6 +119,7 @@ export interface FileRouteTypes {
     | '/recuerdos'
     | '/api/avisos-tick'
     | '/api/blob-upload'
+    | '/api/learn-generar'
     | '/api/files/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/recuerdos'
     | '/api/avisos-tick'
     | '/api/blob-upload'
+    | '/api/learn-generar'
     | '/api/files/$id'
   id:
     | '__root__'
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '/recuerdos'
     | '/api/avisos-tick'
     | '/api/blob-upload'
+    | '/api/learn-generar'
     | '/api/files/$id'
   fileRoutesById: FileRoutesById
 }
@@ -144,6 +156,7 @@ export interface RootRouteChildren {
   RecuerdosRoute: typeof RecuerdosRoute
   ApiAvisosTickRoute: typeof ApiAvisosTickRoute
   ApiBlobUploadRoute: typeof ApiBlobUploadRoute
+  ApiLearnGenerarRoute: typeof ApiLearnGenerarRoute
   ApiFilesIdRoute: typeof ApiFilesIdRoute
 }
 
@@ -205,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBlobUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/learn-generar': {
+      id: '/api/learn-generar'
+      path: '/api/learn-generar'
+      fullPath: '/api/learn-generar'
+      preLoaderRoute: typeof ApiLearnGenerarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/files/$id': {
       id: '/api/files/$id'
       path: '/api/files/$id'
@@ -224,6 +244,7 @@ const rootRouteChildren: RootRouteChildren = {
   RecuerdosRoute: RecuerdosRoute,
   ApiAvisosTickRoute: ApiAvisosTickRoute,
   ApiBlobUploadRoute: ApiBlobUploadRoute,
+  ApiLearnGenerarRoute: ApiLearnGenerarRoute,
   ApiFilesIdRoute: ApiFilesIdRoute,
 }
 export const routeTree = rootRouteImport

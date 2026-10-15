@@ -1,19 +1,78 @@
-import type { ContenidoTrack, Dia, DiaLeccion, Ejercicio, Track, Vocabulario } from "./tipos";
+import type {
+  ContenidoTrack,
+  Dia,
+  DiaLeccion,
+  Ejercicio,
+  ProgresoTrack,
+  Track,
+  Vocabulario,
+} from "./tipos";
 
-// El contenido de cada materia vive en un JSON aparte (src/content/learn) y se
-// descarga recién al abrir Snoopy Learn: la página de la mascota no carga más.
-// Para sumar días (hasta 100) basta con agregarlos al JSON.
+// El contenido de cada materia se arma con tres fuentes:
+// 1. Módulos incluidos en la app (src/content/learn/*.json): el 1 y los que
+//    se van escribiendo y revisando a mano.
+// 2. Módulos nuevos guardados en la nube (generados y aprobados en la app):
+//    llegan sin publicar una versión nueva.
+// 3. Si la nube no responde, la última copia guardada en el celular.
+// Todo se descarga recién al abrir Snoopy Learn.
+
+const MODULOS_APP: Record<Track, () => Promise<ContenidoTrack[]>> = {
+  english: () =>
+    Promise.all([
+      import("@/content/learn/english.json"),
+      import("@/content/learn/english-m2.json"),
+    ]).then((ms) => ms.map((m) => (m.default ?? m) as unknown as ContenidoTrack)),
+  laboratory: () =>
+    Promise.all([
+      import("@/content/learn/laboratory.json"),
+      import("@/content/learn/laboratory-m2.json"),
+    ]).then((ms) => ms.map((m) => (m.default ?? m) as unknown as ContenidoTrack)),
+};
+
+const claveNube = (t: Track) => `snoopy-learn-nube-${t}`;
+
+function leerNube(t: Track): Dia[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(claveNube(t)) || "[]");
+    return Array.isArray(v) ? (v as Dia[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function traerNube(t: Track): Promise<Dia[] | null> {
+  const { modulosLearn } = await import("@/lib/cloud");
+  const r = await Promise.race([
+    modulosLearn({ data: t }),
+    new Promise<null>((ok) => setTimeout(() => ok(null), 4000)),
+  ]).catch(() => null);
+  if (!r || !r.ok) return null;
+  try {
+    localStorage.setItem(claveNube(t), JSON.stringify(r.dias));
+  } catch {
+    /* sin espacio */
+  }
+  return r.dias as Dia[];
+}
+
+/** Une los módulos por número de día (si se repite, gana el de la app). */
+export function unirModulos(track: Track, base: ContenidoTrack[], extra: Dia[]): ContenidoTrack {
+  const porDia = new Map<number, Dia>();
+  for (const m of base) for (const d of m.days) porDia.set(d.day_id, d);
+  for (const d of extra) if (d.track === track && !porDia.has(d.day_id)) porDia.set(d.day_id, d);
+  return { ...base[0]!, days: [...porDia.values()].sort((a, b) => a.day_id - b.day_id) };
+}
 
 const cache = new Map<Track, Promise<ContenidoTrack>>();
 
-export function cargarTrack(track: Track): Promise<ContenidoTrack> {
-  let p = cache.get(track);
+export function cargarTrack(track: Track, refrescar = false): Promise<ContenidoTrack> {
+  let p = refrescar ? undefined : cache.get(track);
   if (!p) {
-    p = (
-      track === "english"
-        ? import("@/content/learn/english.json")
-        : import("@/content/learn/laboratory.json")
-    ).then((m) => (m.default ?? m) as unknown as ContenidoTrack);
+    p = (async () => {
+      const base = await MODULOS_APP[track]();
+      const nube = (await traerNube(track)) ?? leerNube(track);
+      return unirModulos(track, base, nube);
+    })();
     p.catch(() => cache.delete(track));
     cache.set(track, p);
   }
@@ -26,7 +85,14 @@ export const TOTAL_DIAS = 100;
 
 export type Paso =
   | { tipo: "vocab"; key: string; vocab: Vocabulario; n: number; de: number }
-  | { tipo: "ejercicio"; key: string; ej: Ejercicio; repaso?: boolean };
+  | {
+      tipo: "ejercicio";
+      key: string;
+      ej: Ejercicio;
+      repaso?: boolean;
+      /** Pregunta original ("día-índice"): para recordar cómo le fue. */
+      ref?: string;
+    };
 
 function mezclar<T>(xs: readonly T[]): T[] {
   const a = [...xs];
@@ -71,6 +137,7 @@ export function pasosLeccion(dia: DiaLeccion, conVocabulario = true): Paso[] {
   const ejercicios: Paso[] = dia.exercises.map((ej, i) => ({
     tipo: "ejercicio",
     key: `e-${dia.day_id}-${i}`,
+    ref: `${dia.day_id}-${i}`,
     ej: barajar(ej),
   }));
   return [...vocab, ...ejercicios];
@@ -85,10 +152,64 @@ export function pasosTest(
     .filter(
       (d): d is DiaLeccion => d.day_type === "lesson" && diaTest.reviews_days.includes(d.day_id),
     )
-    .flatMap((d) => d.exercises.map((ej, i) => ({ ej, key: `t-${d.day_id}-${i}` })));
+    .flatMap((d) =>
+      d.exercises.map((ej, i) => ({ ej, key: `t-${d.day_id}-${i}`, ref: `${d.day_id}-${i}` })),
+    );
   return mezclar(pool)
     .slice(0, diaTest.total_questions)
-    .map(({ ej, key }) => ({ tipo: "ejercicio" as const, key, ej: barajar(ej) }));
+    .map(({ ej, key, ref }) => ({ tipo: "ejercicio" as const, key, ref, ej: barajar(ej) }));
+}
+
+/* ---------------- Repaso inteligente del día ---------------- */
+
+export const PREGUNTAS_REPASO = 5;
+
+/**
+ * Siempre hay tarea: con lo ya aprendido se eligen las preguntas que más
+ * cuestan (más fallos), las que hace más tiempo no ve y algunas al azar
+ * (repetición espaciada).
+ */
+export function pasosRepasoDiario(
+  c: ContenidoTrack,
+  t: ProgresoTrack,
+  n = PREGUNTAS_REPASO,
+  ahora = Date.now(),
+): Paso[] {
+  const pool = c.days
+    .filter((d): d is DiaLeccion => d.day_type === "lesson" && t.completados.includes(d.day_id))
+    .flatMap((d) => d.exercises.map((ej, i) => ({ ej, ref: `${d.day_id}-${i}` })));
+  const conPuntaje = pool.map((x) => {
+    const s = t.items[x.ref];
+    const dias = s ? (ahora - s.u) / 86_400_000 : 0;
+    const puntaje = s ? s.f * 3 - s.a + Math.min(dias, 14) / 2 : 4; // nunca vista: prioridad media
+    return { ...x, puntaje: puntaje + Math.random() * 1.5 };
+  });
+  return mezclar(conPuntaje.sort((a, b) => b.puntaje - a.puntaje).slice(0, n)).map(
+    ({ ej, ref }) => ({
+      tipo: "ejercicio" as const,
+      key: `r-${ref}`,
+      ref,
+      ej: barajar(ej),
+    }),
+  );
+}
+
+/** El "día" del repaso (número 0: no es un día del camino). */
+export function diaRepaso(track: Track): DiaLeccion {
+  return {
+    day_id: 0,
+    track,
+    phase: 0,
+    phase_name: "Repaso",
+    day_type: "lesson",
+    title: "Repaso del día",
+    subtitle: "Lo que más te cuesta, para que no se olvide",
+    snoopy_tip: "Snoopy dice: 'Repasar es el secreto de los campeones.'",
+    xp_reward: 10,
+    hearts_cost_per_error: 0,
+    lesson: { vocabulary: [] },
+    exercises: [],
+  };
 }
 
 /* ---------------- Corrección ---------------- */
@@ -129,43 +250,4 @@ export function esCorrecta(ej: Ejercicio, respuesta: string | number | string[])
   }
 }
 
-/* ---------------- Revisión del contenido (para pruebas) ---------------- */
-
-export function problemasDeContenido(c: ContenidoTrack): string[] {
-  const errores: string[] = [];
-  const ids = new Set<number>();
-  for (const d of c.days) {
-    const donde = `${c.track} día ${d.day_id}`;
-    if (ids.has(d.day_id)) errores.push(`${donde}: día repetido`);
-    ids.add(d.day_id);
-    if (d.track !== c.track) errores.push(`${donde}: mezcla materias (${d.track})`);
-    if (d.day_type === "test") {
-      const lecciones = c.days.filter(
-        (x) => x.day_type === "lesson" && d.reviews_days.includes(x.day_id),
-      );
-      if (lecciones.length === 0) errores.push(`${donde}: el test no tiene días para repasar`);
-      continue;
-    }
-    if (d.lesson.vocabulary.length === 0) errores.push(`${donde}: sin vocabulario`);
-    d.exercises.forEach((ej, i) => {
-      const e = `${donde} ejercicio ${i + 1}`;
-      if (
-        ej.type === "multiple_choice" &&
-        !(ej.correct_index >= 0 && ej.correct_index < ej.options.length)
-      )
-        errores.push(`${e}: correct_index fuera de rango`);
-      if (ej.type === "fill_blank") {
-        if (!ej.sentence.includes("___")) errores.push(`${e}: falta ___ en la frase`);
-        if (!ej.options.includes(ej.correct))
-          errores.push(`${e}: la respuesta no está entre las opciones`);
-      }
-      if (ej.type === "word_order") {
-        const a = [...ej.words].map(normalizar).sort().join("|");
-        const b = ej.correct.split(" ").map(normalizar).sort().join("|");
-        if (a !== b) errores.push(`${e}: las palabras no forman la respuesta`);
-      }
-      if (ej.type === "word_match" && ej.pairs.length < 2) errores.push(`${e}: pocas parejas`);
-    });
-  }
-  return errores;
-}
+export { problemasDeContenido } from "./validar.ts";
