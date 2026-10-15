@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Track } from "@/lib/learn/tipos";
+import { srcFondo, srcsetFondo } from "@/lib/learn/fondos";
 
 // Fondo de cada materia en Snoopy Learn: la foto (en el tamaño justo para la
 // pantalla, sin perder calidad), un movimiento de cámara muy lento y
@@ -37,7 +38,6 @@ export function FondoLearn({ track }: { track: Track }) {
   const f = FONDOS[track];
   const [cargada, setCargada] = useState(false);
   useEffect(() => setCargada(false), [track]);
-  const base = `/learn/fondos/${f.archivo}`;
   return (
     <div
       className="lrn-foto pointer-events-none absolute inset-0 overflow-hidden"
@@ -49,16 +49,23 @@ export function FondoLearn({ track }: { track: Track }) {
         alt=""
         className="lrn-foto-borrador absolute inset-0 h-full w-full object-cover"
       />
-      <img
-        key={track}
-        src={`${base}-1242.webp`}
-        srcSet={`${base}-828.webp 828w, ${base}-1242.webp 1242w, ${base}-1656.webp 1656w`}
-        sizes="100vw"
-        alt=""
-        decoding="async"
-        onLoad={() => setCargada(true)}
-        className={`lrn-foto-img absolute inset-0 h-full w-full object-cover ${cargada ? "visible" : ""}`}
-      />
+      <picture key={track}>
+        <source type="image/avif" srcSet={srcsetFondo(track, "avif")} sizes="100vw" />
+        <img
+          src={srcFondo(track, "webp")}
+          srcSet={srcsetFondo(track, "webp")}
+          sizes="100vw"
+          alt=""
+          decoding="async"
+          fetchPriority="high"
+          // Precargada en la página de la mascota: ya está lista, sin esperar.
+          ref={(el) => {
+            if (el?.complete && el.naturalWidth > 0) setCargada(true);
+          }}
+          onLoad={() => setCargada(true)}
+          className={`lrn-foto-img absolute inset-0 h-full w-full object-cover ${cargada ? "visible" : ""}`}
+        />
+      </picture>
       <Luciernagas colores={f.luz} />
     </div>
   );

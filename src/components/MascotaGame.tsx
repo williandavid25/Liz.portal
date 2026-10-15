@@ -647,6 +647,31 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     }
   }, [listo, stats, escena, nombre, progreso, sonido, avisos, dormido]);
 
+  // Con la página ya tranquila, se precarga Snoopy Learn (código, lecciones y
+  // fondos): al tocar "Aprender" todo aparece al instante.
+  useEffect(() => {
+    if (!listo) return;
+    let cancelado = false;
+    const precargar = () => {
+      if (cancelado) return;
+      void cargarLearn();
+      void import("@/lib/learn/contenido").then((c) => {
+        void c.cargarTrack("english");
+        void c.cargarTrack("laboratory");
+      });
+      void import("@/lib/learn/fondos").then((f) => f.precargarFondos());
+    };
+    const id =
+      typeof window.requestIdleCallback === "function"
+        ? window.requestIdleCallback(precargar, { timeout: 3000 })
+        : window.setTimeout(precargar, 1500);
+    return () => {
+      cancelado = true;
+      if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(id);
+      window.clearTimeout(id);
+    };
+  }, [listo]);
+
   // Sube el estado al servidor para que avise aunque la app esté cerrada
   // (hambre, baño, sueño y horas de comida). Se espera a que se calme y
   // también se manda al salir de la app.

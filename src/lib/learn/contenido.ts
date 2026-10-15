@@ -65,18 +65,33 @@ export function unirModulos(track: Track, base: ContenidoTrack[], extra: Dia[]):
 
 const cache = new Map<Track, Promise<ContenidoTrack>>();
 
+/**
+ * Contenido al instante: módulos de la app + la última copia de la nube
+ * guardada en el celular (sin esperar internet). Con `refrescar` se consulta
+ * la nube primero (por ejemplo, después de aprobar un módulo).
+ */
 export function cargarTrack(track: Track, refrescar = false): Promise<ContenidoTrack> {
   let p = refrescar ? undefined : cache.get(track);
   if (!p) {
     p = (async () => {
       const base = await MODULOS_APP[track]();
-      const nube = (await traerNube(track)) ?? leerNube(track);
+      const nube = refrescar ? ((await traerNube(track)) ?? leerNube(track)) : leerNube(track);
       return unirModulos(track, base, nube);
     })();
     p.catch(() => cache.delete(track));
     cache.set(track, p);
   }
   return p;
+}
+
+/** Revisa la nube en segundo plano; devuelve el contenido solo si cambió. */
+export async function actualizarDesdeNube(track: Track): Promise<ContenidoTrack | null> {
+  const antes = JSON.stringify(leerNube(track).map((d) => d.day_id));
+  const nube = await traerNube(track);
+  if (!nube || JSON.stringify(nube.map((d) => d.day_id)) === antes) return null;
+  const actualizado = unirModulos(track, await MODULOS_APP[track](), nube);
+  cache.set(track, Promise.resolve(actualizado));
+  return actualizado;
 }
 
 export const TOTAL_DIAS = 100;

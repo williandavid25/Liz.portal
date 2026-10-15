@@ -40,6 +40,7 @@ import {
 import {
   TOTAL_DIAS,
   cargarTrack,
+  actualizarDesdeNube,
   esCorrecta,
   pasosLeccion,
   pasosTest,
@@ -199,7 +200,12 @@ export default function SnoopyLearn({
     setContenido(null);
     setErrorCarga(false);
     cargarTrack(track)
-      .then((c) => vivo && setContenido(c))
+      .then((c) => {
+        if (vivo) setContenido(c);
+        // La nube se revisa después, sin hacer esperar.
+        return actualizarDesdeNube(track);
+      })
+      .then((nuevo) => vivo && nuevo && setContenido(nuevo))
       .catch(() => vivo && setErrorCarga(true));
     return () => {
       vivo = false;
@@ -1612,7 +1618,7 @@ const CSS = `
 /* Foto de fondo de la materia + velo para que el texto se lea bien. */
 .lrn-foto-borrador { filter: blur(18px) saturate(1.1); transform: scale(1.12); }
 .lrn-foto-img {
-  opacity: 0; transition: opacity 0.9s ease;
+  opacity: 0; transition: opacity 0.35s ease;
   animation: lrn-camara 38s cubic-bezier(.45,.05,.55,.95) infinite alternate;
   transform-origin: 50% 40%;
 }
