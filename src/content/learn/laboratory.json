@@ -1,0 +1,849 @@
+{
+  "track": "laboratory",
+  "nombre": "Laboratorio",
+  "days": [
+    {
+      "day_id": 1,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Bioseguridad",
+      "subtitle": "Primero, protegerte",
+      "snoopy_tip": "Snoopy dice: 'Hasta los ases del laboratorio usan guantes.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "EPP",
+            "translation": "Equipo de protección personal: guantes, bata, gafas y mascarilla."
+          },
+          {
+            "term": "Lavado de manos",
+            "translation": "Antes y después de atender a cada paciente, y al quitarse los guantes."
+          },
+          {
+            "term": "Guardián",
+            "translation": "Contenedor rígido para cortopunzantes (agujas, lancetas)."
+          },
+          {
+            "term": "No reencapuchar",
+            "translation": "Las agujas usadas no se vuelven a tapar: van directo al guardián."
+          }
+        ],
+        "grammar_note": "Toda muestra se maneja como potencialmente infecciosa (precauciones estándar)."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Dónde se desecha una aguja usada?",
+          "options": [
+            "En la basura común",
+            "En el guardián de cortopunzantes",
+            "En la funda roja",
+            "Se reencapucha y se guarda"
+          ],
+          "correct_index": 1,
+          "explanation": "Las agujas van al guardián sin reencapuchar, para evitar pinchazos."
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "Toda muestra se maneja como potencialmente ___.",
+          "correct": "infecciosa",
+          "options": ["infecciosa", "estéril", "inofensiva"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿Cuál NO es parte del EPP?",
+          "options": ["Guantes", "Bata", "Gafas", "Reloj de pulsera"],
+          "correct_index": 3
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Guantes", "Protegen las manos"],
+            ["Gafas", "Protegen los ojos"],
+            ["Bata", "Protege la ropa y la piel"],
+            ["Guardián", "Agujas usadas"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["manos", "Lávate", "las", "siempre"],
+          "correct": "Lávate siempre las manos"
+        }
+      ]
+    },
+    {
+      "day_id": 2,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Tubos y colores",
+      "subtitle": "Cada tapón tiene su examen",
+      "snoopy_tip": "Snoopy dice: 'El morado es mi favorito: ¡hemograma!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Tapón lila / morado",
+            "translation": "EDTA → hemograma (biometría hemática)."
+          },
+          {
+            "term": "Tapón celeste",
+            "translation": "Citrato de sodio → pruebas de coagulación (TP, TTP)."
+          },
+          {
+            "term": "Tapón rojo o amarillo",
+            "translation": "Sin anticoagulante (con o sin gel) → suero para química y serología."
+          },
+          {
+            "term": "Tapón gris",
+            "translation": "Fluoruro de sodio → glucosa (evita que las células la consuman)."
+          }
+        ],
+        "grammar_note": "El color del tapón indica el aditivo que trae el tubo."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué tubo se usa para un hemograma?",
+          "options": ["Celeste", "Lila (EDTA)", "Rojo", "Gris"],
+          "correct_index": 1,
+          "explanation": "El EDTA conserva bien la forma de las células sanguíneas."
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "Las pruebas de coagulación usan el tubo de tapón ___.",
+          "correct": "celeste",
+          "options": ["celeste", "lila", "gris"],
+          "explanation": "Celeste = citrato de sodio."
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué aditivo tiene el tubo gris?",
+          "options": ["Heparina", "EDTA", "Fluoruro de sodio", "Ninguno"],
+          "correct_index": 2
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Lila", "EDTA"],
+            ["Celeste", "Citrato"],
+            ["Gris", "Fluoruro"],
+            ["Verde", "Heparina"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["usa", "El", "hemograma", "tubo", "lila"],
+          "correct": "El hemograma usa tubo lila"
+        }
+      ]
+    },
+    {
+      "day_id": 3,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Orden de extracción",
+      "subtitle": "Qué tubo va primero",
+      "snoopy_tip": "Snoopy dice: 'El orden importa, como poner primero el plato y luego la comida.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "1. Hemocultivos",
+            "translation": "Siempre primero, para que la muestra no se contamine."
+          },
+          {
+            "term": "2. Celeste (citrato)",
+            "translation": "Antes que los tubos con activador de coágulo o con otros aditivos."
+          },
+          { "term": "3. Rojo / amarillo → 4. Verde", "translation": "Suero y luego heparina." },
+          { "term": "5. Lila → 6. Gris", "translation": "El EDTA y el fluoruro van al final." }
+        ],
+        "grammar_note": "Seguir el orden evita que el aditivo de un tubo pase al siguiente y altere los resultados (por ejemplo, el EDTA aumenta falsamente el potasio)."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué se extrae primero?",
+          "options": ["Tubo lila", "Hemocultivos", "Tubo gris", "Tubo verde"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "El tubo celeste va antes que el tubo ___.",
+          "correct": "lila",
+          "options": ["lila", "de hemocultivo", "que nada"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿Por qué se respeta el orden de extracción?",
+          "options": [
+            "Por costumbre",
+            "Para no contaminar con aditivos",
+            "Para que duela menos",
+            "Para gastar menos tubos"
+          ],
+          "correct_index": 1,
+          "explanation": "El arrastre de aditivos altera los resultados."
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Primero", "Hemocultivos"],
+            ["Segundo", "Celeste"],
+            ["Penúltimo", "Lila"],
+            ["Último", "Gris"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["primero", "Los", "van", "hemocultivos"],
+          "correct": "Los hemocultivos van primero"
+        }
+      ]
+    },
+    {
+      "day_id": 4,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Suero y plasma",
+      "subtitle": "No son lo mismo",
+      "snoopy_tip": "Snoopy dice: 'Suero sin fibrinógeno, plasma con fibrinógeno. ¡Fácil!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Plasma",
+            "translation": "Parte líquida de la sangre con anticoagulante. Conserva el fibrinógeno."
+          },
+          {
+            "term": "Suero",
+            "translation": "Líquido que queda después de que la sangre coagula. No tiene fibrinógeno."
+          },
+          {
+            "term": "Anticoagulante",
+            "translation": "Sustancia que impide que la sangre coagule (EDTA, citrato, heparina)."
+          },
+          {
+            "term": "Centrifugar",
+            "translation": "Girar la muestra a alta velocidad para separar las células del líquido."
+          }
+        ],
+        "grammar_note": "Para obtener suero hay que esperar a que la sangre coagule antes de centrifugar."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué tiene el plasma que no tiene el suero?",
+          "options": ["Glucosa", "Fibrinógeno", "Agua", "Sodio"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "El suero se obtiene después de que la sangre ___.",
+          "correct": "coagula",
+          "options": ["coagula", "se congela", "se calienta"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿Cuál de estos es un anticoagulante?",
+          "options": ["Gel separador", "EDTA", "Alcohol", "Suero fisiológico"],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Plasma", "Con anticoagulante"],
+            ["Suero", "Sangre coagulada"],
+            ["Centrífuga", "Separa por giro"],
+            ["Heparina", "Anticoagulante"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["no", "El", "fibrinógeno", "suero", "tiene"],
+          "correct": "El suero no tiene fibrinógeno"
+        }
+      ]
+    },
+    {
+      "day_id": 5,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "El microscopio",
+      "subtitle": "Sus partes",
+      "snoopy_tip": "Snoopy dice: 'Con el objetivo de 100x veo hasta mis pulgas… ¡mentira!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          { "term": "Ocular", "translation": "Lente por donde miras; casi siempre aumenta 10x." },
+          {
+            "term": "Objetivos",
+            "translation": "Lentes de 4x, 10x, 40x y 100x (el de 100x usa aceite de inmersión)."
+          },
+          {
+            "term": "Platina",
+            "translation": "Superficie donde se coloca la placa (portaobjetos)."
+          },
+          {
+            "term": "Tornillo macrométrico",
+            "translation": "Enfoque grueso; el micrométrico hace el enfoque fino."
+          }
+        ],
+        "grammar_note": "Aumento total = aumento del ocular × aumento del objetivo. Ejemplo: 10x × 40x = 400x."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "Ocular de 10x y objetivo de 40x. ¿Cuál es el aumento total?",
+          "options": ["50x", "400x", "40x", "4000x"],
+          "correct_index": 1,
+          "explanation": "Se multiplica: 10 × 40 = 400."
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "El objetivo de 100x necesita aceite de ___.",
+          "correct": "inmersión",
+          "options": ["inmersión", "oliva", "motor"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué tornillo hace el enfoque fino?",
+          "options": ["Macrométrico", "Micrométrico", "De la platina", "Del ocular"],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Ocular", "Lente para mirar"],
+            ["Platina", "Soporte de la placa"],
+            ["Objetivo", "Lente de aumento"],
+            ["Micrométrico", "Enfoque fino"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["la", "placa", "en", "Coloca", "platina", "la"],
+          "correct": "Coloca la placa en la platina"
+        }
+      ]
+    },
+    {
+      "day_id": 6,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Unidades",
+      "subtitle": "mg/dL, g/dL y µL",
+      "snoopy_tip": "Snoopy dice: 'Un decilitro son 100 mililitros. ¡Anótalo!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          { "term": "dL (decilitro)", "translation": "100 mL. Muy usado en química sanguínea." },
+          {
+            "term": "mg/dL",
+            "translation": "Miligramos por decilitro: glucosa, colesterol, creatinina."
+          },
+          { "term": "g/dL", "translation": "Gramos por decilitro: hemoglobina, proteínas." },
+          {
+            "term": "µL (microlitro)",
+            "translation": "Milésima parte de un mililitro; se usa para contar células (por µL)."
+          }
+        ],
+        "grammar_note": "1 L = 10 dL = 1000 mL; 1 mL = 1000 µL."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Cuántos mililitros tiene 1 decilitro?",
+          "options": ["10 mL", "100 mL", "1000 mL", "1 mL"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "La hemoglobina se reporta en ___.",
+          "correct": "g/dL",
+          "options": ["g/dL", "mg/dL", "mm"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "La glucosa suele reportarse en…",
+          "options": ["g/L", "mg/dL", "µL", "cm"],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["1 dL", "100 mL"],
+            ["1 mL", "1000 µL"],
+            ["1 L", "10 dL"],
+            ["Glucosa", "mg/dL"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["decilitro", "Un", "son", "mililitros", "cien"],
+          "correct": "Un decilitro son cien mililitros"
+        }
+      ]
+    },
+    {
+      "day_id": 7,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "test",
+      "title": "TEST 1 — Snoopy Challenge",
+      "subtitle": "Repaso de la semana 1",
+      "snoopy_tip": "Snoopy dice: 'Respira, una pregunta a la vez.'",
+      "reviews_days": [1, 2, 3, 4, 5, 6],
+      "total_questions": 10,
+      "pass_score_pct": 70,
+      "reward_first_try": { "xp": 50, "badge": "Lab Week 1 Champion", "gems": 5 },
+      "reward_retry": { "xp": 25, "badge": null }
+    },
+    {
+      "day_id": 8,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "El hemograma",
+      "subtitle": "Las células de la sangre",
+      "snoopy_tip": "Snoopy dice: 'Rojos llevan oxígeno, blancos defienden, plaquetas reparan.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Eritrocitos (glóbulos rojos)",
+            "translation": "Transportan oxígeno gracias a la hemoglobina."
+          },
+          {
+            "term": "Leucocitos (glóbulos blancos)",
+            "translation": "Defienden al cuerpo de las infecciones."
+          },
+          { "term": "Plaquetas", "translation": "Ayudan a detener sangrados (coagulación)." },
+          {
+            "term": "Hematocrito",
+            "translation": "Porcentaje de la sangre que ocupan los glóbulos rojos."
+          }
+        ],
+        "grammar_note": "El hemograma usa sangre total con EDTA (tubo lila), bien mezclada por inversión suave."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué células transportan oxígeno?",
+          "options": ["Leucocitos", "Plaquetas", "Eritrocitos", "Linfocitos"],
+          "correct_index": 2
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "Las ___ ayudan a detener sangrados.",
+          "correct": "plaquetas",
+          "options": ["plaquetas", "neuronas", "proteínas"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "El hematocrito expresa…",
+          "options": [
+            "La cantidad de glucosa",
+            "El % de la sangre ocupado por glóbulos rojos",
+            "El número de plaquetas",
+            "El tipo de sangre"
+          ],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Eritrocitos", "Oxígeno"],
+            ["Leucocitos", "Defensa"],
+            ["Plaquetas", "Coagulación"],
+            ["Hemoglobina", "Proteína que lleva O₂"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["defienden", "Los", "cuerpo", "leucocitos", "el"],
+          "correct": "Los leucocitos defienden el cuerpo"
+        }
+      ]
+    },
+    {
+      "day_id": 9,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Valores de referencia",
+      "subtitle": "¿Qué es normal?",
+      "snoopy_tip": "Snoopy dice: 'Cada laboratorio tiene sus rangos, ¡revisa siempre el reporte!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          { "term": "Leucocitos", "translation": "Aprox. 4 500 – 11 000 por µL en adultos." },
+          { "term": "Plaquetas", "translation": "Aprox. 150 000 – 450 000 por µL." },
+          {
+            "term": "Hemoglobina",
+            "translation": "Aprox. 12 – 16 g/dL en mujeres y 13,5 – 17,5 g/dL en hombres."
+          },
+          {
+            "term": "Leucocitosis",
+            "translation": "Leucocitos aumentados; leucopenia = disminuidos."
+          }
+        ],
+        "grammar_note": "Los rangos cambian un poco según el laboratorio, la edad y la altura sobre el nivel del mar. Guíate siempre por el reporte."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "Un recuento de plaquetas de 250 000/µL está…",
+          "options": ["Bajo", "Dentro de lo normal", "Muy alto", "No se puede saber"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "Leucocitos aumentados se llama ___.",
+          "correct": "leucocitosis",
+          "options": ["leucocitosis", "leucopenia", "anemia"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "Hemoglobina de 9 g/dL en una mujer adulta sugiere…",
+          "options": ["Anemia", "Valor normal", "Policitemia", "Deshidratación"],
+          "correct_index": 0,
+          "explanation": "Está por debajo de lo normal (aprox. 12 g/dL)."
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Leucocitosis", "Leucocitos altos"],
+            ["Leucopenia", "Leucocitos bajos"],
+            ["Trombocitopenia", "Plaquetas bajas"],
+            ["Anemia", "Hemoglobina baja"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["es", "La", "hemoglobina", "anemia", "baja"],
+          "correct": "La anemia es hemoglobina baja"
+        }
+      ]
+    },
+    {
+      "day_id": 10,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Glucosa",
+      "subtitle": "Química sanguínea básica",
+      "snoopy_tip": "Snoopy dice: 'Para la glucosa en ayunas: nada de galletas antes.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Ayuno",
+            "translation": "Para glucosa basal: 8 horas sin comer (agua sí se permite)."
+          },
+          { "term": "Normal en ayunas", "translation": "70 – 99 mg/dL." },
+          { "term": "Prediabetes", "translation": "100 – 125 mg/dL en ayunas." },
+          {
+            "term": "Diabetes",
+            "translation": "126 mg/dL o más en ayunas, confirmado en otra prueba."
+          }
+        ],
+        "grammar_note": "Si la sangre espera sin centrifugar, las células consumen glucosa y el resultado baja falsamente. Por eso existe el tubo gris (fluoruro)."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Cuántas horas de ayuno se piden para la glucosa basal?",
+          "options": ["2 horas", "8 horas", "24 horas", "No hace falta"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "Glucosa en ayunas de 110 mg/dL corresponde a ___.",
+          "correct": "prediabetes",
+          "options": ["prediabetes", "lo normal", "hipoglucemia"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "Si la muestra espera mucho sin centrifugar, la glucosa…",
+          "options": ["Sube", "Baja falsamente", "No cambia", "Se duplica"],
+          "correct_index": 1,
+          "explanation": "Las células siguen consumiendo glucosa."
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["70–99", "Normal"],
+            ["100–125", "Prediabetes"],
+            ["≥126", "Diabetes"],
+            ["Tubo gris", "Conserva la glucosa"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["requiere", "La", "ayuno", "glucosa", "basal"],
+          "correct": "La glucosa basal requiere ayuno"
+        }
+      ]
+    },
+    {
+      "day_id": 11,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Uroanálisis",
+      "subtitle": "El examen de orina",
+      "snoopy_tip": "Snoopy dice: 'La primera de la mañana, chorro medio. ¡Así se hace!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Primera orina de la mañana",
+            "translation": "Es la más concentrada; la preferida para el examen."
+          },
+          {
+            "term": "Chorro medio",
+            "translation": "Se descarta el primer chorro y se recoge el del medio."
+          },
+          {
+            "term": "Tira reactiva",
+            "translation": "Detecta pH, proteínas, glucosa, sangre, nitritos y leucocitos."
+          },
+          {
+            "term": "Nitritos positivos",
+            "translation": "Sugieren bacterias (posible infección urinaria)."
+          }
+        ],
+        "grammar_note": "Se analiza idealmente antes de 2 horas; si no, se refrigera."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué muestra de orina se prefiere?",
+          "options": [
+            "La de la noche",
+            "La primera de la mañana, chorro medio",
+            "Cualquiera",
+            "La que se junta en 24 h siempre"
+          ],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "Nitritos positivos sugieren presencia de ___.",
+          "correct": "bacterias",
+          "options": ["bacterias", "glucosa", "vitaminas"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "Si la orina no se analiza en 2 horas, se debe…",
+          "options": ["Calentar", "Refrigerar", "Agitar fuerte", "Desechar siempre"],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Nitritos", "Bacterias"],
+            ["Chorro medio", "Muestra limpia"],
+            ["Tira reactiva", "Prueba química rápida"],
+            ["Primera de la mañana", "Más concentrada"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["chorro", "Recoge", "medio", "el"],
+          "correct": "Recoge el chorro medio"
+        }
+      ]
+    },
+    {
+      "day_id": 12,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Tinción de Gram",
+      "subtitle": "Morado o rosado",
+      "snoopy_tip": "Snoopy dice: 'Gram positivo se queda morado, como el tubo del hemograma.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "1. Cristal violeta",
+            "translation": "Colorante inicial: tiñe todo de morado."
+          },
+          { "term": "2. Lugol", "translation": "Mordiente: fija el cristal violeta." },
+          {
+            "term": "3. Alcohol-acetona",
+            "translation": "Decolorante: saca el color a las Gram negativas."
+          },
+          {
+            "term": "4. Safranina",
+            "translation": "Colorante de contraste: tiñe de rosado a las Gram negativas."
+          }
+        ],
+        "grammar_note": "Gram positivas = moradas (pared gruesa de peptidoglucano). Gram negativas = rosadas/rojas."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿De qué color se ven las bacterias Gram positivas?",
+          "options": ["Rosadas", "Moradas", "Verdes", "Amarillas"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "El paso que decolora es el ___.",
+          "correct": "alcohol-acetona",
+          "options": ["alcohol-acetona", "lugol", "cristal violeta"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿Para qué sirve la safranina?",
+          "options": [
+            "Fijar el colorante",
+            "Decolorar",
+            "Teñir de rosado a las Gram negativas",
+            "Matar bacterias"
+          ],
+          "correct_index": 2
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Cristal violeta", "Paso 1"],
+            ["Lugol", "Paso 2"],
+            ["Alcohol-acetona", "Paso 3"],
+            ["Safranina", "Paso 4"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["son", "Las", "negativas", "rosadas", "Gram"],
+          "correct": "Las Gram negativas son rosadas"
+        }
+      ]
+    },
+    {
+      "day_id": 13,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Errores preanalíticos",
+      "subtitle": "Antes del análisis",
+      "snoopy_tip": "Snoopy dice: 'La mayoría de errores pasan antes de que la muestra llegue al equipo.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Hemólisis",
+            "translation": "Ruptura de glóbulos rojos; el suero se ve rojizo."
+          },
+          {
+            "term": "Potasio falso alto",
+            "translation": "La hemólisis libera potasio de las células y lo aumenta falsamente."
+          },
+          {
+            "term": "Causas de hemólisis",
+            "translation": "Aguja muy fina, agitar fuerte el tubo, torniquete prolongado."
+          },
+          {
+            "term": "Rotular",
+            "translation": "Identificar el tubo con los datos del paciente frente a él."
+          }
+        ],
+        "grammar_note": "Los tubos con aditivo se mezclan invirtiéndolos suavemente, nunca agitándolos."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué es la hemólisis?",
+          "options": [
+            "Coagulación del tubo",
+            "Ruptura de glóbulos rojos",
+            "Exceso de plaquetas",
+            "Contaminación con bacterias"
+          ],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "La hemólisis aumenta falsamente el ___.",
+          "correct": "potasio",
+          "options": ["potasio", "sodio", "colesterol"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿Cómo se mezcla un tubo con aditivo?",
+          "options": [
+            "Agitándolo fuerte",
+            "Invirtiéndolo suavemente",
+            "Golpeándolo",
+            "No se mezcla"
+          ],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Hemólisis", "Suero rojizo"],
+            ["Agitar fuerte", "Causa hemólisis"],
+            ["Rotular", "Identificar el tubo"],
+            ["Invertir suave", "Mezcla correcta"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["paciente", "Rotula", "frente", "al", "tubo", "el"],
+          "correct": "Rotula el tubo frente al paciente"
+        }
+      ]
+    },
+    {
+      "day_id": 14,
+      "track": "laboratory",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "test",
+      "title": "TEST 2 — Snoopy Challenge",
+      "subtitle": "Repaso de la semana 2",
+      "snoopy_tip": "Snoopy dice: '¡Dos semanas de laboratorio! Estoy orgulloso.'",
+      "reviews_days": [8, 9, 10, 11, 12, 13],
+      "total_questions": 10,
+      "pass_score_pct": 70,
+      "reward_first_try": { "xp": 50, "badge": "Lab Week 2 Champion", "gems": 5 },
+      "reward_retry": { "xp": 25, "badge": null }
+    }
+  ]
+}

@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Bath,
@@ -9,6 +17,7 @@ import {
   Droplets,
   Drumstick,
   Flame,
+  GraduationCap,
   HeartPulse,
   House,
   Lamp,
@@ -50,6 +59,13 @@ import { NOTA_MAX, guardarEstadoMascota, type NotaEnviada, type NotaSnoopy } fro
 import { getDeviceId } from "@/lib/dispositivo";
 import { SNOOPY_CSS, SnoopyVivo, imgPose, type Pose } from "@/components/SnoopyVivo";
 import { WeatherPanel } from "@/components/WeatherPanel";
+import { leerLearn, resumenLearn, useLearn } from "@/lib/learn/progreso";
+import type { Premio } from "@/lib/learn/tipos";
+
+// Snoopy Learn se descarga solo cuando se abre (no pesa en la página).
+const cargarLearn = () => import("@/components/learn/SnoopyLearn");
+const learnInicial = () => leerLearn();
+const SnoopyLearn = lazy(cargarLearn);
 import {
   EFECTOS_CSS,
   EfectosDefs,
@@ -113,12 +129,19 @@ interface Ancla {
 
 const KEY = "liz-mascota-juego";
 const GUARDADO_VERSION = 2;
-const STAT_TICK_MS = 30_000;
+// Cada cuánto baja cada barra y cuánto. La energía dura 3 horas: 1 punto
+// cada 108 s (100 puntos × 108 s = 10 800 s = 3 h), poco a poco.
+const STAT_TICK_MS: Record<StatKey, number> = {
+  hambre: 30_000,
+  felicidad: 30_000,
+  higiene: 30_000,
+  energia: 108_000,
+};
 const DECAY_PER_TICK: Record<StatKey, number> = {
   hambre: 1,
   felicidad: 2,
   higiene: 1,
-  energia: 2,
+  energia: 1,
 };
 const RECOVERY_STEP_MS = 30_000;
 const CARICIA_FELICIDAD = 5;
@@ -328,6 +351,9 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
   const [notaLlena, setNotaLlena] = useState(false);
   // Panel tipo campanita de las notitas y el aviso flotante junto al botón.
   const [panelNotas, setPanelNotas] = useState(false);
+  const [aprendiendo, setAprendiendo] = useState(false);
+  const learn = useLearn();
+  const tarea = resumenLearn(learn);
   const [avisoNota, setAvisoNota] = useState<{ id: number; texto: string; tono: AvisoTono } | null>(
     null,
   );
@@ -493,9 +519,10 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
       const statsActualizadas = { ...statsGuardadas };
       for (const key of Object.keys(DECAY_PER_TICK) as StatKey[]) {
         const ultimo = g.statUpdatedAt?.[key] ?? g.ts ?? ahora;
-        const ticks = Math.floor(Math.max(0, ahora - ultimo) / STAT_TICK_MS);
-        actualizaciones[key] =
-          guardadoDormido && key === "energia" ? ahora : ultimo + ticks * STAT_TICK_MS;
+        // Dormido, la energía se recupera (+1 cada 30 s); si no, se descarga.
+        const paso = guardadoDormido && key === "energia" ? RECOVERY_STEP_MS : STAT_TICK_MS[key];
+        const ticks = Math.floor(Math.max(0, ahora - ultimo) / paso);
+        actualizaciones[key] = guardadoDormido && key === "energia" ? ahora : ultimo + ticks * paso;
         const cambio = guardadoDormido && key === "energia" ? ticks : -ticks * DECAY_PER_TICK[key];
         statsActualizadas[key] = clamp(statsActualizadas[key] + cambio);
       }
@@ -537,6 +564,20 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     if (durmiendo) decir("Zzz… sigo dormidito 💤", 2600);
     else if (volvio) decir("¡Hola de nuevo! 💛", 2600);
     else decir("¡Hola! Cuídame mucho 🐶", 2800);
+    // Después del saludo, Snoopy recuerda la tarea de hoy (si falta).
+    const r = resumenLearn(learnInicial());
+    if (!durmiendo && !r.hechaHoy) {
+      programar(
+        () =>
+          decir(
+            r.racha > 0
+              ? `¡No pierdas tu racha de ${r.racha} ${r.racha === 1 ? "día" : "días"}! Tengo tu tarea`
+              : "Tengo una tarea para ti: ¡aprendamos juntos!",
+            4200,
+          ),
+        3000,
+      );
+    }
     // Precarga de poses: sin parpadeo blanco al cambiar de estado.
     for (const p of POSES) {
       const i = new Image();
@@ -557,7 +598,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
         localStorage.removeItem("liz-carta-pendiente");
       }
     }
-  }, [decir]);
+  }, [decir, programar]);
 
   // Fondo vertical en celulares, horizontal en pantallas anchas.
   useEffect(() => {
@@ -592,8 +633,8 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
   // Sube el estado al servidor para que avise aunque la app esté cerrada
   // (hambre, baño, sueño y horas de comida). Se espera a que se calme y
   // también se manda al salir de la app.
-  const estadoRef = useRef({ stats, dormido, nombre, avisos });
-  estadoRef.current = { stats, dormido, nombre, avisos };
+  const estadoRef = useRef({ stats, dormido, nombre, avisos, tarea });
+  estadoRef.current = { stats, dormido, nombre, avisos, tarea };
   const subirEstado = useCallback(() => {
     const e = estadoRef.current;
     void guardarEstadoMascota({
@@ -605,6 +646,12 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
         dormido: e.dormido,
         avisos: e.avisos,
         tz: new Date().getTimezoneOffset(),
+        // Para el recordatorio diario de la tarea (racha de Snoopy Learn).
+        aprender: {
+          racha: e.tarea.racha,
+          ultimoDia: e.tarea.ultimoDia,
+          empezado: e.tarea.empezado,
+        },
       },
     }).catch(() => {});
   }, []);
@@ -612,7 +659,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     if (!listo) return;
     const t = window.setTimeout(subirEstado, 4000);
     return () => window.clearTimeout(t);
-  }, [listo, stats, dormido, nombre, avisos, subirEstado]);
+  }, [listo, stats, dormido, nombre, avisos, tarea.ultimoDia, tarea.racha, subirEstado]);
   useEffect(() => {
     if (!listo) return;
     const alOcultar = () => document.hidden && subirEstado();
@@ -632,11 +679,11 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
         for (const key of Object.keys(DECAY_PER_TICK) as StatKey[]) {
           if (key === "energia" && durmiendoRef.current) continue;
           const ticks = Math.floor(
-            Math.max(0, ahora - statUpdatedAtRef.current[key]) / STAT_TICK_MS,
+            Math.max(0, ahora - statUpdatedAtRef.current[key]) / STAT_TICK_MS[key],
           );
           if (ticks > 0 && siguiente[key] > 0) {
             siguiente[key] = clamp(siguiente[key] - ticks * DECAY_PER_TICK[key]);
-            statUpdatedAtRef.current[key] += ticks * STAT_TICK_MS;
+            statUpdatedAtRef.current[key] += ticks * STAT_TICK_MS[key];
           }
         }
         return siguiente;
@@ -1221,6 +1268,23 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
       });
   };
 
+  /** Lección de Snoopy Learn terminada: Snoopy se alegra (+10 felicidad). */
+  const terminarLeccion = useCallback(
+    (p: Premio) => {
+      if (!p.aprobado) return;
+      statUpdatedAtRef.current.felicidad = Date.now();
+      setStats((s) => ({ ...s, felicidad: clamp(s.felicidad + 10) }));
+      lanzar(["confeti", "destello", "corazon"], 14);
+      decir(
+        p.rachaDespues > p.rachaAntes
+          ? `¡Racha de ${p.rachaDespues} ${p.rachaDespues === 1 ? "día" : "días"}! Estoy orgulloso`
+          : "¡Aprendiste mucho! +10% de felicidad",
+        4000,
+      );
+    },
+    [lanzar, decir],
+  );
+
   const guardarNombre = () => {
     const n = borrador.trim().slice(0, 14);
     if (n && n !== nombre) {
@@ -1500,7 +1564,70 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
             </>
           )}
         </div>
+
+        {/* Snoopy Learn: la tarea del día y la racha. */}
+        <div className="relative flex w-16 flex-col items-center gap-0.5 text-white">
+          <button
+            type="button"
+            onClick={() => setAprendiendo(true)}
+            onPointerEnter={() => void cargarLearn()}
+            onTouchStart={() => void cargarLearn()}
+            aria-label={
+              tarea.hechaHoy
+                ? `Snoopy Learn: tarea de hoy cumplida, racha de ${tarea.racha} días`
+                : "Snoopy Learn: tienes una tarea pendiente"
+            }
+            title="Snoopy Learn"
+            className={`mg-boton mg-boton-transparente relative grid h-12 w-12 shrink-0 place-items-center overflow-visible rounded-full ${
+              aprendiendo ? "mg-boton-activo" : ""
+            } ${!tarea.hechaHoy ? "mg-boton-necesita" : ""}`}
+          >
+            <GraduationCap
+              size={22}
+              strokeWidth={1.8}
+              aria-hidden="true"
+              className="text-amber-100"
+            />
+            {tarea.racha > 0 ? (
+              <span
+                className={`mg-racha-badge absolute -right-1.5 -top-1.5 z-[2] flex h-5 min-w-5 items-center gap-0.5 rounded-full px-1 text-[10.5px] font-extrabold leading-none text-white ${
+                  tarea.hechaHoy ? "encendida" : "tibia"
+                }`}
+              >
+                <Flame size={10} strokeWidth={2.6} />
+                {tarea.racha}
+              </span>
+            ) : (
+              !tarea.hechaHoy && (
+                <span className="absolute -right-1 -top-1 z-[2] h-3 w-3 rounded-full bg-amber-400 ring-2 ring-[#0f1328]" />
+              )
+            )}
+          </button>
+          <span
+            className={`whitespace-nowrap text-[10.5px] font-semibold leading-tight ${
+              tarea.hechaHoy ? "text-white/80" : "text-amber-200"
+            }`}
+          >
+            {tarea.hechaHoy ? "Aprender" : "¡Tarea!"}
+          </span>
+        </div>
       </div>
+
+      {aprendiendo && (
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-[90] grid place-items-center bg-[#0b1026]/90 text-sm font-semibold text-white/80">
+              Abriendo Snoopy Learn…
+            </div>
+          }
+        >
+          <SnoopyLearn
+            nombre={nombre}
+            onCerrar={() => setAprendiendo(false)}
+            onTerminar={terminarLeccion}
+          />
+        </Suspense>
+      )}
 
       {/* Fondo difuminado de pantalla completa (se ve detrás de los controles). */}
       <div className="absolute inset-0" aria-hidden="true">
@@ -2278,6 +2405,8 @@ const CSS = `
   0% { opacity: 0; transform: translateX(14px) scale(0.85); }
   100% { opacity: 1; transform: none; }
 }
+.mg-racha-badge.encendida { background: linear-gradient(180deg, #fb923c, #ea580c); box-shadow: 0 0 0 2px rgba(15,19,40,0.6), 0 0 10px rgba(249,115,22,0.6); }
+.mg-racha-badge.tibia { background: rgba(124,45,18,0.9); box-shadow: 0 0 0 2px rgba(15,19,40,0.6); color: #fed7aa; }
 .mg-nota-badge { animation: mg-latido-badge 1.6s ease-in-out infinite; box-shadow: 0 0 0 2px rgba(15,19,40,0.6); }
 @keyframes mg-latido-badge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
 .mg-nota-flota { animation: mg-nota-flota 3.2s cubic-bezier(.45,.05,.55,.95) 0.6s infinite; }

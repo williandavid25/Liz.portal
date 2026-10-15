@@ -104,6 +104,8 @@ export interface EstadoMascota {
   avisos: boolean;
   /** Minutos de Date#getTimezoneOffset() del celular (para las horas de comida). */
   tz: number;
+  /** Snoopy Learn: para recordar la tarea del día y no perder la racha. */
+  aprender?: { racha: number; ultimoDia: string | null; empezado: boolean };
 }
 
 let mascotaReady = false;
@@ -131,9 +133,16 @@ export async function guardarEstado(e: EstadoMascota) {
 }
 
 // Mismas reglas que MascotaGame.tsx.
-const STAT_TICK_MS = 30_000;
-const DECAY: Stats = { hambre: 1, felicidad: 2, higiene: 1, energia: 2 };
+const STAT_TICK_MS: Stats = {
+  hambre: 30_000,
+  felicidad: 30_000,
+  higiene: 30_000,
+  energia: 108_000,
+};
+const DECAY: Stats = { hambre: 1, felicidad: 2, higiene: 1, energia: 1 };
+const RECUPERA_DORMIDO_MS = 30_000;
 const UMBRAL_AVISO = 50;
+const HORA_TAREA = 18;
 const PAUSA_AVISO_MS = 4 * 60 * 60_000;
 const COMIDAS = [
   { hora: 8, nombre: "desayuno" },
@@ -151,7 +160,8 @@ const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 function statsAhora(e: EstadoMascota, ahora: number): Stats {
   const out = { ...e.stats };
   for (const k of Object.keys(DECAY) as StatKey[]) {
-    const ticks = Math.floor(Math.max(0, ahora - (e.statUpdatedAt[k] ?? ahora)) / STAT_TICK_MS);
+    const paso = e.dormido && k === "energia" ? RECUPERA_DORMIDO_MS : STAT_TICK_MS[k];
+    const ticks = Math.floor(Math.max(0, ahora - (e.statUpdatedAt[k] ?? ahora)) / paso);
     out[k] = clamp(e.dormido && k === "energia" ? out[k] + ticks : out[k] - ticks * DECAY[k]);
   }
   return out;
@@ -189,6 +199,22 @@ export async function revisarAvisos(): Promise<{ revisados: number; enviados: nu
         alertas.comida = clave;
         textos.unshift(`Es hora del ${comida.nombre}. Tengo hambre 🍖`);
       }
+    }
+
+    // Snoopy Learn: a las 18:00 (hora del celular), si hoy no hizo la tarea.
+    const hoyLocal = local.toISOString().slice(0, 10);
+    if (
+      e.aprender?.empezado &&
+      local.getUTCHours() === HORA_TAREA &&
+      e.aprender.ultimoDia !== hoyLocal &&
+      alertas.aprender !== hoyLocal
+    ) {
+      alertas.aprender = hoyLocal;
+      textos.push(
+        e.aprender.racha > 0
+          ? `🔥 ¡No pierdas tu racha de ${e.aprender.racha} días! Tu tarea de hoy te espera`
+          : "📚 Tengo una tarea nueva para ti. ¡Aprendamos juntos!",
+      );
     }
 
     if (textos.length === 0) continue;

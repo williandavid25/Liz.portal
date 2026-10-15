@@ -179,6 +179,16 @@ export const guardarEstadoMascota = createServerFn({ method: "POST" })
         dormido: z.boolean(),
         avisos: z.boolean(),
         tz: z.number().int().min(-900).max(900),
+        aprender: z
+          .object({
+            racha: z.number().int().min(0).max(10_000),
+            ultimoDia: z
+              .string()
+              .regex(/^\d{4}-\d{2}-\d{2}$/)
+              .nullable(),
+            empezado: z.boolean(),
+          })
+          .optional(),
       })
       .parse(input),
   )

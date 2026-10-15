@@ -1,0 +1,973 @@
+{
+  "track": "english",
+  "nombre": "Inglés",
+  "voz": "en-US",
+  "days": [
+    {
+      "day_id": 1,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Greetings",
+      "subtitle": "Saluda como una profesional",
+      "snoopy_tip": "Snoopy dice: '¡Hello es la palabra mágica!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Hello",
+            "translation": "Hola",
+            "example_en": "Hello, my name is Ana.",
+            "example_es": "Hola, mi nombre es Ana."
+          },
+          {
+            "term": "Good morning",
+            "translation": "Buenos días",
+            "example_en": "Good morning, Dr. Smith.",
+            "example_es": "Buenos días, Dr. Smith."
+          },
+          {
+            "term": "Good night",
+            "translation": "Buenas noches (al despedirse)",
+            "example_en": "Good night, see you tomorrow.",
+            "example_es": "Buenas noches, nos vemos mañana."
+          },
+          {
+            "term": "Goodbye",
+            "translation": "Adiós",
+            "example_en": "Goodbye, have a nice day.",
+            "example_es": "Adiós, que tengas un buen día."
+          }
+        ],
+        "grammar_note": "'Hello' sirve en cualquier momento. 'Good morning / afternoon / evening' suenan más formales.",
+        "culture_note": "En un hospital, un saludo formal da un tono profesional."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Cómo se dice 'Buenos días' en inglés?",
+          "options": ["Good night", "Good morning", "Good evening", "Hello"],
+          "correct_index": 1,
+          "explanation": "'Good morning' se usa hasta el mediodía."
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "___, my name is Dr. Rivera.",
+          "correct": "Hello",
+          "options": ["Hello", "Goodbye", "Good night"],
+          "hint": "El saludo más universal"
+        },
+        {
+          "type": "multiple_choice",
+          "question": "'Good night' se usa…",
+          "options": [
+            "Al llegar en la mañana",
+            "Al despedirse en la noche",
+            "Al pedir comida",
+            "Al presentarse"
+          ],
+          "correct_index": 1,
+          "explanation": "Para saludar en la noche se dice 'Good evening'; 'Good night' es para despedirse."
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Hello", "Hola"],
+            ["Goodbye", "Adiós"],
+            ["Good morning", "Buenos días"],
+            ["Good night", "Buenas noches"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["name", "My", "is", "Ana"],
+          "correct": "My name is Ana",
+          "translation": "Mi nombre es Ana"
+        }
+      ]
+    },
+    {
+      "day_id": 2,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Introductions",
+      "subtitle": "Preséntate",
+      "snoopy_tip": "Snoopy dice: 'Una sonrisa y un Nice to meet you abren todas las puertas.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "My name is…",
+            "translation": "Me llamo…",
+            "example_en": "My name is Liz.",
+            "example_es": "Me llamo Liz."
+          },
+          {
+            "term": "I am from…",
+            "translation": "Soy de…",
+            "example_en": "I am from Ecuador.",
+            "example_es": "Soy de Ecuador."
+          },
+          {
+            "term": "Nice to meet you",
+            "translation": "Mucho gusto",
+            "example_en": "Nice to meet you, Tom.",
+            "example_es": "Mucho gusto, Tom."
+          },
+          {
+            "term": "How are you?",
+            "translation": "¿Cómo estás?",
+            "example_en": "Hi! How are you?",
+            "example_es": "¡Hola! ¿Cómo estás?"
+          }
+        ],
+        "grammar_note": "Para decir de dónde eres: 'I am from + país'."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué significa 'Nice to meet you'?",
+          "options": ["Hasta luego", "Mucho gusto", "Buenas noches", "Gracias"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "I am ___ Ecuador.",
+          "correct": "from",
+          "options": ["from", "in", "to"],
+          "explanation": "'From' indica el lugar de origen."
+        },
+        {
+          "type": "multiple_choice",
+          "question": "Te preguntan 'How are you?'. ¿Qué respondes?",
+          "options": ["I'm fine, thank you.", "My name is Liz.", "Goodbye.", "I am from Quito."],
+          "correct_index": 0
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["My name is", "Me llamo"],
+            ["I am from", "Soy de"],
+            ["Nice to meet you", "Mucho gusto"],
+            ["How are you?", "¿Cómo estás?"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["to", "Nice", "you", "meet"],
+          "correct": "Nice to meet you",
+          "translation": "Mucho gusto"
+        }
+      ]
+    },
+    {
+      "day_id": 3,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Numbers",
+      "subtitle": "Del 1 al 20",
+      "snoopy_tip": "Snoopy dice: 'Cuenta conmigo… one, two, three!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "One, two, three",
+            "translation": "Uno, dos, tres",
+            "example_en": "I have two cats.",
+            "example_es": "Tengo dos gatos."
+          },
+          {
+            "term": "Ten",
+            "translation": "Diez",
+            "example_en": "Ten tubes, please.",
+            "example_es": "Diez tubos, por favor."
+          },
+          {
+            "term": "Twelve",
+            "translation": "Doce",
+            "example_en": "It is twelve o'clock.",
+            "example_es": "Son las doce."
+          },
+          {
+            "term": "Twenty",
+            "translation": "Veinte",
+            "example_en": "I am twenty years old.",
+            "example_es": "Tengo veinte años."
+          }
+        ],
+        "grammar_note": "Del 13 al 19 terminan en '-teen': thirteen, fifteen, nineteen.",
+        "culture_note": "Para decir tu edad se usa el verbo 'to be': I am 20 years old."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué número es 'twelve'?",
+          "options": ["2", "12", "20", "21"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "I have ___ hands.",
+          "correct": "two",
+          "options": ["two", "ten", "one"],
+          "explanation": "Tenemos dos manos: two hands."
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿Cómo se escribe 15 en inglés?",
+          "options": ["Fifty", "Fifteen", "Five", "Fourteen"],
+          "correct_index": 1,
+          "explanation": "Fifty es 50. Fifteen es 15."
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["One", "1"],
+            ["Ten", "10"],
+            ["Twelve", "12"],
+            ["Twenty", "20"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["am", "I", "twenty", "years", "old"],
+          "correct": "I am twenty years old",
+          "translation": "Tengo veinte años"
+        }
+      ]
+    },
+    {
+      "day_id": 4,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Colors",
+      "subtitle": "El mundo a color",
+      "snoopy_tip": "Snoopy dice: 'Mi collar es red, ¿y el tuyo?'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Red",
+            "translation": "Rojo",
+            "example_en": "Blood is red.",
+            "example_es": "La sangre es roja."
+          },
+          {
+            "term": "Blue",
+            "translation": "Azul",
+            "example_en": "The sky is blue.",
+            "example_es": "El cielo es azul."
+          },
+          {
+            "term": "Purple",
+            "translation": "Morado",
+            "example_en": "The tube is purple.",
+            "example_es": "El tubo es morado."
+          },
+          {
+            "term": "Yellow",
+            "translation": "Amarillo",
+            "example_en": "The flowers are yellow.",
+            "example_es": "Las flores son amarillas."
+          }
+        ],
+        "grammar_note": "En inglés el color va antes del sustantivo: a red car (un carro rojo)."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "The sky is…",
+          "options": ["red", "blue", "purple", "yellow"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "Blood is ___.",
+          "correct": "red",
+          "options": ["red", "green", "blue"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿Cómo se dice 'morado'?",
+          "options": ["Pink", "Brown", "Purple", "Orange"],
+          "correct_index": 2
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Red", "Rojo"],
+            ["Blue", "Azul"],
+            ["Purple", "Morado"],
+            ["Yellow", "Amarillo"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["tube", "The", "purple", "is"],
+          "correct": "The tube is purple",
+          "translation": "El tubo es morado"
+        }
+      ]
+    },
+    {
+      "day_id": 5,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Family",
+      "subtitle": "Tu familia en inglés",
+      "snoopy_tip": "Snoopy dice: 'Mi brother Spike vive en el desierto.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Mother",
+            "translation": "Madre",
+            "example_en": "My mother is a nurse.",
+            "example_es": "Mi madre es enfermera."
+          },
+          {
+            "term": "Father",
+            "translation": "Padre",
+            "example_en": "My father works a lot.",
+            "example_es": "Mi padre trabaja mucho."
+          },
+          {
+            "term": "Sister",
+            "translation": "Hermana",
+            "example_en": "She is my sister.",
+            "example_es": "Ella es mi hermana."
+          },
+          {
+            "term": "Brother",
+            "translation": "Hermano",
+            "example_en": "He is my brother.",
+            "example_es": "Él es mi hermano."
+          }
+        ],
+        "grammar_note": "He = él, she = ella. My = mi / mis."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué significa 'mother'?",
+          "options": ["Hermana", "Madre", "Abuela", "Hija"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "My father's son is my ___.",
+          "correct": "brother",
+          "options": ["brother", "sister", "mother"],
+          "explanation": "El hijo de tu papá es tu hermano."
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿Cómo se dice 'hija'?",
+          "options": ["Son", "Sister", "Daughter", "Aunt"],
+          "correct_index": 2,
+          "explanation": "Son = hijo, daughter = hija."
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Mother", "Madre"],
+            ["Father", "Padre"],
+            ["Sister", "Hermana"],
+            ["Brother", "Hermano"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["my", "She", "sister", "is"],
+          "correct": "She is my sister",
+          "translation": "Ella es mi hermana"
+        }
+      ]
+    },
+    {
+      "day_id": 6,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Days of the week",
+      "subtitle": "De lunes a domingo",
+      "snoopy_tip": "Snoopy dice: 'Mi día favorito es Saturday… ¡siesta!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Monday",
+            "translation": "Lunes",
+            "example_en": "I work on Monday.",
+            "example_es": "Trabajo el lunes."
+          },
+          {
+            "term": "Wednesday",
+            "translation": "Miércoles",
+            "example_en": "See you on Wednesday.",
+            "example_es": "Nos vemos el miércoles."
+          },
+          {
+            "term": "Friday",
+            "translation": "Viernes",
+            "example_en": "Friday is my favorite day.",
+            "example_es": "El viernes es mi día favorito."
+          },
+          {
+            "term": "Sunday",
+            "translation": "Domingo",
+            "example_en": "I rest on Sunday.",
+            "example_es": "Descanso el domingo."
+          }
+        ],
+        "grammar_note": "Los días se escriben siempre con mayúscula y se usa 'on': on Monday."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Cómo se dice 'lunes'?",
+          "options": ["Sunday", "Monday", "Tuesday", "Friday"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "Today is ___, tomorrow is Saturday.",
+          "correct": "Friday",
+          "options": ["Friday", "Sunday", "Monday"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué día va después de Wednesday?",
+          "options": ["Tuesday", "Thursday", "Friday", "Monday"],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Monday", "Lunes"],
+            ["Wednesday", "Miércoles"],
+            ["Friday", "Viernes"],
+            ["Sunday", "Domingo"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["on", "I", "Monday", "work"],
+          "correct": "I work on Monday",
+          "translation": "Trabajo el lunes"
+        }
+      ]
+    },
+    {
+      "day_id": 7,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "test",
+      "title": "TEST 1 — Snoopy Challenge",
+      "subtitle": "Repaso de la semana 1",
+      "snoopy_tip": "Snoopy dice: 'Una pregunta a la vez. ¡Tú puedes!'",
+      "reviews_days": [1, 2, 3, 4, 5, 6],
+      "total_questions": 10,
+      "pass_score_pct": 70,
+      "reward_first_try": { "xp": 50, "badge": "Week 1 Champion", "gems": 5 },
+      "reward_retry": { "xp": 25, "badge": null }
+    },
+    {
+      "day_id": 8,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Food & drinks",
+      "subtitle": "En la cafetería",
+      "snoopy_tip": "Snoopy dice: 'Cookies are my favorite food.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Water",
+            "translation": "Agua",
+            "example_en": "A glass of water, please.",
+            "example_es": "Un vaso de agua, por favor."
+          },
+          {
+            "term": "Coffee",
+            "translation": "Café",
+            "example_en": "I drink coffee every morning.",
+            "example_es": "Tomo café cada mañana."
+          },
+          {
+            "term": "Bread",
+            "translation": "Pan",
+            "example_en": "I want bread and butter.",
+            "example_es": "Quiero pan con mantequilla."
+          },
+          {
+            "term": "Chicken",
+            "translation": "Pollo",
+            "example_en": "Rice with chicken.",
+            "example_es": "Arroz con pollo."
+          }
+        ],
+        "grammar_note": "Para pedir algo con educación: 'I would like…' (me gustaría…)."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué significa 'water'?",
+          "options": ["Leche", "Agua", "Jugo", "Té"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "I drink ___ every morning.",
+          "correct": "coffee",
+          "options": ["coffee", "chicken", "bread"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿Cómo se dice 'pan'?",
+          "options": ["Rice", "Bread", "Cheese", "Egg"],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Water", "Agua"],
+            ["Coffee", "Café"],
+            ["Bread", "Pan"],
+            ["Chicken", "Pollo"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["would", "I", "like", "water"],
+          "correct": "I would like water",
+          "translation": "Me gustaría agua"
+        }
+      ]
+    },
+    {
+      "day_id": 9,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "The verb 'to be'",
+      "subtitle": "I am, you are, she is",
+      "snoopy_tip": "Snoopy dice: 'I am a dog. You are my best friend.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "I am",
+            "translation": "Yo soy / estoy",
+            "example_en": "I am a student.",
+            "example_es": "Soy estudiante."
+          },
+          {
+            "term": "You are",
+            "translation": "Tú eres / estás",
+            "example_en": "You are very kind.",
+            "example_es": "Eres muy amable."
+          },
+          {
+            "term": "She is",
+            "translation": "Ella es / está",
+            "example_en": "She is a doctor.",
+            "example_es": "Ella es doctora."
+          },
+          {
+            "term": "We are",
+            "translation": "Nosotros somos / estamos",
+            "example_en": "We are friends.",
+            "example_es": "Somos amigos."
+          }
+        ],
+        "grammar_note": "'To be' significa ser y estar: I am, you are, he/she/it is, we are, they are."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "She ___ a doctor.",
+          "options": ["am", "are", "is", "be"],
+          "correct_index": 2,
+          "explanation": "Con he, she e it se usa 'is'."
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "We ___ friends.",
+          "correct": "are",
+          "options": ["are", "is", "am"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "I ___ tired.",
+          "options": ["is", "am", "are", "be"],
+          "correct_index": 1,
+          "explanation": "Con 'I' siempre va 'am'."
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["I", "am"],
+            ["She", "is"],
+            ["We", "are"],
+            ["They", "are (ellos)"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["in", "They", "lab", "are", "the"],
+          "correct": "They are in the lab",
+          "translation": "Ellos están en el laboratorio"
+        }
+      ]
+    },
+    {
+      "day_id": 10,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "The body",
+      "subtitle": "Partes del cuerpo",
+      "snoopy_tip": "Snoopy dice: 'Mi heart late por ti.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Head",
+            "translation": "Cabeza",
+            "example_en": "My head hurts.",
+            "example_es": "Me duele la cabeza."
+          },
+          {
+            "term": "Arm",
+            "translation": "Brazo",
+            "example_en": "Give me your arm, please.",
+            "example_es": "Deme su brazo, por favor."
+          },
+          {
+            "term": "Heart",
+            "translation": "Corazón",
+            "example_en": "The heart pumps blood.",
+            "example_es": "El corazón bombea sangre."
+          },
+          {
+            "term": "Blood",
+            "translation": "Sangre",
+            "example_en": "We need a blood sample.",
+            "example_es": "Necesitamos una muestra de sangre."
+          }
+        ],
+        "grammar_note": "'My ___ hurts' = me duele el/la ___.",
+        "culture_note": "'Give me your arm, please' es una frase útil antes de tomar una muestra."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué significa 'arm'?",
+          "options": ["Pierna", "Brazo", "Mano", "Hombro"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "The heart pumps ___.",
+          "correct": "blood",
+          "options": ["blood", "water", "air"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "'My head hurts' significa…",
+          "options": ["Me duele la cabeza", "Me duele el brazo", "Tengo hambre", "Estoy cansada"],
+          "correct_index": 0
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Head", "Cabeza"],
+            ["Arm", "Brazo"],
+            ["Heart", "Corazón"],
+            ["Blood", "Sangre"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["your", "Give", "arm", "me", "please"],
+          "correct": "Give me your arm please",
+          "translation": "Deme su brazo, por favor"
+        }
+      ]
+    },
+    {
+      "day_id": 11,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Feelings",
+      "subtitle": "¿Cómo te sientes?",
+      "snoopy_tip": "Snoopy dice: 'Hoy estoy happy porque estudias conmigo.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Happy",
+            "translation": "Feliz",
+            "example_en": "I am happy today.",
+            "example_es": "Hoy estoy feliz."
+          },
+          {
+            "term": "Tired",
+            "translation": "Cansada / cansado",
+            "example_en": "I am tired after work.",
+            "example_es": "Estoy cansada después del trabajo."
+          },
+          {
+            "term": "Hungry",
+            "translation": "Con hambre",
+            "example_en": "Are you hungry?",
+            "example_es": "¿Tienes hambre?"
+          },
+          {
+            "term": "Nervous",
+            "translation": "Nerviosa / nervioso",
+            "example_en": "Don't be nervous.",
+            "example_es": "No estés nerviosa."
+          }
+        ],
+        "grammar_note": "Los sentimientos van con 'to be': I am happy (estoy feliz). En inglés no se dice 'I have hunger', sino 'I am hungry'."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué significa 'tired'?",
+          "options": ["Feliz", "Cansada", "Triste", "Enojada"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "I want to eat. I am ___.",
+          "correct": "hungry",
+          "options": ["hungry", "happy", "nervous"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿Cómo se dice 'Tengo hambre'?",
+          "options": ["I have hungry", "I am hungry", "I am hunger", "I hungry"],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Happy", "Feliz"],
+            ["Tired", "Cansada"],
+            ["Hungry", "Con hambre"],
+            ["Nervous", "Nerviosa"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["happy", "I", "today", "am"],
+          "correct": "I am happy today",
+          "translation": "Hoy estoy feliz"
+        }
+      ]
+    },
+    {
+      "day_id": 12,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "At the lab",
+      "subtitle": "Inglés para el laboratorio",
+      "snoopy_tip": "Snoopy dice: 'Tube, sample, results… ¡ya hablas como científica!'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Sample",
+            "translation": "Muestra",
+            "example_en": "The sample is ready.",
+            "example_es": "La muestra está lista."
+          },
+          {
+            "term": "Blood test",
+            "translation": "Examen de sangre",
+            "example_en": "You need a blood test.",
+            "example_es": "Necesita un examen de sangre."
+          },
+          {
+            "term": "Results",
+            "translation": "Resultados",
+            "example_en": "The results are normal.",
+            "example_es": "Los resultados son normales."
+          },
+          {
+            "term": "Gloves",
+            "translation": "Guantes",
+            "example_en": "Always wear gloves.",
+            "example_es": "Usa siempre guantes."
+          }
+        ],
+        "grammar_note": "Las instrucciones empiezan con el verbo: 'Wear gloves', 'Label the tube'.",
+        "culture_note": "Muchos manuales y equipos de laboratorio vienen en inglés."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué significa 'sample'?",
+          "options": ["Tubo", "Muestra", "Aguja", "Resultado"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "Always wear ___.",
+          "correct": "gloves",
+          "options": ["gloves", "results", "samples"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "'The results are normal' significa…",
+          "options": [
+            "Las muestras están listas",
+            "Los resultados son normales",
+            "El examen es mañana",
+            "Los tubos están limpios"
+          ],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Sample", "Muestra"],
+            ["Blood test", "Examen de sangre"],
+            ["Results", "Resultados"],
+            ["Gloves", "Guantes"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["sample", "The", "ready", "is"],
+          "correct": "The sample is ready",
+          "translation": "La muestra está lista"
+        }
+      ]
+    },
+    {
+      "day_id": 13,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "lesson",
+      "title": "Polite phrases",
+      "subtitle": "Por favor y gracias",
+      "snoopy_tip": "Snoopy dice: 'Please y thank you nunca pasan de moda.'",
+      "xp_reward": 10,
+      "hearts_cost_per_error": 1,
+      "lesson": {
+        "vocabulary": [
+          {
+            "term": "Please",
+            "translation": "Por favor",
+            "example_en": "Sit down, please.",
+            "example_es": "Siéntese, por favor."
+          },
+          {
+            "term": "Thank you",
+            "translation": "Gracias",
+            "example_en": "Thank you for your help.",
+            "example_es": "Gracias por su ayuda."
+          },
+          {
+            "term": "Excuse me",
+            "translation": "Disculpe / Con permiso",
+            "example_en": "Excuse me, where is the lab?",
+            "example_es": "Disculpe, ¿dónde está el laboratorio?"
+          },
+          {
+            "term": "You're welcome",
+            "translation": "De nada",
+            "example_en": "— Thank you! — You're welcome.",
+            "example_es": "— ¡Gracias! — De nada."
+          }
+        ],
+        "grammar_note": "'Sorry' es para pedir perdón; 'Excuse me' para llamar la atención o pedir paso."
+      },
+      "exercises": [
+        {
+          "type": "multiple_choice",
+          "question": "Te dicen 'Thank you'. ¿Qué respondes?",
+          "options": ["Please", "You're welcome", "Excuse me", "Goodbye"],
+          "correct_index": 1
+        },
+        {
+          "type": "fill_blank",
+          "sentence": "___ me, where is the lab?",
+          "correct": "Excuse",
+          "options": ["Excuse", "Thank", "Please"]
+        },
+        {
+          "type": "multiple_choice",
+          "question": "¿Qué significa 'please'?",
+          "options": ["Gracias", "Por favor", "Perdón", "De nada"],
+          "correct_index": 1
+        },
+        {
+          "type": "word_match",
+          "pairs": [
+            ["Please", "Por favor"],
+            ["Thank you", "Gracias"],
+            ["Excuse me", "Disculpe"],
+            ["You're welcome", "De nada"]
+          ]
+        },
+        {
+          "type": "word_order",
+          "words": ["for", "Thank", "help", "you", "your"],
+          "correct": "Thank you for your help",
+          "translation": "Gracias por su ayuda"
+        }
+      ]
+    },
+    {
+      "day_id": 14,
+      "track": "english",
+      "phase": 1,
+      "phase_name": "Fundamentos",
+      "day_type": "test",
+      "title": "TEST 2 — Snoopy Challenge",
+      "subtitle": "Repaso de la semana 2",
+      "snoopy_tip": "Snoopy dice: '¡Dos semanas! Ya eres toda una pro.'",
+      "reviews_days": [8, 9, 10, 11, 12, 13],
+      "total_questions": 10,
+      "pass_score_pct": 70,
+      "reward_first_try": { "xp": 50, "badge": "Week 2 Champion", "gems": 5 },
+      "reward_retry": { "xp": 25, "badge": null }
+    }
+  ]
+}
