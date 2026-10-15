@@ -9,7 +9,7 @@ declare module "@/ocean/Game/Game.class" {
 declare module "@/ocean/Game/Utils/ResourceLoader.class" {
   export default class ResourceLoader {
     constructor(assets: unknown, isDebugMode?: boolean);
-    on(event: string, cb: (payload: any) => void): void;
+    on<T = unknown>(event: string, cb: (payload: T) => void): void;
     off(event: string): void;
   }
 }

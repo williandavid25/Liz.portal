@@ -35,15 +35,14 @@ export default function BeatingHeart() {
   } as const;
 
   return (
-    <section
-      className="relative flex flex-col items-center justify-center gap-6 px-5 py-20 sm:py-28 overflow-hidden bg-transparent"
-    >
+    <section className="relative flex flex-col items-center justify-center gap-6 px-5 py-20 sm:py-28 overflow-hidden bg-transparent">
       <div className="relative">
         {/* Resplandor suave que late detrás del corazón. */}
         <div
           className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[105%] h-[105%] rounded-full blur-[56px] animate-heart-glow"
           style={{
-            background: "radial-gradient(circle, color-mix(in oklab, var(--rose-glow) 58%, transparent), color-mix(in oklab, var(--cosmic-violet) 58%, transparent) 45%, transparent 72%)",
+            background:
+              "radial-gradient(circle, color-mix(in oklab, var(--rose-glow) 58%, transparent), color-mix(in oklab, var(--cosmic-violet) 58%, transparent) 45%, transparent 72%)",
           }}
         />
 

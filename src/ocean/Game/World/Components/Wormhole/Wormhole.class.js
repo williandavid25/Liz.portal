@@ -1,7 +1,7 @@
-import * as THREE from 'three';
-import Game from '../../../Game.class';
-import wormholeVertexShader from '../../../../Shaders/Wormhole/vertex.glsl?raw';
-import wormholeFragmentShader from '../../../../Shaders/Wormhole/fragment.glsl?raw';
+import * as THREE from "three";
+import Game from "../../../Game.class";
+import wormholeVertexShader from "../../../../Shaders/Wormhole/vertex.glsl?raw";
+import wormholeFragmentShader from "../../../../Shaders/Wormhole/fragment.glsl?raw";
 
 export default class Wormhole {
   constructor() {
@@ -46,53 +46,53 @@ export default class Wormhole {
   }
 
   initDebugGUI() {
-    const folderName = 'Speed Lines';
+    const folderName = "Speed Lines";
 
     this.debug.add(
       this.config,
-      'speedLineColor1',
+      "speedLineColor1",
       {
-        label: 'Color 1 (Cyan)',
+        label: "Color 1 (Cyan)",
         onChange: () => this.updateSpeedLineColors(),
       },
-      folderName
+      folderName,
     );
 
     this.debug.add(
       this.config,
-      'speedLineColor2',
+      "speedLineColor2",
       {
-        label: 'Color 2 (Blue)',
+        label: "Color 2 (Blue)",
         onChange: () => this.updateSpeedLineColors(),
       },
-      folderName
+      folderName,
     );
 
     this.debug.add(
       this.config,
-      'speedLineColor3',
+      "speedLineColor3",
       {
-        label: 'Color 3 (Purple)',
+        label: "Color 3 (Purple)",
         onChange: () => this.updateSpeedLineColors(),
       },
-      folderName
+      folderName,
     );
 
     this.debug.add(
       this.config,
-      'lineSpeed',
+      "lineSpeed",
       {
         min: 1,
         max: 30,
         step: 0.5,
-        label: 'Line Speed',
+        label: "Line Speed",
         onChange: (value) => {
           for (const line of this.speedLines) {
             line.speed = value * (0.5 + Math.random() * 0.5);
           }
         },
       },
-      folderName
+      folderName,
     );
   }
 
@@ -125,7 +125,7 @@ export default class Wormhole {
       this.config.tubeSegments,
       this.config.tubeRadius,
       this.config.tubeRadialSegments,
-      false
+      false,
     );
 
     const positions = this.tubeGeometry.attributes.position.array;
@@ -163,9 +163,7 @@ export default class Wormhole {
         uColor2: { value: new THREE.Color(0x0066cc) },
         uColor3: { value: new THREE.Color(0x00ddff) },
         fogColor: {
-          value: this.scene.fog
-            ? this.scene.fog.color
-            : new THREE.Color(0x001235),
+          value: this.scene.fog ? this.scene.fog.color : new THREE.Color(0x001235),
         },
         fogNear: { value: this.scene.fog ? this.scene.fog.near : 1 },
         fogFar: { value: this.scene.fog ? this.scene.fog.far : 100 },
@@ -226,9 +224,7 @@ export default class Wormhole {
       const x = Math.cos(angle) * radius;
       const y = Math.sin(angle) * radius;
 
-      const z =
-        this.config.startZ +
-        Math.random() * (this.config.endZ - this.config.startZ);
+      const z = this.config.startZ + Math.random() * (this.config.endZ - this.config.startZ);
 
       mesh.position.set(x, y, z);
 
@@ -252,7 +248,7 @@ export default class Wormhole {
       // Cache cos/sin for this angle (angles don't change, so compute once per line)
       const cosA = Math.cos(line.angle);
       const sinA = Math.sin(line.angle);
-      
+
       line.mesh.position.z -= line.speed * delta;
 
       if (line.mesh.position.z < this.config.endZ) {
@@ -296,14 +292,14 @@ export default class Wormhole {
     // Dispose geometries and materials (they may be shared)
     const geometries = new Set();
     const materials = new Set();
-    
+
     for (const line of this.speedLines) {
       geometries.add(line.mesh.geometry);
       materials.add(line.mesh.material);
       line.mesh.geometry.dispose();
       line.mesh.material.dispose();
     }
-    
+
     if (this.tubeMesh) {
       this.tubeGeometry.dispose();
       this.tubeMaterial.dispose();

@@ -1,7 +1,7 @@
-import * as THREE from 'three';
-import Game from '../../../Game.class';
-import flowFieldVertexShader from '../../../../Shaders/FlowField/vertex.glsl?raw';
-import flowFieldFragmentShader from '../../../../Shaders/FlowField/fragment.glsl?raw';
+import * as THREE from "three";
+import Game from "../../../Game.class";
+import flowFieldVertexShader from "../../../../Shaders/FlowField/vertex.glsl?raw";
+import flowFieldFragmentShader from "../../../../Shaders/FlowField/fragment.glsl?raw";
 
 export default class FlowField {
   constructor() {
@@ -9,7 +9,7 @@ export default class FlowField {
     this.scene = this.game.scene;
     this.time = this.game.time;
 
-    const isSmallScreen = typeof window !== 'undefined' && window.innerWidth < 768;
+    const isSmallScreen = typeof window !== "undefined" && window.innerWidth < 768;
     this.config = {
       particleCount: isSmallScreen ? 450 : 900,
       bounds: {
@@ -67,20 +67,11 @@ export default class FlowField {
     }
 
     this.geometry = new THREE.BufferGeometry();
-    this.geometry.setAttribute(
-      'position',
-      new THREE.BufferAttribute(positions, 3)
-    );
-    this.geometry.setAttribute(
-      'velocity',
-      new THREE.BufferAttribute(velocities, 3)
-    );
-    this.geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-    this.geometry.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1));
-    this.geometry.setAttribute(
-      'particleType',
-      new THREE.BufferAttribute(particleTypes, 1)
-    );
+    this.geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    this.geometry.setAttribute("velocity", new THREE.BufferAttribute(velocities, 3));
+    this.geometry.setAttribute("size", new THREE.BufferAttribute(sizes, 1));
+    this.geometry.setAttribute("alpha", new THREE.BufferAttribute(alphas, 1));
+    this.geometry.setAttribute("particleType", new THREE.BufferAttribute(particleTypes, 1));
 
     this.material = new THREE.ShaderMaterial({
       vertexShader: flowFieldVertexShader,
@@ -103,8 +94,7 @@ export default class FlowField {
     const n2 = Math.sin(y * 1.8 + x * 0.6) * Math.cos(z * 1.4 + y * 0.7);
     const n3 = Math.sin(z * 2.1 + y * 0.9) * Math.cos(x * 1.6 + z * 0.4);
 
-    const detail =
-      Math.sin(x * 4.0) * Math.cos(y * 4.0) * Math.sin(z * 4.0) * 0.3;
+    const detail = Math.sin(x * 4.0) * Math.cos(y * 4.0) * Math.sin(z * 4.0) * 0.3;
 
     return (n1 + n2 + n3) / 3 + detail;
   }
@@ -112,10 +102,14 @@ export default class FlowField {
   getFlowField(x, y, z, time, particle) {
     const scale = this.config.noiseScale;
     const t = time * 0.3;
-    
+
     // Use cached noise values if available and not too old
     const cacheKey = `${Math.floor(x * 10)}_${Math.floor(y * 10)}_${Math.floor(z * 10)}_${Math.floor(t * 10)}`;
-    if (this._noiseCache && this._noiseCache[cacheKey] && this._noiseCache.frame === this._frameCount) {
+    if (
+      this._noiseCache &&
+      this._noiseCache[cacheKey] &&
+      this._noiseCache.frame === this._frameCount
+    ) {
       const cached = this._noiseCache[cacheKey];
       return new THREE.Vector3(cached.x, cached.y, cached.z);
     }
@@ -163,7 +157,7 @@ export default class FlowField {
     const result = {
       x: cosAngle1 * cosAngle2 + swirlX,
       y: sinAngle2 + swirlY,
-      z: sinAngle1 * cosAngle2 + nz * 0.3
+      z: sinAngle1 * cosAngle2 + nz * 0.3,
     };
 
     // Cache the result
@@ -208,13 +202,7 @@ export default class FlowField {
       const y = positions[i3 + 1];
       const z = positions[i3 + 2];
 
-      const flow = this.getFlowField(
-        x,
-        y,
-        z,
-        elapsed + particle.offset,
-        particle
-      );
+      const flow = this.getFlowField(x, y, z, elapsed + particle.offset, particle);
 
       flow.y += 0.3;
       flow.z += 0.2;

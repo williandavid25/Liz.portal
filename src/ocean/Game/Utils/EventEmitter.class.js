@@ -5,13 +5,13 @@ export default class EventEmitter {
   }
 
   on(_names, callback) {
-    if (typeof _names === 'undefined' || _names === '') {
-      console.warn('wrong names');
+    if (typeof _names === "undefined" || _names === "") {
+      console.warn("wrong names");
       return false;
     }
 
-    if (typeof callback === 'undefined') {
-      console.warn('wrong callback');
+    if (typeof callback === "undefined") {
+      console.warn("wrong callback");
       return false;
     }
 
@@ -20,8 +20,7 @@ export default class EventEmitter {
     names.forEach((_name) => {
       const name = this.resolveName(_name);
 
-      if (!(this.callbacks[name.namespace] instanceof Object))
-        this.callbacks[name.namespace] = {};
+      if (!(this.callbacks[name.namespace] instanceof Object)) this.callbacks[name.namespace] = {};
 
       if (!(this.callbacks[name.namespace][name.value] instanceof Array))
         this.callbacks[name.namespace][name.value] = [];
@@ -33,8 +32,8 @@ export default class EventEmitter {
   }
 
   off(_names) {
-    if (typeof _names === 'undefined' || _names === '') {
-      console.warn('wrong name');
+    if (typeof _names === "undefined" || _names === "") {
+      console.warn("wrong name");
       return false;
     }
 
@@ -43,13 +42,13 @@ export default class EventEmitter {
     names.forEach((_name) => {
       const name = this.resolveName(_name);
 
-      if (name.namespace !== 'base' && name.value === '') {
+      if (name.namespace !== "base" && name.value === "") {
         delete this.callbacks[name.namespace];
       }
 
       // Remove specific callback in namespace
       else {
-        if (name.namespace === 'base') {
+        if (name.namespace === "base") {
           for (const namespace in this.callbacks) {
             if (
               this.callbacks[namespace] instanceof Object &&
@@ -61,9 +60,7 @@ export default class EventEmitter {
                 delete this.callbacks[namespace];
             }
           }
-        }
-
-        else if (
+        } else if (
           this.callbacks[name.namespace] instanceof Object &&
           this.callbacks[name.namespace][name.value] instanceof Array
         ) {
@@ -79,8 +76,8 @@ export default class EventEmitter {
   }
 
   trigger(_name, ..._args) {
-    if (typeof _name === 'undefined' || _name === '') {
-      console.warn('wrong name');
+    if (typeof _name === "undefined" || _name === "") {
+      console.warn("wrong name");
       return false;
     }
 
@@ -93,7 +90,7 @@ export default class EventEmitter {
 
     name = this.resolveName(name[0]);
 
-    if (name.namespace === 'base') {
+    if (name.namespace === "base") {
       for (const namespace in this.callbacks) {
         if (
           this.callbacks[namespace] instanceof Object &&
@@ -102,24 +99,22 @@ export default class EventEmitter {
           this.callbacks[namespace][name.value].forEach(function (callback) {
             result = callback.apply(this, args);
 
-            if (typeof finalResult === 'undefined') {
+            if (typeof finalResult === "undefined") {
               finalResult = result;
             }
           });
         }
       }
-    }
-
-    else if (this.callbacks[name.namespace] instanceof Object) {
-      if (name.value === '') {
-        console.warn('wrong name');
+    } else if (this.callbacks[name.namespace] instanceof Object) {
+      if (name.value === "") {
+        console.warn("wrong name");
         return this;
       }
 
       this.callbacks[name.namespace][name.value].forEach(function (callback) {
         result = callback.apply(this, args);
 
-        if (typeof finalResult === 'undefined') finalResult = result;
+        if (typeof finalResult === "undefined") finalResult = result;
       });
     }
 
@@ -128,22 +123,22 @@ export default class EventEmitter {
 
   resolveNames(_names) {
     let names = _names;
-    names = names.replace(/[^a-zA-Z0-9 ,/.]/g, '');
-    names = names.replace(/[,/]+/g, ' ');
-    names = names.split(' ');
+    names = names.replace(/[^a-zA-Z0-9 ,/.]/g, "");
+    names = names.replace(/[,/]+/g, " ");
+    names = names.split(" ");
 
     return names;
   }
 
   resolveName(name) {
     const newName = {};
-    const parts = name.split('.');
+    const parts = name.split(".");
 
     newName.original = name;
     newName.value = parts[0];
-    newName.namespace = 'base';
+    newName.namespace = "base";
 
-    if (parts.length > 1 && parts[1] !== '') {
+    if (parts.length > 1 && parts[1] !== "") {
       newName.namespace = parts[1];
     }
 

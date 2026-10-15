@@ -1,5 +1,5 @@
-import MersenneTwister from 'mersennetwister';
-import * as THREE from 'three';
+import MersenneTwister from "mersennetwister";
+import * as THREE from "three";
 
 const MT_ = new MersenneTwister(7);
 
@@ -41,12 +41,7 @@ class Interpolant {
       values.push(...frames[i].value);
     }
     this.resultBuffer = new Float32Array(stride);
-    this.interpolator = new THREE.LinearInterpolant(
-      times,
-      values,
-      stride,
-      this.resultBuffer
-    );
+    this.interpolator = new THREE.LinearInterpolant(times, values, stride, this.resultBuffer);
   }
 
   evaluate(time) {
@@ -107,13 +102,7 @@ class FloatInterpolat extends Interpolant {
       data[i * 4 + 3] = 255;
     }
 
-    const dt = new THREE.DataTexture(
-      data,
-      width,
-      1,
-      THREE.RGBAFormat,
-      THREE.UnsignedByteType
-    );
+    const dt = new THREE.DataTexture(data, width, 1, THREE.RGBAFormat, THREE.UnsignedByteType);
     dt.minFilter = THREE.LinearFilter;
     dt.magFilter = THREE.LinearFilter;
     dt.wrapS = THREE.ClampToEdgeWrapping;
@@ -128,11 +117,7 @@ class FloatInterpolat extends Interpolant {
 class ColorInterpolat extends Interpolant {
   constructor(frames) {
     for (let i = 0; i < frames.length; i++) {
-      frames[i].value = [
-        frames[i].value.r,
-        frames[i].value.g,
-        frames[i].value.b,
-      ];
+      frames[i].value = [frames[i].value.r, frames[i].value.g, frames[i].value.b];
     }
     super(frames, 3);
   }
@@ -147,7 +132,7 @@ class ColorInterpolat extends Interpolant {
 
     const maxFrameTime = Math.max(
       frames[frames.length - 1].time,
-      alphaFrames[alphaFrames.length - 1].time
+      alphaFrames[alphaFrames.length - 1].time,
     );
 
     let smallestStep = 0.5;
@@ -156,8 +141,7 @@ class ColorInterpolat extends Interpolant {
       smallestStep = Math.min(smallestStep, stepSize);
     }
     for (let i = 1; i < alphaFrames.length; i++) {
-      const stepSize =
-        (alphaFrames[i].time - alphaFrames[i - 1].time) / maxFrameTime;
+      const stepSize = (alphaFrames[i].time - alphaFrames[i - 1].time) / maxFrameTime;
       smallestStep = Math.min(smallestStep, stepSize);
     }
     const recommendedSize = Math.ceil(1 / smallestStep);
@@ -177,13 +161,7 @@ class ColorInterpolat extends Interpolant {
       data[i * 4 + 3] = Math.max(0, Math.min(255, Math.floor(alpha * 255)));
     }
 
-    const dt = new THREE.DataTexture(
-      data,
-      width,
-      1,
-      THREE.RGBAFormat,
-      THREE.UnsignedByteType
-    );
+    const dt = new THREE.DataTexture(data, width, 1, THREE.RGBAFormat, THREE.UnsignedByteType);
     dt.minFilter = THREE.LinearFilter;
     dt.magFilter = THREE.LinearFilter;
     dt.wrapS = THREE.ClampToEdgeWrapping;

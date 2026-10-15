@@ -1,8 +1,8 @@
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
-import * as THREE from 'three';
-import EventEmitter from './EventEmitter.class';
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+import { HDRLoader } from "three/addons/loaders/HDRLoader.js";
+import * as THREE from "three";
+import EventEmitter from "./EventEmitter.class";
 
 export default class ResourceLoader extends EventEmitter {
   constructor(assets, isDebugMode) {
@@ -19,12 +19,12 @@ export default class ResourceLoader extends EventEmitter {
       });
 
       try {
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
           const abs = new URL(paths[0], window.location.href).href;
           this.sourceByUrl[abs] = src;
         }
       } catch (e) {
-        console.error('Error adding source by URL:', e);
+        console.error("Error adding source by URL:", e);
       }
     });
 
@@ -35,11 +35,11 @@ export default class ResourceLoader extends EventEmitter {
 
     this.manager.onProgress = (_url, itemsLoaded, itemsTotal) => {
       let urlKey;
-      if (typeof _url === 'string') {
+      if (typeof _url === "string") {
         urlKey = _url;
       } else if (Array.isArray(_url) && _url.length) {
         urlKey = _url[0];
-      } else if (_url && typeof _url === 'object') {
+      } else if (_url && typeof _url === "object") {
         urlKey = _url.url || _url.src || JSON.stringify(_url);
       } else {
         urlKey = String(_url);
@@ -48,13 +48,13 @@ export default class ResourceLoader extends EventEmitter {
       const src = this.sourceByUrl[urlKey];
       const id = src ? src.id : urlKey;
       const file =
-        typeof urlKey === 'string' && urlKey.indexOf('/') !== -1
-          ? urlKey.substring(urlKey.lastIndexOf('/') + 1)
+        typeof urlKey === "string" && urlKey.indexOf("/") !== -1
+          ? urlKey.substring(urlKey.lastIndexOf("/") + 1)
           : urlKey;
 
       this.loaded = itemsLoaded;
 
-      this.trigger('progress', {
+      this.trigger("progress", {
         id: `${id} - ${file}`,
         itemsLoaded,
         itemsTotal,
@@ -63,7 +63,7 @@ export default class ResourceLoader extends EventEmitter {
     };
 
     this.manager.onLoad = () => {
-      this.trigger('loaded', {
+      this.trigger("loaded", {
         itemsLoaded: this.toLoad,
         itemsTotal: this.toLoad,
         percent: 100,
@@ -72,16 +72,15 @@ export default class ResourceLoader extends EventEmitter {
 
     this.manager.onError = (url) => {
       let urlKey;
-      if (typeof url === 'string') urlKey = url;
+      if (typeof url === "string") urlKey = url;
       else if (Array.isArray(url) && url.length) urlKey = url[0];
-      else if (url && typeof url === 'object')
-        urlKey = url.url || url.src || JSON.stringify(url);
+      else if (url && typeof url === "object") urlKey = url.url || url.src || JSON.stringify(url);
       else urlKey = String(url);
 
       const src = this.sourceByUrl[urlKey];
       const id = src ? src.id : urlKey;
 
-      this.trigger('error', {
+      this.trigger("error", {
         id,
         url: urlKey,
         itemsLoaded: this.loaded,
@@ -101,7 +100,7 @@ export default class ResourceLoader extends EventEmitter {
     this.loaders = {};
 
     const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath('/draco/');
+    dracoLoader.setDecoderPath("/draco/");
     this.loaders.dracoLoader = dracoLoader;
 
     this.loaders.gltfCompressLoader = new GLTFLoader(this.manager);
@@ -123,19 +122,19 @@ export default class ResourceLoader extends EventEmitter {
       const onProgress = undefined;
 
       switch (type) {
-        case 'gltfModelCompressed':
+        case "gltfModelCompressed":
           this.loaders.gltfCompressLoader.load(path, onLoad, onProgress);
           break;
-        case 'gltfModel':
+        case "gltfModel":
           this.loaders.gltfLoader.load(path, onLoad, onProgress);
           break;
-        case 'texture':
+        case "texture":
           this.loaders.textureLoader.load(path, onLoad, onProgress);
           break;
-        case 'HDRITexture':
+        case "HDRITexture":
           this.loaders.hdriLoader.load(path, onLoad, onProgress);
           break;
-        case 'cubeMap':
+        case "cubeMap":
           this.loaders.cubeTextureLoader.load(path, onLoad, onProgress);
           break;
         default:

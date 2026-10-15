@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import Game from '../Game.class';
+import * as THREE from "three";
+import Game from "../Game.class";
 
 export default class Renderer {
   constructor() {
@@ -33,17 +33,17 @@ export default class Renderer {
       canvas: this.canvas,
       antialias: false,
       alpha: false,
-      powerPreference: 'high-performance',
+      powerPreference: "high-performance",
       stencil: false,
       depth: true,
     });
-    
+
     // Optimize renderer settings for better performance
     this.rendererInstance.sortObjects = false; // Disable sorting for better performance
     this.rendererInstance.shadowMap.autoUpdate = false; // Manual shadow updates if needed
     this.rendererInstance.info.autoReset = false; // Disable automatic reset of render info
     this.rendererInstance.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap pixel ratio
-    
+
     // Enable frustum culling optimizations
     this.rendererInstance.localClippingEnabled = false;
     this.rendererInstance.physicallyCorrectLights = false;
@@ -72,15 +72,15 @@ export default class Renderer {
   initTweakPane() {
     this.debug.add(
       this.rendererInstance,
-      'toneMapping',
+      "toneMapping",
       {
         options: this.toneMappingOptions,
-        label: 'Tone Mapping',
+        label: "Tone Mapping",
         onChange: (toneMappingType) => {
           this.rendererInstance.toneMapping = toneMappingType;
         },
       },
-      'Renderer Settings'
+      "Renderer Settings",
     );
   }
   update() {

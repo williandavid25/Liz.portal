@@ -1,10 +1,10 @@
-import * as THREE from 'three';
-import { GPUComputationRenderer } from 'three/examples/jsm/misc/GPUComputationRenderer.js';
-import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
-import Game from '../../../Game.class';
-import simulationShader from '../../../../Shaders/WakeParticles/simulation.glsl?raw';
-import vertexShader from '../../../../Shaders/WakeParticles/vertex.glsl?raw';
-import fragmentShader from '../../../../Shaders/WakeParticles/fragment.glsl?raw';
+import * as THREE from "three";
+import { GPUComputationRenderer } from "three/examples/jsm/misc/GPUComputationRenderer.js";
+import { MeshSurfaceSampler } from "three/addons/math/MeshSurfaceSampler.js";
+import Game from "../../../Game.class";
+import simulationShader from "../../../../Shaders/WakeParticles/simulation.glsl?raw";
+import vertexShader from "../../../../Shaders/WakeParticles/vertex.glsl?raw";
+import fragmentShader from "../../../../Shaders/WakeParticles/fragment.glsl?raw";
 
 export default class WakeParticles {
   constructor(dolphin) {
@@ -14,7 +14,7 @@ export default class WakeParticles {
     this.time = this.game.time;
     this.dolphin = dolphin;
 
-    const isSmallScreen = typeof window !== 'undefined' && window.innerWidth < 768;
+    const isSmallScreen = typeof window !== "undefined" && window.innerWidth < 768;
     this.WIDTH = isSmallScreen ? 48 : 72;
     this.PARTICLES = this.WIDTH * this.WIDTH;
 
@@ -66,12 +66,12 @@ export default class WakeParticles {
     });
 
     if (!this.dolphinMesh) {
-      console.warn('WakeParticles: No skinned mesh found');
+      console.warn("WakeParticles: No skinned mesh found");
       return;
     }
 
     const geometry = this.dolphinMesh.geometry;
-    const posAttr = geometry.getAttribute('position');
+    const posAttr = geometry.getAttribute("position");
 
     const weights = new Float32Array(posAttr.count);
     let minZ = Infinity,
@@ -89,11 +89,9 @@ export default class WakeParticles {
       weights[i] = Math.pow(1.0 - normalizedZ, 2.0) + 0.1;
     }
 
-    geometry.setAttribute('weight', new THREE.BufferAttribute(weights, 1));
+    geometry.setAttribute("weight", new THREE.BufferAttribute(weights, 1));
 
-    this.sampler = new MeshSurfaceSampler(this.dolphinMesh)
-      .setWeightAttribute('weight')
-      .build();
+    this.sampler = new MeshSurfaceSampler(this.dolphinMesh).setWeightAttribute("weight").build();
 
     this.sampledData = [];
     const tempPosition = new THREE.Vector3();
@@ -127,26 +125,16 @@ export default class WakeParticles {
   }
 
   initGPGPU() {
-    this.gpuCompute = new GPUComputationRenderer(
-      this.WIDTH,
-      this.WIDTH,
-      this.renderer,
-    );
+    this.gpuCompute = new GPUComputationRenderer(this.WIDTH, this.WIDTH, this.renderer);
 
     const dtPosition = this.gpuCompute.createTexture();
     const dtSpawnPoints = this.gpuCompute.createTexture();
     this.fillSpawnTexture(dtSpawnPoints);
     this.fillInitialPositions(dtPosition);
 
-    this.positionVariable = this.gpuCompute.addVariable(
-      'uParticles',
-      simulationShader,
-      dtPosition,
-    );
+    this.positionVariable = this.gpuCompute.addVariable("uParticles", simulationShader, dtPosition);
 
-    this.gpuCompute.setVariableDependencies(this.positionVariable, [
-      this.positionVariable,
-    ]);
+    this.gpuCompute.setVariableDependencies(this.positionVariable, [this.positionVariable]);
 
     const uniforms = this.positionVariable.material.uniforms;
     uniforms.uTime = { value: 0 };
@@ -163,7 +151,7 @@ export default class WakeParticles {
 
     const error = this.gpuCompute.init();
     if (error !== null) {
-      console.error('GPGPU init error:', error);
+      console.error("GPGPU init error:", error);
     }
 
     this.spawnTexture = dtSpawnPoints;
@@ -217,11 +205,8 @@ export default class WakeParticles {
       uvs[i * 2 + 1] = Math.floor(i / this.WIDTH) / this.WIDTH;
     }
 
-    this.geometry.setAttribute(
-      'position',
-      new THREE.BufferAttribute(positions, 3),
-    );
-    this.geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    this.geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    this.geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
   }
 
   createParticleMaterial() {
@@ -258,8 +243,9 @@ export default class WakeParticles {
 
     this.gpuCompute.compute();
 
-    this.material.uniforms.uPositions.value =
-      this.gpuCompute.getCurrentRenderTarget(this.positionVariable).texture;
+    this.material.uniforms.uPositions.value = this.gpuCompute.getCurrentRenderTarget(
+      this.positionVariable,
+    ).texture;
     this.material.uniforms.uTime.value = this.time.elapsedTime;
   }
 
@@ -281,14 +267,9 @@ export default class WakeParticles {
       const posChanged =
         this._lastDolphinPosition.distanceToSquared(currentPos) >
         this._positionChangeThreshold * this._positionChangeThreshold;
-      const rotChanged =
-        Math.abs(this._lastDolphinRotation.dot(currentRot)) < 0.9999; // ~1 degree threshold
+      const rotChanged = Math.abs(this._lastDolphinRotation.dot(currentRot)) < 0.9999; // ~1 degree threshold
 
-      if (
-        !posChanged &&
-        !rotChanged &&
-        this._lastDolphinPosition.lengthSq() > 0
-      ) {
+      if (!posChanged && !rotChanged && this._lastDolphinPosition.lengthSq() > 0) {
         // Skip update if dolphin hasn't moved/rotated significantly
         return;
       }
@@ -304,7 +285,7 @@ export default class WakeParticles {
     this.dolphinMesh.updateMatrixWorld(true);
 
     const data = this.spawnTexture.image.data;
-    const posAttr = this.dolphinMesh.geometry.getAttribute('position');
+    const posAttr = this.dolphinMesh.geometry.getAttribute("position");
 
     for (let i = 0; i < this.PARTICLES; i++) {
       const idx = i * 4;
@@ -317,19 +298,14 @@ export default class WakeParticles {
 
       if (this.dolphinMesh.applyBoneTransform) {
         this._tmpSkinned.copy(this._tmpPosition);
-        this.dolphinMesh.applyBoneTransform(
-          sample.vertexIndex,
-          this._tmpSkinned,
-        );
+        this.dolphinMesh.applyBoneTransform(sample.vertexIndex, this._tmpSkinned);
         this._tmpSkinned.applyMatrix4(this.dolphinMesh.matrixWorld);
       } else if (this.dolphinMesh.boneTransform) {
         this._tmpSkinned.copy(this._tmpPosition);
         this.dolphinMesh.boneTransform(sample.vertexIndex, this._tmpSkinned);
         this._tmpSkinned.applyMatrix4(this.dolphinMesh.matrixWorld);
       } else {
-        this._tmpSkinned
-          .copy(this._tmpPosition)
-          .applyMatrix4(this.dolphinMesh.matrixWorld);
+        this._tmpSkinned.copy(this._tmpPosition).applyMatrix4(this.dolphinMesh.matrixWorld);
       }
 
       data[idx + 0] = this._tmpSkinned.x;
@@ -338,8 +314,7 @@ export default class WakeParticles {
     }
 
     this.spawnTexture.needsUpdate = true;
-    this.positionVariable.material.uniforms.uSpawnPoints.value =
-      this.spawnTexture;
+    this.positionVariable.material.uniforms.uSpawnPoints.value = this.spawnTexture;
   }
 
   setDebug() {
@@ -350,80 +325,65 @@ export default class WakeParticles {
 
     debug.add(
       uniforms.uBackwardSpeed,
-      'value',
-      { min: 0.5, max: 8, step: 0.1, label: 'Backward Speed' },
-      'Wake Particles',
+      "value",
+      { min: 0.5, max: 8, step: 0.1, label: "Backward Speed" },
+      "Wake Particles",
     );
 
     debug.add(
       uniforms.uTurbulence,
-      'value',
-      { min: 0, max: 2, step: 0.05, label: 'Turbulence' },
-      'Wake Particles',
+      "value",
+      { min: 0, max: 2, step: 0.05, label: "Turbulence" },
+      "Wake Particles",
     );
 
     debug.add(
       uniforms.uSpread,
-      'value',
-      { min: 0, max: 1, step: 0.05, label: 'Spread' },
-      'Wake Particles',
+      "value",
+      { min: 0, max: 1, step: 0.05, label: "Spread" },
+      "Wake Particles",
     );
 
     debug.add(
       uniforms.uCurlStrength,
-      'value',
-      { min: 0, max: 2, step: 0.05, label: 'Curl Strength' },
-      'Wake Particles',
+      "value",
+      { min: 0, max: 2, step: 0.05, label: "Curl Strength" },
+      "Wake Particles",
     );
 
     debug.add(
       uniforms.uSpiralIntensity,
-      'value',
-      { min: 0, max: 1, step: 0.05, label: 'Spiral' },
-      'Wake Particles',
+      "value",
+      { min: 0, max: 1, step: 0.05, label: "Spiral" },
+      "Wake Particles",
     );
 
     debug.add(
       uniforms.uBuoyancy,
-      'value',
-      { min: 0, max: 0.5, step: 0.01, label: 'Buoyancy' },
-      'Wake Particles',
+      "value",
+      { min: 0, max: 0.5, step: 0.01, label: "Buoyancy" },
+      "Wake Particles",
     );
 
     debug.add(
       uniforms.uDrag,
-      'value',
-      { min: 0.9, max: 1.0, step: 0.005, label: 'Drag' },
-      'Wake Particles',
+      "value",
+      { min: 0.9, max: 1.0, step: 0.005, label: "Drag" },
+      "Wake Particles",
     );
 
     debug.add(
       this.material.uniforms.uSize,
-      'value',
-      { min: 1, max: 30, step: 1, label: 'Particle Size' },
-      'Wake Particles',
+      "value",
+      { min: 1, max: 30, step: 1, label: "Particle Size" },
+      "Wake Particles",
     );
 
-    debug.add(
-      this.material.uniforms.uColor1,
-      'value',
-      { label: 'Color Fresh' },
-      'Wake Particles',
-    );
+    debug.add(this.material.uniforms.uColor1, "value", { label: "Color Fresh" }, "Wake Particles");
 
-    debug.add(
-      this.material.uniforms.uColor2,
-      'value',
-      { label: 'Color Mid' },
-      'Wake Particles',
-    );
+    debug.add(this.material.uniforms.uColor2, "value", { label: "Color Mid" }, "Wake Particles");
 
-    debug.add(
-      this.material.uniforms.uColor3,
-      'value',
-      { label: 'Color Old' },
-      'Wake Particles',
-    );
+    debug.add(this.material.uniforms.uColor3, "value", { label: "Color Old" }, "Wake Particles");
   }
 
   dispose() {

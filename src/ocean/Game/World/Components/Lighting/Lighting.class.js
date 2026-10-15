@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import Game from '../../../Game.class';
+import * as THREE from "three";
+import Game from "../../../Game.class";
 
 export default class Lighting {
   constructor({ helperEnabled = false } = {}) {
@@ -43,10 +43,7 @@ export default class Lighting {
       texture: this.resources.items.environmentMapTexture,
       updateMaterials: () => {
         this.scene.traverse((child) => {
-          if (
-            child instanceof THREE.Mesh &&
-            child.material instanceof THREE.MeshStandardMaterial
-          ) {
+          if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
             child.material.envMap = this.environmentMap.texture;
             child.material.envMapIntensity = this.environmentMap.intensity;
             child.material.needsUpdate = true;
