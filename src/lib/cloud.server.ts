@@ -189,6 +189,7 @@ async function ensureNotasTable() {
   // Para que quien la envía sepa que llegó al otro celular y que se leyó.
   await agregarColumna("notas_snoopy", "entregada_at", "bigint");
   await agregarColumna("notas_snoopy", "leida_at", "bigint");
+  await agregarColumna("notas_snoopy", "color", "text");
   notasTableReady = true;
 }
 // Lo que queda de una nota leída (sin texto) se guarda un día para avisar.
@@ -341,14 +342,15 @@ export interface NotaRow {
   de: string;
   texto: string;
   emoji?: string;
+  color?: string;
   createdAt: number;
 }
 
 export async function insertNota(nota: NotaRow): Promise<void> {
   await ensureNotasTable();
   await db()`
-    insert into notas_snoopy (id, de, texto, emoji, created_at)
-    values (${nota.id}, ${nota.de}, ${nota.texto}, ${nota.emoji ?? null}, ${nota.createdAt})
+    insert into notas_snoopy (id, de, texto, emoji, color, created_at)
+    values (${nota.id}, ${nota.de}, ${nota.texto}, ${nota.emoji ?? null}, ${nota.color ?? null}, ${nota.createdAt})
     on conflict (id) do nothing
   `;
 }
@@ -363,7 +365,7 @@ export async function listNotasPara(device: string): Promise<NotaRow[]> {
     where created_at < ${ahora - NOTA_VIDA_MS} or leida_at < ${ahora - LEIDA_VIDA_MS}
   `;
   const rows = await db()`
-    select id, de, texto, emoji, created_at from notas_snoopy
+    select id, de, texto, emoji, color, created_at from notas_snoopy
     where de <> ${device} and leida_at is null
     order by created_at asc
     limit 20
@@ -382,6 +384,7 @@ export async function listNotasPara(device: string): Promise<NotaRow[]> {
     de: r.de as string,
     texto: r.texto as string,
     emoji: (r.emoji as string | null) ?? undefined,
+    color: (r.color as string | null) ?? undefined,
     createdAt: Number(r.created_at),
   }));
 }

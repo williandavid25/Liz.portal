@@ -32,6 +32,7 @@ interface PorEnviar {
   id: string;
   texto: string;
   emoji?: string;
+  color?: string;
   createdAt: number;
   fallos: number;
 }
@@ -197,7 +198,13 @@ async function enviarCola() {
   for (const item of [...cola]) {
     const r = await conLimite(
       enviarNota({
-        data: { id: item.id, de: getDeviceId(), texto: item.texto, emoji: item.emoji },
+        data: {
+          id: item.id,
+          de: getDeviceId(),
+          texto: item.texto,
+          emoji: item.emoji,
+          color: item.color as never,
+        },
       }),
       LIMITE_ENVIO_MS,
     ).catch(() => null);
@@ -323,9 +330,13 @@ export async function cerrarNota(id: string): Promise<void> {
  * segundo plano. La promesa avisa cómo terminó el primer intento; si falló,
  * se sigue reintentando sola.
  */
-export async function mandarNota(texto: string, emoji?: string): Promise<Resultado> {
+export async function mandarNota(
+  texto: string,
+  emoji?: string,
+  color?: string,
+): Promise<Resultado> {
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  cola = [...cola, { id, texto, emoji, createdAt: Date.now(), fallos: 0 }];
+  cola = [...cola, { id, texto, emoji, color, createdAt: Date.now(), fallos: 0 }];
   guardarCola();
   recalcularEnviadas();
   await procesarCola();

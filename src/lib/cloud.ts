@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { Dia } from "./learn/tipos";
+import { IDS_COLOR } from "./colores-nota";
 
 // Almacenamiento en la nube:
 // - Cartas, fotos (metadatos), eventos y música: una sola fila en Postgres
@@ -344,6 +345,8 @@ export interface NotaSnoopy {
   de: string;
   texto: string;
   emoji?: string;
+  /** Color del post-it (ver src/lib/colores-nota.ts). */
+  color?: string;
   createdAt: number;
 }
 
@@ -362,7 +365,7 @@ export interface NotaEnviada {
 
 /** Snoopy lleva una nota al otro celular (y le manda un aviso). */
 export const enviarNota = createServerFn({ method: "POST" })
-  .validator((input: { id?: string; de: string; texto: string; emoji?: string }) =>
+  .validator((input: { id?: string; de: string; texto: string; emoji?: string; color?: string }) =>
     z
       .object({
         // Lo crea el celular: si un reintento llega dos veces, no se duplica.
@@ -373,6 +376,7 @@ export const enviarNota = createServerFn({ method: "POST" })
         de: deviceSchema,
         texto: z.string().trim().min(1).max(NOTA_MAX),
         emoji: z.string().max(16).optional(),
+        color: z.enum(IDS_COLOR).optional(),
       })
       .parse(input),
   )
@@ -384,6 +388,7 @@ export const enviarNota = createServerFn({ method: "POST" })
         de: data.de,
         texto: data.texto,
         emoji: data.emoji,
+        color: data.color,
         createdAt: Date.now(),
       };
       await reintentar(() => insertNota(nota));

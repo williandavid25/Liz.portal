@@ -57,6 +57,7 @@ import {
 } from "@/lib/notas-client";
 import { NOTA_MAX, guardarEstadoMascota, type NotaEnviada, type NotaSnoopy } from "@/lib/cloud";
 import { getDeviceId } from "@/lib/dispositivo";
+import { COLORES_NOTA, colorValido, estiloColorNota, type ColorNota } from "@/lib/colores-nota";
 import { SNOOPY_CSS, SnoopyVivo, imgPose, type Pose } from "@/components/SnoopyVivo";
 import { WeatherPanel } from "@/components/WeatherPanel";
 import { leerLearn, resumenLearn, useLearn } from "@/lib/learn/progreso";
@@ -347,6 +348,22 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
   const [escribiendo, setEscribiendo] = useState(false);
   const [textoNota, setTextoNota] = useState("");
   const [emojiNota, setEmojiNota] = useState<string>(SELLO_INICIAL);
+  // Color del post-it: se recuerda el último que eligió.
+  const [colorNota, setColorNota] = useState<ColorNota>(() => {
+    try {
+      return colorValido(localStorage.getItem("liz-nota-color"));
+    } catch {
+      return colorValido(null);
+    }
+  });
+  const elegirColor = (c: ColorNota) => {
+    setColorNota(c);
+    try {
+      localStorage.setItem("liz-nota-color", c);
+    } catch {
+      /* ignorar */
+    }
+  };
   const [enviandoNota, setEnviandoNota] = useState(false);
   const [notaLlena, setNotaLlena] = useState(false);
   // Panel tipo campanita de las notitas y el aviso flotante junto al botón.
@@ -1246,7 +1263,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     decir("¡Allá voy con tu nota!", 2000);
     avisarNota("Enviando tu nota…", "envio", 12000);
     setEnviandoNota(true);
-    void mandarNota(texto, emojiNota)
+    void mandarNota(texto, emojiNota, colorNota)
       .catch(() => ({ ok: false, avisos: 0 }))
       .then((r) => {
         setEnviandoNota(false);
@@ -2043,8 +2060,12 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
               Le llega un aviso al otro celular. Es temporal: cuando la lea y la cierre, se borra
               para siempre.
             </p>
-            {/* Post-it morado: solo se escribe lo que cabe dentro del cuadro. */}
-            <div className="mg-postit mx-auto">
+            {/* Post-it del color elegido: solo se escribe lo que cabe en el cuadro. */}
+            <div
+              key={colorNota}
+              className="mg-postit mg-postit-tinte mx-auto"
+              style={estiloColorNota(colorNota)}
+            >
               {(() => {
                 const S = sello(emojiNota).Icono;
                 return (
@@ -2074,11 +2095,34 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
                 className="mg-postit-texto"
               />
             </div>
+            <div
+              className="flex flex-wrap items-center justify-center gap-1.5"
+              role="radiogroup"
+              aria-label="Color de la nota"
+            >
+              {(Object.keys(COLORES_NOTA) as ColorNota[]).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  role="radio"
+                  aria-checked={colorNota === c}
+                  aria-label={`Color: ${COLORES_NOTA[c].nombre}`}
+                  title={COLORES_NOTA[c].nombre}
+                  onClick={() => {
+                    elegirColor(c);
+                    sonar("caricia");
+                  }}
+                  className={`mg-color-opcion ${colorNota === c ? "activo" : ""}`}
+                  style={estiloColorNota(c)}
+                />
+              ))}
+            </div>
             <div className="flex items-center justify-between gap-2">
               <div
                 className="flex gap-0.5 sm:gap-1"
                 role="radiogroup"
                 aria-label="Sello de la nota"
+                style={estiloColorNota(colorNota)}
               >
                 {Object.entries(SELLOS).map(([id, { nombre: nombreSello, Icono }]) => (
                   <button
@@ -2135,7 +2179,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
             <p className="mb-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-white/80">
               {nombre} te trajo esta nota
             </p>
-            <div className="mg-postit mx-auto">
+            <div className="mg-postit mx-auto" style={estiloColorNota(notaAbierta.color)}>
               {(() => {
                 const S = sello(notaAbierta.emoji).Icono;
                 return (
@@ -2425,17 +2469,29 @@ const CSS = `
   background:
     linear-gradient(to bottom, rgba(255,228,230,0.22) 0 12.5%, rgba(255,228,230,0) 13.5%),
     radial-gradient(120% 90% at 18% 0%, rgba(255,255,255,0.16), rgba(255,255,255,0) 55%),
-    linear-gradient(155deg, rgba(251,113,133,0.62), rgba(225,29,72,0.52) 62%, rgba(159,18,57,0.6));
+    linear-gradient(155deg, rgb(var(--pa, 251 113 133) / 0.62), rgb(var(--pb, 225 29 72) / 0.52) 62%, rgb(var(--pc, 159 18 57) / 0.6));
   -webkit-backdrop-filter: blur(12px) saturate(1.3);
   backdrop-filter: blur(12px) saturate(1.3);
-  border: 1px solid rgba(255,205,210,0.4);
+  border: 1px solid rgb(var(--pa, 251 113 133) / 0.45);
   box-shadow:
-    0 24px 36px -16px rgba(60,5,20,0.8),
-    0 2px 6px rgba(60,5,20,0.3),
+    0 24px 36px -16px rgba(10,5,20,0.8),
+    0 2px 6px rgba(10,5,20,0.3),
     inset 0 1px 0 rgba(255,255,255,0.35),
-    inset 0 -18px 30px -18px rgba(80,0,20,0.45);
+    inset 0 -18px 30px -18px rgb(var(--pc, 159 18 57) / 0.6);
   rotate: -1.2deg;
+  transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
 }
+/* Al cambiar de color, el post-it "se renueva" con un leve rebote. */
+.mg-postit-tinte { animation: mg-postit-tinte 0.4s cubic-bezier(.2,.9,.3,1.3) both; }
+@keyframes mg-postit-tinte { 0% { transform: scale(0.97); filter: brightness(1.25); } 100% { transform: none; filter: none; } }
+.mg-color-opcion {
+  width: 26px; height: 26px; border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, rgb(var(--pa)), rgb(var(--pb)) 60%, rgb(var(--pc)));
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.45), 0 2px 6px rgba(0,0,0,0.35);
+  transition: transform 0.2s cubic-bezier(.2,.9,.3,1.3), box-shadow 0.2s ease;
+}
+.mg-color-opcion:active { transform: scale(0.9); }
+.mg-color-opcion.activo { transform: scale(1.18); box-shadow: 0 0 0 2px rgba(15,19,40,0.9), 0 0 0 4px rgba(255,255,255,0.95), 0 4px 10px rgb(var(--pb) / 0.6); }
 .mg-postit-texto {
   position: absolute; inset: 0; margin: 0; display: block;
   width: 100%; height: 100%;
@@ -2455,8 +2511,8 @@ p.mg-postit-texto { overflow-y: auto; }
   position: absolute; left: 50%; top: 0; translate: -50% -55%; z-index: 1;
   display: grid; place-items: center; width: 13cqw; height: 13cqw;
   border-radius: 999px; color: #fff1f2;
-  background: radial-gradient(circle at 35% 30%, #fb7185, #e11d48 55%, #9f1239);
-  box-shadow: 0 6px 14px rgba(60,5,20,0.45), inset 0 1px 1px rgba(255,255,255,0.45), inset 0 -2px 3px rgba(80,0,20,0.5);
+  background: radial-gradient(circle at 35% 30%, rgb(var(--pa, 251 113 133)), rgb(var(--pb, 225 29 72)) 55%, rgb(var(--pc, 159 18 57)));
+  box-shadow: 0 6px 14px rgba(10,5,20,0.45), inset 0 1px 1px rgba(255,255,255,0.45), inset 0 -2px 3px rgb(var(--pc, 159 18 57) / 0.7);
   animation: mg-sello-pone 0.45s cubic-bezier(.2,.9,.3,1.3) both;
 }
 .mg-postit-sello > svg { width: 55%; height: 55%; filter: drop-shadow(0 1px 1px rgba(80,0,20,0.5)); }
@@ -2475,9 +2531,9 @@ p.mg-postit-texto { overflow-y: auto; }
 .mg-sello-opcion:active { transform: scale(0.9); }
 .mg-sello-opcion.activo {
   color: #fff;
-  background: radial-gradient(circle at 35% 30%, #fb7185, #e11d48 60%, #9f1239);
-  border-color: rgba(255,205,210,0.7);
-  box-shadow: 0 4px 12px rgba(225,29,72,0.5);
+  background: radial-gradient(circle at 35% 30%, rgb(var(--pa, 251 113 133)), rgb(var(--pb, 225 29 72)) 60%, rgb(var(--pc, 159 18 57)));
+  border-color: rgb(var(--pa, 251 113 133) / 0.7);
+  box-shadow: 0 4px 12px rgb(var(--pb, 225 29 72) / 0.5);
   transform: scale(1.08);
 }
 
