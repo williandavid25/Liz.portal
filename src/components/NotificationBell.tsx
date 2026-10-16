@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { AnimatePresence, motion } from "framer-motion";
 import { Bell } from "lucide-react";
 import { loadStoreShared, type SavedLetter } from "@/lib/cloud";
 import { enablePush } from "@/lib/push-client";
@@ -163,72 +162,65 @@ export function NotificationBell({
         )}
       </button>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.96 }}
-            transition={{ duration: 0.15 }}
-            className="absolute right-0 mt-2 w-[min(300px,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] max-h-[min(70vh,32rem)] overflow-y-auto glass rounded-2xl p-3 z-50 text-left"
-          >
-            <div className="flex items-center justify-between px-1 pb-2 mb-1 border-b border-black/5">
-              <p className="font-display text-sm text-popover-foreground/90">Cartas</p>
-              {unseen.length > 0 && (
-                <button
-                  onClick={markAllSeen}
-                  className="text-[11px] font-semibold text-primary hover:underline"
-                >
-                  Marcar vistas
-                </button>
-              )}
-            </div>
-
-            {recent.length === 0 ? (
-              <p className="text-xs text-popover-foreground/60 px-1 py-3 text-center">
-                Todavía no hay cartas guardadas.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-1">
-                {recent.map((l) => {
-                  const stamp = l.updatedAt ?? l.createdAt ?? 0;
-                  const isNew = stamp > lastSeen;
-                  return (
-                    <button
-                      key={l.id}
-                      onClick={() => openLetter(l)}
-                      className={`w-full text-left px-2.5 py-2 rounded-xl transition hover:bg-black/5 flex items-start gap-2 ${
-                        isNew ? "bg-primary/5" : ""
-                      }`}
-                    >
-                      {isNew && (
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                      )}
-                      <span className={`flex-1 min-w-0 ${isNew ? "" : "pl-3.5"}`}>
-                        <span className="block text-xs font-bold text-popover-foreground/90 truncate">
-                          {l.title || "Sin título"}
-                        </span>
-                        <span className="block text-[10px] text-popover-foreground/60">
-                          {stamp ? timeAgo(stamp) : l.date}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {notifPermission !== "granted" && typeof Notification !== "undefined" && (
+      {/* Animación en CSS: así framer-motion no viaja en todas las páginas. */}
+      {open && (
+        <div className="animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-150 absolute right-0 mt-2 w-[min(300px,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] max-h-[min(70vh,32rem)] overflow-y-auto glass rounded-2xl p-3 z-50 text-left">
+          <div className="flex items-center justify-between px-1 pb-2 mb-1 border-b border-black/5">
+            <p className="font-display text-sm text-popover-foreground/90">Cartas</p>
+            {unseen.length > 0 && (
               <button
-                onClick={askPush}
-                className="mt-2 w-full text-[10px] text-center text-popover-foreground/60 hover:text-popover-foreground py-1"
+                onClick={markAllSeen}
+                className="text-[11px] font-semibold text-primary hover:underline"
               >
-                Activar avisos en este celular
+                Marcar vistas
               </button>
             )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+
+          {recent.length === 0 ? (
+            <p className="text-xs text-popover-foreground/60 px-1 py-3 text-center">
+              Todavía no hay cartas guardadas.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {recent.map((l) => {
+                const stamp = l.updatedAt ?? l.createdAt ?? 0;
+                const isNew = stamp > lastSeen;
+                return (
+                  <button
+                    key={l.id}
+                    onClick={() => openLetter(l)}
+                    className={`w-full text-left px-2.5 py-2 rounded-xl transition hover:bg-black/5 flex items-start gap-2 ${
+                      isNew ? "bg-primary/5" : ""
+                    }`}
+                  >
+                    {isNew && (
+                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                    )}
+                    <span className={`flex-1 min-w-0 ${isNew ? "" : "pl-3.5"}`}>
+                      <span className="block text-xs font-bold text-popover-foreground/90 truncate">
+                        {l.title || "Sin título"}
+                      </span>
+                      <span className="block text-[10px] text-popover-foreground/60">
+                        {stamp ? timeAgo(stamp) : l.date}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {notifPermission !== "granted" && typeof Notification !== "undefined" && (
+            <button
+              onClick={askPush}
+              className="mt-2 w-full text-[10px] text-center text-popover-foreground/60 hover:text-popover-foreground py-1"
+            >
+              Activar avisos en este celular
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

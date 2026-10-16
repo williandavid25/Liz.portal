@@ -10,7 +10,6 @@ import {
 } from "@tanstack/react-router";
 import { lazy, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Menu, Settings, X, Volume2, VolumeX, Play, Pause, Check, Sparkles } from "lucide-react";
-import { upload } from "@vercel/blob/client";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -628,6 +627,8 @@ function AppShell() {
       // 2. Respaldo secundario: Vercel Blob
       if (!finalUrl) {
         const path = `musica/${Date.now()}-${Math.round(Math.random() * 1e9)}-${file.name}`;
+        // Solo se descarga si hace falta este respaldo (no pesa en cada página).
+        const { upload } = await import("@vercel/blob/client");
         const blob = await upload(path, file, {
           access: "public",
           handleUploadUrl: "/api/blob-upload",
