@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import { borrarNotas, enviarNota, listarNotas, type NotaEnviada, type NotaSnoopy } from "./cloud";
 import { getDeviceId } from "./dispositivo";
 import type { StickerEnNota } from "./stickers";
+import type { Trazo } from "./dibujo";
 
 // Notas de Snoopy en el navegador: una sola lista compartida por toda la app
 // (el menú muestra un puntito y la página de la mascota muestra el sobre), con
@@ -35,6 +36,7 @@ interface PorEnviar {
   emoji?: string;
   color?: string;
   stickers?: StickerEnNota[];
+  trazos?: Trazo[];
   createdAt: number;
   fallos: number;
 }
@@ -207,6 +209,7 @@ async function enviarCola() {
           emoji: item.emoji,
           color: item.color as never,
           stickers: item.stickers,
+          trazos: item.trazos,
         },
       }),
       LIMITE_ENVIO_MS,
@@ -338,9 +341,10 @@ export async function mandarNota(
   emoji?: string,
   color?: string,
   stickers?: StickerEnNota[],
+  trazos?: Trazo[],
 ): Promise<Resultado> {
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  cola = [...cola, { id, texto, emoji, color, stickers, createdAt: Date.now(), fallos: 0 }];
+  cola = [...cola, { id, texto, emoji, color, stickers, trazos, createdAt: Date.now(), fallos: 0 }];
   guardarCola();
   recalcularEnviadas();
   await procesarCola();

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { Dia } from "./learn/tipos";
 import { IDS_COLOR } from "./colores-nota";
+import { GROSOR_MAX, GROSOR_MIN, MAX_PUNTOS, MAX_TRAZOS, puntosDe, type Trazo } from "./dibujo";
 import {
   ANCHO_MAX,
   ANCHO_MIN,
@@ -474,6 +475,8 @@ export interface NotaSnoopy {
   color?: string;
   /** Stickers pegados en la nota (posición relativa al post-it). */
   stickers?: StickerEnNota[];
+  /** Firma o dibujo a mano (posición relativa a la cara del cuadro). */
+  trazos?: Trazo[];
   createdAt: number;
 }
 
@@ -500,6 +503,7 @@ export const enviarNota = createServerFn({ method: "POST" })
       emoji?: string;
       color?: string;
       stickers?: StickerEnNota[];
+      trazos?: Trazo[];
     }) =>
       z
         .object({
@@ -532,8 +536,25 @@ export const enviarNota = createServerFn({ method: "POST" })
             )
             .max(MAX_STICKERS_NOTA)
             .optional(),
+          trazos: z
+            .array(
+              z.object({
+                g: z.number().min(GROSOR_MIN).max(GROSOR_MAX),
+                p: z
+                  .array(z.number().int().min(0).max(1000))
+                  .min(2)
+                  .max(MAX_PUNTOS * 2)
+                  .refine((p) => p.length % 2 === 0),
+              }),
+            )
+            .max(MAX_TRAZOS)
+            .refine((t) => puntosDe(t) <= MAX_PUNTOS)
+            .optional(),
         })
-        .refine((n) => n.texto.length > 0 || (n.stickers?.length ?? 0) > 0, "Nota vacía")
+        .refine(
+          (n) => n.texto.length > 0 || (n.stickers?.length ?? 0) > 0 || (n.trazos?.length ?? 0) > 0,
+          "Nota vacía",
+        )
         .parse(input),
   )
   .handler(async ({ data }) => {
@@ -546,6 +567,7 @@ export const enviarNota = createServerFn({ method: "POST" })
         emoji: data.emoji,
         color: data.color,
         stickers: data.stickers,
+        trazos: data.trazos,
         createdAt: Date.now(),
       };
       await reintentar(() => insertNota(nota));

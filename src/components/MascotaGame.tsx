@@ -32,6 +32,9 @@ import {
   Sun,
   Trees,
   Trophy,
+  Type as IconoTexto,
+  Undo2,
+  Eraser,
   X,
   Zap,
   type LucideIcon,
@@ -70,6 +73,8 @@ import {
   useColeccionStickers,
 } from "@/components/StickersNota";
 import { MAX_STICKERS_NOTA, type StickerEnNota } from "@/lib/stickers";
+import { CapaDibujo } from "@/components/DibujoNota";
+import { GROSORES, type Trazo } from "@/lib/dibujo";
 import { leerLearn, resumenLearn, useLearn } from "@/lib/learn/progreso";
 import type { Premio } from "@/lib/learn/tipos";
 
@@ -373,6 +378,11 @@ export function MascotaGame({
   const [stickersNota, setStickersNota] = useState<StickerEnNota[]>([]);
   const [stickerElegido, setStickerElegido] = useState<number | null>(null);
   const [verStickers, setVerStickers] = useState(false);
+  // Lápiz para firmar o dibujar dentro de la nota.
+  const [dibujando, setDibujando] = useState(false);
+  const [grosor, setGrosor] = useState<number>(GROSORES[1].g);
+  const [trazosNota, setTrazosNota] = useState<Trazo[]>([]);
+  const textareaNota = useRef<HTMLTextAreaElement>(null);
   const coleccion = useColeccionStickers(escribiendo);
   // Panel tipo campanita de las notitas y el aviso flotante junto al botón.
   const [panelNotas, setPanelNotas] = useState(false);
@@ -1317,13 +1327,16 @@ export function MascotaGame({
   const enviarNotaSnoopy = () => {
     const texto = textoNota.current.trim();
     const pegados = stickersNota;
-    if (!texto && pegados.length === 0) return;
+    const trazos = trazosNota;
+    if (!texto && pegados.length === 0 && trazos.length === 0) return;
     textoNota.current = "";
     setHayTextoNota(false);
     setNotaLlena(false);
     setStickersNota([]);
     setStickerElegido(null);
     setVerStickers(false);
+    setTrazosNota([]);
+    setDibujando(false);
     setEscribiendo(false);
     if (dormido) setDormido(false);
     if (accion?.tipo !== "pasear") {
@@ -1342,7 +1355,7 @@ export function MascotaGame({
     decir("¡Allá voy con tu nota!", 2000);
     avisarNota("Enviando tu nota…", "envio", 12000);
     setEnviandoNota(true);
-    void mandarNota(texto, emojiNota, COLOR_NOTA, pegados)
+    void mandarNota(texto, emojiNota, COLOR_NOTA, pegados, trazos.length ? trazos : undefined)
       .catch(() => ({ ok: false, avisos: 0 }))
       .then((r) => {
         setEnviandoNota(false);
@@ -2152,6 +2165,7 @@ export function MascotaGame({
               })()}
               <div className="mg-postit-cara">
                 <textarea
+                  ref={textareaNota}
                   autoFocus
                   defaultValue={textoNota.current}
                   onChange={(e) => {
@@ -2177,6 +2191,12 @@ export function MascotaGame({
                   aria-label="Texto de la nota"
                   className="mg-postit-texto"
                 />
+                <CapaDibujo
+                  trazos={trazosNota}
+                  dibujando={dibujando}
+                  grosor={grosor}
+                  onTrazo={(t) => setTrazosNota((l) => [...l, t])}
+                />
               </div>
               <CapaStickers
                 stickers={stickersNota}
@@ -2186,23 +2206,94 @@ export function MascotaGame({
                 onCambio={setStickersNota}
               />
             </div>
-            <button
-              type="button"
-              onClick={() => setVerStickers((v) => !v)}
-              aria-expanded={verStickers}
-              className={`mx-auto flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
-                verStickers
-                  ? "bg-white/20 text-white"
-                  : "bg-white/10 text-white/80 hover:bg-white/15"
-              }`}
-            >
-              <IconoSticker size={15} />
-              {verStickers
-                ? "Ocultar stickers"
-                : stickersNota.length > 0
-                  ? `Stickers (${stickersNota.length})`
-                  : "Agregar stickers"}
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const d = !dibujando;
+                  setDibujando(d);
+                  setStickerElegido(null);
+                  if (d) textareaNota.current?.blur();
+                  else textareaNota.current?.focus();
+                }}
+                aria-pressed={dibujando}
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
+                  dibujando
+                    ? "bg-white/20 text-white"
+                    : "bg-white/10 text-white/80 hover:bg-white/15"
+                }`}
+              >
+                {dibujando ? <IconoTexto size={15} /> : <Pencil size={15} />}
+                {dibujando ? "Volver a escribir" : "Dibujar o firmar"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setVerStickers((v) => !v)}
+                aria-expanded={verStickers}
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
+                  verStickers
+                    ? "bg-white/20 text-white"
+                    : "bg-white/10 text-white/80 hover:bg-white/15"
+                }`}
+              >
+                <IconoSticker size={15} />
+                {verStickers
+                  ? "Ocultar stickers"
+                  : stickersNota.length > 0
+                    ? `Stickers (${stickersNota.length})`
+                    : "Agregar stickers"}
+              </button>
+            </div>
+            {dibujando && (
+              <div className="flex items-center justify-center gap-1.5">
+                <div className="flex gap-1" role="radiogroup" aria-label="Grosor del lápiz">
+                  {GROSORES.map(({ g, nombre: nombreGrosor }) => (
+                    <button
+                      key={g}
+                      type="button"
+                      role="radio"
+                      aria-checked={grosor === g}
+                      aria-label={`Grosor: ${nombreGrosor}`}
+                      title={nombreGrosor}
+                      onClick={() => setGrosor(g)}
+                      className={`grid h-9 w-9 place-items-center rounded-full transition ${
+                        grosor === g
+                          ? "bg-white/25 ring-2 ring-white"
+                          : "bg-white/10 hover:bg-white/15"
+                      }`}
+                    >
+                      <span
+                        className="block rounded-full bg-white"
+                        style={{
+                          width: Math.round(3 + g * 0.55),
+                          height: Math.round(3 + g * 0.55),
+                        }}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTrazosNota((t) => t.slice(0, -1))}
+                  disabled={trazosNota.length === 0}
+                  aria-label="Deshacer el último trazo"
+                  title="Deshacer"
+                  className="grid h-9 w-9 place-items-center rounded-full bg-white/10 transition hover:bg-white/15 disabled:opacity-40"
+                >
+                  <Undo2 size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTrazosNota([])}
+                  disabled={trazosNota.length === 0}
+                  aria-label="Borrar todo el dibujo"
+                  title="Borrar dibujo"
+                  className="grid h-9 w-9 place-items-center rounded-full bg-white/10 transition hover:bg-white/15 disabled:opacity-40"
+                >
+                  <Eraser size={16} />
+                </button>
+              </div>
+            )}
             {verStickers && (
               <ColeccionStickers
                 stickers={coleccion.stickers}
@@ -2259,7 +2350,7 @@ export function MascotaGame({
             </div>
             <button
               type="submit"
-              disabled={!hayTextoNota && stickersNota.length === 0}
+              disabled={!hayTextoNota && stickersNota.length === 0 && trazosNota.length === 0}
               className="flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-pink-400 to-rose-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:brightness-110 disabled:opacity-45"
             >
               <Send size={16} />
@@ -2296,6 +2387,7 @@ export function MascotaGame({
               })()}
               <div className="mg-postit-cara">
                 <p className="mg-postit-texto">{notaAbierta.texto}</p>
+                {notaAbierta.trazos?.length ? <CapaDibujo trazos={notaAbierta.trazos} /> : null}
               </div>
               {notaAbierta.stickers?.length ? (
                 <CapaStickers stickers={notaAbierta.stickers} />
