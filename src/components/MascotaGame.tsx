@@ -57,8 +57,8 @@ import {
   useNotasRecibidas,
 } from "@/lib/notas-client";
 import { NOTA_MAX, guardarEstadoMascota, type NotaEnviada, type NotaSnoopy } from "@/lib/cloud";
+import type { ColorNota } from "@/lib/colores-nota";
 import { getDeviceId } from "@/lib/dispositivo";
-import { COLORES_NOTA, colorValido, estiloColorNota, type ColorNota } from "@/lib/colores-nota";
 import { SNOOPY_CSS, SnoopyVivo, imgPose, type Pose } from "@/components/SnoopyVivo";
 import { WeatherPanel } from "@/components/WeatherPanel";
 import { RespaldoNube } from "@/components/RespaldoNube";
@@ -268,6 +268,9 @@ const ANIM_CLASE: Record<Anim, string> = {
 
 type AvisoTono = "envio" | "ok" | "leida" | "llega" | "error";
 
+// Todas las notas usan el cuadro de galaxia; el color se guarda solo por compatibilidad.
+const COLOR_NOTA: ColorNota = "verde";
+
 /** Estado de una nota enviada, en palabras y con su color. */
 function estadoEnviada(n: NotaEnviada): { texto: string; clase: string } {
   if (n.pendiente === "error")
@@ -359,24 +362,11 @@ export function MascotaGame({
   const enviadas = useNotasEnviadas();
   const [notaAbierta, setNotaAbierta] = useState<NotaSnoopy | null>(null);
   const [escribiendo, setEscribiendo] = useState(false);
-  const [textoNota, setTextoNota] = useState("");
+  // El texto vive en el cuadro (no en el estado): escribir no vuelve a dibujar
+  // todo el juego en cada letra, así fluye rápido en cualquier celular.
+  const textoNota = useRef("");
+  const [hayTextoNota, setHayTextoNota] = useState(false);
   const [emojiNota, setEmojiNota] = useState<string>(SELLO_INICIAL);
-  // Color del post-it: se recuerda el último que eligió.
-  const [colorNota, setColorNota] = useState<ColorNota>(() => {
-    try {
-      return colorValido(localStorage.getItem("liz-nota-color"));
-    } catch {
-      return colorValido(null);
-    }
-  });
-  const elegirColor = (c: ColorNota) => {
-    setColorNota(c);
-    try {
-      localStorage.setItem("liz-nota-color", c);
-    } catch {
-      /* ignorar */
-    }
-  };
   const [enviandoNota, setEnviandoNota] = useState(false);
   const [notaLlena, setNotaLlena] = useState(false);
   // Stickers pegados en la nota que se está escribiendo.
@@ -1068,6 +1058,14 @@ export function MascotaGame({
 
   /* ---------------- Notas de Snoopy (de un celular al otro) ---------------- */
 
+  // El cuadro de galaxia pesa ~2,7 MB: se baja con calma apenas carga el juego
+  // para que la nota aparezca completa al abrirla.
+  useEffect(() => {
+    if (!listo) return;
+    const img = new Image();
+    img.src = "/notas/nota-galaxia-v1.webp";
+  }, [listo]);
+
   // Quien envía se entera cuando la nota llegó al otro celular. Una vez visto
   // el aviso, la nota sale de su lista: solo sigue esperando en la nube.
   const estadoEnviadas = useRef<Map<string, "enviada" | "entregada"> | null>(null);
@@ -1317,10 +1315,11 @@ export function MascotaGame({
   // Quien escribe no espera: el panel se cierra al instante, Snoopy sale con
   // la nota y el envío sigue en segundo plano (con reintentos si no hay red).
   const enviarNotaSnoopy = () => {
-    const texto = textoNota.trim();
+    const texto = textoNota.current.trim();
     const pegados = stickersNota;
     if (!texto && pegados.length === 0) return;
-    setTextoNota("");
+    textoNota.current = "";
+    setHayTextoNota(false);
     setNotaLlena(false);
     setStickersNota([]);
     setStickerElegido(null);
@@ -1343,7 +1342,7 @@ export function MascotaGame({
     decir("¡Allá voy con tu nota!", 2000);
     avisarNota("Enviando tu nota…", "envio", 12000);
     setEnviandoNota(true);
-    void mandarNota(texto, emojiNota, colorNota, pegados)
+    void mandarNota(texto, emojiNota, COLOR_NOTA, pegados)
       .catch(() => ({ ok: false, avisos: 0 }))
       .then((r) => {
         setEnviandoNota(false);
@@ -2141,13 +2140,8 @@ export function MascotaGame({
               Le llega un aviso al otro celular. Es temporal: cuando la lea y la cierre, se borra
               para siempre.
             </p>
-            {/* Post-it del color elegido: solo se escribe lo que cabe en el cuadro. */}
-            <div
-              key={colorNota}
-              className="mg-postit mg-postit-tinte mx-auto"
-              style={estiloColorNota(colorNota)}
-              onPointerDown={() => setStickerElegido(null)}
-            >
+            {/* Cuadro de galaxia: solo se escribe lo que cabe en el cuadro. */}
+            <div className="mg-postit mx-auto" onPointerDown={() => setStickerElegido(null)}>
               {(() => {
                 const S = sello(emojiNota).Icono;
                 return (
@@ -2156,26 +2150,34 @@ export function MascotaGame({
                   </span>
                 );
               })()}
-              <textarea
-                autoFocus
-                value={textoNota}
-                onChange={(e) => {
-                  const el = e.target;
-                  const valor = el.value.slice(0, NOTA_MAX);
-                  // Si el texto nuevo ya no cabe en el cuadro, no se acepta.
-                  if (valor.length > textoNota.length && el.scrollHeight > el.clientHeight + 1) {
-                    el.value = textoNota;
-                    setNotaLlena(true);
-                    return;
-                  }
-                  setNotaLlena(false);
-                  setTextoNota(valor);
-                }}
-                maxLength={NOTA_MAX}
-                placeholder="Escribe algo bonito…"
-                aria-label="Texto de la nota"
-                className="mg-postit-texto"
-              />
+              <div className="mg-postit-cara">
+                <textarea
+                  autoFocus
+                  defaultValue={textoNota.current}
+                  onChange={(e) => {
+                    const el = e.target;
+                    const valor = el.value.slice(0, NOTA_MAX);
+                    // Si el texto nuevo ya no cabe en el cuadro, no se acepta.
+                    if (
+                      valor.length > textoNota.current.length &&
+                      el.scrollHeight > el.clientHeight + 1
+                    ) {
+                      el.value = textoNota.current;
+                      if (!notaLlena) setNotaLlena(true);
+                      return;
+                    }
+                    if (el.value !== valor) el.value = valor;
+                    textoNota.current = valor;
+                    if (notaLlena) setNotaLlena(false);
+                    const hay = valor.trim().length > 0;
+                    if (hay !== hayTextoNota) setHayTextoNota(hay);
+                  }}
+                  maxLength={NOTA_MAX}
+                  placeholder="Escribe algo bonito…"
+                  aria-label="Texto de la nota"
+                  className="mg-postit-texto"
+                />
+              </div>
               <CapaStickers
                 stickers={stickersNota}
                 editable
@@ -2222,34 +2224,11 @@ export function MascotaGame({
                 }}
               />
             )}
-            <div
-              className="flex flex-wrap items-center justify-center gap-1.5"
-              role="radiogroup"
-              aria-label="Color de la nota"
-            >
-              {(Object.keys(COLORES_NOTA) as ColorNota[]).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  role="radio"
-                  aria-checked={colorNota === c}
-                  aria-label={`Color: ${COLORES_NOTA[c].nombre}`}
-                  title={COLORES_NOTA[c].nombre}
-                  onClick={() => {
-                    elegirColor(c);
-                    sonar("caricia");
-                  }}
-                  className={`mg-color-opcion ${colorNota === c ? "activo" : ""}`}
-                  style={estiloColorNota(c)}
-                />
-              ))}
-            </div>
             <div className="flex items-center justify-between gap-2">
               <div
                 className="flex gap-0.5 sm:gap-1"
                 role="radiogroup"
                 aria-label="Sello de la nota"
-                style={estiloColorNota(colorNota)}
               >
                 {Object.entries(SELLOS).map(([id, { nombre: nombreSello, Icono }]) => (
                   <button
@@ -2280,7 +2259,7 @@ export function MascotaGame({
             </div>
             <button
               type="submit"
-              disabled={!textoNota.trim() && stickersNota.length === 0}
+              disabled={!hayTextoNota && stickersNota.length === 0}
               className="flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-pink-400 to-rose-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:brightness-110 disabled:opacity-45"
             >
               <Send size={16} />
@@ -2306,7 +2285,7 @@ export function MascotaGame({
             <p className="mb-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-white/80">
               {nombre} te trajo esta nota
             </p>
-            <div className="mg-postit mx-auto" style={estiloColorNota(notaAbierta.color)}>
+            <div className="mg-postit mx-auto">
               {(() => {
                 const S = sello(notaAbierta.emoji).Icono;
                 return (
@@ -2315,7 +2294,9 @@ export function MascotaGame({
                   </span>
                 );
               })()}
-              <p className="mg-postit-texto">{notaAbierta.texto}</p>
+              <div className="mg-postit-cara">
+                <p className="mg-postit-texto">{notaAbierta.texto}</p>
+              </div>
               {notaAbierta.stickers?.length ? (
                 <CapaStickers stickers={notaAbierta.stickers} />
               ) : null}
@@ -2587,62 +2568,45 @@ const CSS = `
 .mg-nota-flota { animation: mg-nota-flota 3.2s cubic-bezier(.45,.05,.55,.95) 0.6s infinite; }
 .mg-sobre-vuela { translate: -50% 0; animation: mg-sobre-vuela 1.6s cubic-bezier(.5,0,.75,0) both; }
 .mg-nota-abre { animation: mg-nota-abre 0.5s cubic-bezier(.22,1,.36,1) both; }
-/* Post-it rojo translúcido, como vidrio teñido. Todo se mide en cqw (ancho del
-   cuadro): la letra y el margen (~0,5 cm) quedan iguales en cualquier celular,
-   así lo que cupo al escribir cabe exacto al leer. */
+/* Cuadro de galaxia (imagen ya inclinada, sin fondo). El texto va en la "cara"
+   del cuadro, girado igual que la imagen. Todo se mide en cqw (ancho de la
+   cara): la letra y el margen quedan iguales en cualquier celular, así lo que
+   cupo al escribir cabe exacto al leer. */
 .mg-postit {
   position: relative;
-  container-type: inline-size;
   width: min(78vw, 300px);
-  aspect-ratio: 1;
-  border-radius: 3px;
-  background:
-    linear-gradient(to bottom, rgba(255,228,230,0.22) 0 12.5%, rgba(255,228,230,0) 13.5%),
-    radial-gradient(120% 90% at 18% 0%, rgba(255,255,255,0.16), rgba(255,255,255,0) 55%),
-    linear-gradient(155deg, rgb(var(--pa, 251 113 133) / 0.62), rgb(var(--pb, 225 29 72) / 0.52) 62%, rgb(var(--pc, 159 18 57) / 0.6));
-  -webkit-backdrop-filter: blur(12px) saturate(1.3);
-  backdrop-filter: blur(12px) saturate(1.3);
-  border: 1px solid rgb(var(--pa, 251 113 133) / 0.45);
-  box-shadow:
-    0 24px 36px -16px rgba(10,5,20,0.8),
-    0 2px 6px rgba(10,5,20,0.3),
-    inset 0 1px 0 rgba(255,255,255,0.35),
-    inset 0 -18px 30px -18px rgb(var(--pc, 159 18 57) / 0.6);
-  rotate: -1.2deg;
-  transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+  aspect-ratio: 1562 / 1610;
+  background: url("/notas/nota-galaxia-v1.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 18px 22px rgba(0,0,0,0.55));
 }
-/* Al cambiar de color, el post-it "se renueva" con un leve rebote. */
-.mg-postit-tinte { animation: mg-postit-tinte 0.4s cubic-bezier(.2,.9,.3,1.3) both; }
-@keyframes mg-postit-tinte { 0% { transform: scale(0.97); filter: brightness(1.25); } 100% { transform: none; filter: none; } }
-.mg-color-opcion {
-  width: 26px; height: 26px; border-radius: 999px;
-  background: radial-gradient(circle at 35% 30%, rgb(var(--pa)), rgb(var(--pb)) 60%, rgb(var(--pc)));
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.45), 0 2px 6px rgba(0,0,0,0.35);
-  transition: transform 0.2s cubic-bezier(.2,.9,.3,1.3), box-shadow 0.2s ease;
+.mg-postit-cara {
+  position: absolute; left: 50%; top: 49.4%;
+  width: 86%; aspect-ratio: 1;
+  translate: -50% -50%; rotate: -3.5deg;
+  container-type: inline-size;
 }
-.mg-color-opcion:active { transform: scale(0.9); }
-.mg-color-opcion.activo { transform: scale(1.18); box-shadow: 0 0 0 2px rgba(15,19,40,0.9), 0 0 0 4px rgba(255,255,255,0.95), 0 4px 10px rgb(var(--pb) / 0.6); }
 .mg-postit-texto {
   position: absolute; inset: 0; margin: 0; display: block;
   width: 100%; height: 100%;
-  padding: 7.5cqw 6.5cqw 6.5cqw;
+  padding: 10cqw 8cqw 7cqw;
   font-family: "Patrick Hand", cursive;
-  font-size: 7cqw; line-height: 1.38;
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(40,10,80,0.5);
+  font-size: 7.5cqw; line-height: 1.38;
+  color: #0a0a0a;
+  /* Halo claro detrás de cada letra: el negro se lee sobre el verde oscuro. */
+  text-shadow: 0 0 3px rgba(220,255,240,0.9), 0 0 8px rgba(200,255,235,0.55);
   background: transparent; border: 0; outline: none; resize: none;
   overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere;
-  caret-color: #fbcfe8;
+  caret-color: #0a0a0a;
 }
-.mg-postit-texto::placeholder { color: rgba(255,255,255,0.6); }
+.mg-postit-texto::placeholder { color: rgba(10,10,10,0.6); }
 p.mg-postit-texto { overflow-y: auto; }
-/* Sello de cera rojo con el ícono elegido. */
+/* Sello de cera esmeralda con el ícono elegido. */
 .mg-postit-sello {
   position: absolute; left: 50%; top: 0; translate: -50% -55%; z-index: 1;
   display: grid; place-items: center; width: 13cqw; height: 13cqw;
   border-radius: 999px; color: #fff1f2;
-  background: radial-gradient(circle at 35% 30%, rgb(var(--pa, 251 113 133)), rgb(var(--pb, 225 29 72)) 55%, rgb(var(--pc, 159 18 57)));
-  box-shadow: 0 6px 14px rgba(10,5,20,0.45), inset 0 1px 1px rgba(255,255,255,0.45), inset 0 -2px 3px rgb(var(--pc, 159 18 57) / 0.7);
+  background: radial-gradient(circle at 35% 30%, rgb(var(--pa, 110 231 183)), rgb(var(--pb, 5 150 105)) 55%, rgb(var(--pc, 6 78 59)));
+  box-shadow: 0 6px 14px rgba(10,5,20,0.45), inset 0 1px 1px rgba(255,255,255,0.45), inset 0 -2px 3px rgb(var(--pc, 6 78 59) / 0.7);
   animation: mg-sello-pone 0.45s cubic-bezier(.2,.9,.3,1.3) both;
 }
 .mg-postit-sello > svg { width: 55%; height: 55%; filter: drop-shadow(0 1px 1px rgba(80,0,20,0.5)); }
@@ -2661,9 +2625,9 @@ p.mg-postit-texto { overflow-y: auto; }
 .mg-sello-opcion:active { transform: scale(0.9); }
 .mg-sello-opcion.activo {
   color: #fff;
-  background: radial-gradient(circle at 35% 30%, rgb(var(--pa, 251 113 133)), rgb(var(--pb, 225 29 72)) 60%, rgb(var(--pc, 159 18 57)));
-  border-color: rgb(var(--pa, 251 113 133) / 0.7);
-  box-shadow: 0 4px 12px rgb(var(--pb, 225 29 72) / 0.5);
+  background: radial-gradient(circle at 35% 30%, rgb(var(--pa, 110 231 183)), rgb(var(--pb, 5 150 105)) 60%, rgb(var(--pc, 6 78 59)));
+  border-color: rgb(var(--pa, 110 231 183) / 0.7);
+  box-shadow: 0 4px 12px rgb(var(--pb, 5 150 105) / 0.5);
   transform: scale(1.08);
 }
 

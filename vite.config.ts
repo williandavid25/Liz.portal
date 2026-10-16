@@ -11,9 +11,10 @@ export default defineConfig({
     preset: "vercel",
     // Generar una semana de lecciones con Claude puede tardar más de un minuto.
     vercel: { functionRules: { "/api/learn-generar": { maxDuration: 300 } } },
-    // Los fondos llevan versión en el nombre: se guardan en el celular por un año.
+    // Los fondos (y el cuadro de las notas) llevan versión en el nombre: se guardan en el celular por un año.
     routeRules: {
       "/learn/fondos/**": { headers: { "cache-control": "public, max-age=31536000, immutable" } },
+      "/notas/**": { headers: { "cache-control": "public, max-age=31536000, immutable" } },
     },
     // La configuración de Lovable no declara "vercel", pero Nitro sí la usa.
   } as { preset: string },
