@@ -2666,6 +2666,7 @@ const CSS = `
    cupo al escribir cabe exacto al leer. */
 .mg-postit {
   position: relative;
+  container-type: inline-size;
   width: min(78vw, 300px);
   aspect-ratio: 1562 / 1610;
   background: url("/notas/nota-galaxia-v1.webp") center / 100% 100% no-repeat;
@@ -2694,8 +2695,9 @@ const CSS = `
 p.mg-postit-texto { overflow-y: auto; }
 /* Sello de cera esmeralda con el ícono elegido. */
 .mg-postit-sello {
-  position: absolute; left: 50%; top: 0; translate: -50% -55%; z-index: 1;
-  display: grid; place-items: center; width: 13cqw; height: 13cqw;
+  /* Sobre el borde de arriba del cuadro (que está inclinado). */
+  position: absolute; left: 50%; top: 2.6%; translate: -50% -50%; rotate: -3.5deg; z-index: 3;
+  display: grid; place-items: center; width: 10cqw; height: 10cqw;
   border-radius: 999px; color: #fff1f2;
   background: radial-gradient(circle at 35% 30%, rgb(var(--pa, 110 231 183)), rgb(var(--pb, 5 150 105)) 55%, rgb(var(--pc, 6 78 59)));
   box-shadow: 0 6px 14px rgba(10,5,20,0.45), inset 0 1px 1px rgba(255,255,255,0.45), inset 0 -2px 3px rgb(var(--pc, 6 78 59) / 0.7);
