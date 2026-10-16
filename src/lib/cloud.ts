@@ -303,6 +303,50 @@ export const savePushSubscription = createServerFn({ method: "POST" })
 
 /* ---------------- Snoopy Learn: módulos en la nube ---------------- */
 
+/* ---------------- Respaldo de cada celular (Snoopy y Learn) ---------------- */
+
+const duenoSchema = z.enum(["liz", "david"]);
+const datosRespaldoSchema = z
+  .record(z.string().max(60), z.string().max(300_000))
+  .refine((d) => Object.keys(d).length <= 10, "Demasiadas claves");
+
+/** Lee el respaldo de una persona (null si todavía no hay). */
+export const leerRespaldoFn = createServerFn({ method: "GET" })
+  .validator((dueno: "liz" | "david") => duenoSchema.parse(dueno))
+  .handler(async ({ data }) => {
+    try {
+      const { leerRespaldo } = await import("./respaldos.server");
+      const { reintentar } = await import("./cloud.server");
+      return { ok: true, respaldo: await reintentar(() => leerRespaldo(data)) };
+    } catch (e) {
+      console.error("No se pudo leer el respaldo:", e);
+      return { ok: false, respaldo: null };
+    }
+  });
+
+export const guardarRespaldoFn = createServerFn({ method: "POST" })
+  .validator(
+    (input: { dueno: "liz" | "david"; datos: Record<string, string>; actualizado: number }) =>
+      z
+        .object({
+          dueno: duenoSchema,
+          datos: datosRespaldoSchema,
+          actualizado: z.number().int().min(0),
+        })
+        .parse(input),
+  )
+  .handler(async ({ data }) => {
+    try {
+      const { guardarRespaldo } = await import("./respaldos.server");
+      const { reintentar } = await import("./cloud.server");
+      await reintentar(() => guardarRespaldo(data.dueno, data.datos, data.actualizado));
+      return { ok: true };
+    } catch (e) {
+      console.error("No se pudo guardar el respaldo:", e);
+      return { ok: false };
+    }
+  });
+
 const trackSchema = z.enum(["english", "laboratory"]);
 
 /** Días publicados en la nube para una materia (se suman a los de la app). */

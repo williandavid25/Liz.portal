@@ -61,6 +61,7 @@ import { getDeviceId } from "@/lib/dispositivo";
 import { COLORES_NOTA, colorValido, estiloColorNota, type ColorNota } from "@/lib/colores-nota";
 import { SNOOPY_CSS, SnoopyVivo, imgPose, type Pose } from "@/components/SnoopyVivo";
 import { WeatherPanel } from "@/components/WeatherPanel";
+import { RespaldoNube } from "@/components/RespaldoNube";
 import {
   CapaStickers,
   ColeccionStickers,
@@ -1493,6 +1494,7 @@ export function MascotaGame({
     >
       <style>{CSS + SNOOPY_CSS + EFECTOS_CSS + STICKERS_CSS}</style>
       <EfectosDefs />
+      <RespaldoNube />
       {/* Columna derecha: el clima y, justo debajo, el botón de notas. */}
       <div
         className={`mg-contenido absolute right-4 top-[calc(env(safe-area-inset-top)+260px)] z-10 flex flex-col items-end gap-3 sm:right-6 sm:top-[calc(env(safe-area-inset-top)+286px)] ${
