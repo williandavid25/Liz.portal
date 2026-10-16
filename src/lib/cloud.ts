@@ -367,7 +367,7 @@ export const modulosLearn = createServerFn({ method: "GET" })
 export const pendientesLearn = createServerFn({ method: "GET" }).handler(async () => {
   try {
     const { modulosPendientes, generadorActivo } = await import("./learn.server");
-    return { ok: true, activo: generadorActivo(), modulos: await modulosPendientes() };
+    return { ok: true, activo: await generadorActivo(), modulos: await modulosPendientes() };
   } catch (e) {
     console.error("No se pudieron leer los módulos pendientes:", e);
     return { ok: false, activo: false, modulos: [] };
@@ -387,6 +387,19 @@ export const revisarModuloLearn = createServerFn({ method: "POST" })
     } catch (e) {
       console.error("No se pudo revisar el módulo:", e);
       return { ok: false };
+    }
+  });
+
+/** Guarda la clave gratis de Google Gemini para que la IA escriba lecciones. */
+export const claveIaLearn = createServerFn({ method: "POST" })
+  .validator((clave: string) => z.string().trim().min(20).max(200).parse(clave))
+  .handler(async ({ data }) => {
+    try {
+      const { guardarClaveGemini } = await import("./learn.server");
+      return await guardarClaveGemini(data);
+    } catch (e) {
+      console.error("No se pudo guardar la clave de la IA:", e);
+      return { ok: false, detalle: "No se pudo guardar" };
     }
   });
 

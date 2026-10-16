@@ -1,7 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { z } from "zod/v4";
 import { db } from "./cloud.server";
-import { ModuloZ, armarModulo, fase } from "./learn/armar";
+import { ModuloZ, armarModulo, fase, type ModuloGenerado } from "./learn/armar";
 import type { ContenidoTrack, Dia, DiaLeccion, Track } from "./learn/tipos";
 import english from "../content/learn/english.json";
 import englishM2 from "../content/learn/english-m2.json";
@@ -13,6 +14,8 @@ import laboratoryM2 from "../content/learn/laboratory-m2.json";
 //   días por delante, Claude escribe una semana nueva (6 lecciones + test).
 //   Pasa la misma revisión automática que el contenido escrito a mano y queda
 //   PENDIENTE hasta que alguien la aprueba dentro de la app.
+// - La IA puede ser Google Gemini (clave gratis que se pega dentro de la app y
+//   se guarda en la base) o Claude (ANTHROPIC_API_KEY en Vercel).
 // - Los módulos escritos a mano (opción A) viajan dentro de la app.
 
 const MODULOS_APP: Record<Track, ContenidoTrack[]> = {
@@ -21,6 +24,7 @@ const MODULOS_APP: Record<Track, ContenidoTrack[]> = {
 };
 const DIAS_POR_DELANTE = 7;
 const MODELO = "claude-opus-5-5";
+const MODELO_GEMINI = "gemini-2.5-flash";
 
 let tablaLista = false;
 async function asegurarTabla() {
@@ -92,7 +96,26 @@ export async function revisarModulo(id: string, accion: "aprobar" | "descartar")
   return rows.length > 0;
 }
 
-export const generadorActivo = () => !!process.env.ANTHROPIC_API_KEY;
+async function claveGemini(): Promise<string | null> {
+  if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY;
+  const { getConfig } = await import("./avisos.server");
+  return getConfig("gemini_api_key");
+}
+
+export const generadorActivo = async () =>
+  !!process.env.ANTHROPIC_API_KEY || !!(await claveGemini());
+
+/** Revisa la clave de Gemini con Google y, si sirve, la guarda en la base. */
+export async function guardarClaveGemini(clave: string): Promise<{ ok: boolean; detalle: string }> {
+  const r = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODELO_GEMINI}`,
+    { headers: { "x-goog-api-key": clave } },
+  );
+  if (!r.ok) return { ok: false, detalle: "Google no aceptó esa clave" };
+  const { setConfig } = await import("./avisos.server");
+  await setConfig("gemini_api_key", clave);
+  return { ok: true, detalle: "Clave guardada" };
+}
 
 /* ---------------- Generación con Claude ---------------- */
 
@@ -122,7 +145,9 @@ const REGLAS = `Reglas de formato (obligatorias, la app las revisa):
 
 /** Escribe una semana nueva con Claude y la deja pendiente de aprobación. */
 export async function generarModulo(track: Track): Promise<{ ok: boolean; detalle: string }> {
-  if (!generadorActivo()) return { ok: false, detalle: "Falta ANTHROPIC_API_KEY" };
+  const gemini = await claveGemini();
+  if (!gemini && !process.env.ANTHROPIC_API_KEY)
+    return { ok: false, detalle: "Falta la clave de la IA" };
   await asegurarTabla();
 
   const existentes = await todosLosDias(track);
@@ -132,21 +157,7 @@ export async function generarModulo(track: Track): Promise<{ ok: boolean; detall
   const ejemplo = existentes.find((d): d is DiaLeccion => d.day_type === "lesson");
   const { phase, phase_name } = fase(desde);
 
-  const client = new Anthropic();
-  // Si el modelo rechaza la solicitud, el servidor reintenta solo en otro
-  // modelo (respaldo automático, fallbacks "default").
-  const respuesta = await client.beta.messages.parse({
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    model: MODELO,
-    max_tokens: 16000,
-    output_config: { effort: "high", format: zodOutputFormat(ModuloZ) },
-    system:
-      "Eres una profesora experta que escribe lecciones cortas para Snoopy Learn, una app de micro-lecciones (una pregunta por pantalla). Escribes contenido correcto, claro y motivador.",
-    messages: [
-      {
-        role: "user",
-        content: `${GUIA[track]}
+  const pedido = `${GUIA[track]}
 
 Escribe la semana que va del día ${desde} al ${desde + 5} (fase ${phase}: ${phase_name}). El día ${desde + 6} será un test automático con estas lecciones.
 
@@ -156,16 +167,11 @@ Títulos que ya existen (no los repitas):
 ${titulos}
 
 Ejemplo de una lección existente, como referencia de estilo y nivel:
-${JSON.stringify(ejemplo ?? {}, null, 1)}`,
-      },
-    ],
-  });
+${JSON.stringify(ejemplo ?? {}, null, 1)}`;
 
-  if (respuesta.stop_reason === "refusal")
-    return { ok: false, detalle: "El modelo rechazó la solicitud" };
-  const salida = respuesta.parsed_output;
-  if (!salida)
-    return { ok: false, detalle: `Respuesta sin JSON válido (${respuesta.stop_reason})` };
+  const r = gemini ? await pedirAGemini(gemini, pedido) : await pedirAClaude(pedido);
+  if (!r.salida) return { ok: false, detalle: r.detalle };
+  const salida = r.salida;
 
   const { dias, problemas } = armarModulo(track, desde, salida);
   if (problemas.length > 0) {
@@ -182,6 +188,76 @@ ${JSON.stringify(ejemplo ?? {}, null, 1)}`,
   return { ok: true, detalle: `Módulo ${id} (días ${desde}-${desde + 6}) listo para revisar` };
 }
 
+const SISTEMA =
+  "Eres una profesora experta que escribe lecciones cortas para Snoopy Learn, una app de micro-lecciones (una pregunta por pantalla). Escribes contenido correcto, claro y motivador.";
+
+type Respuesta = { salida: ModuloGenerado | null; detalle: string };
+
+async function pedirAClaude(pedido: string): Promise<Respuesta> {
+  const client = new Anthropic();
+  // Si el modelo rechaza la solicitud, el servidor reintenta solo en otro
+  // modelo (respaldo automático, fallbacks "default").
+  const respuesta = await client.beta.messages.parse({
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    model: MODELO,
+    max_tokens: 16000,
+    output_config: { effort: "high", format: zodOutputFormat(ModuloZ) },
+    system: SISTEMA,
+    messages: [{ role: "user", content: pedido }],
+  });
+  if (respuesta.stop_reason === "refusal")
+    return { salida: null, detalle: "El modelo rechazó la solicitud" };
+  return {
+    salida: respuesta.parsed_output ?? null,
+    detalle: `Respuesta sin JSON válido (${respuesta.stop_reason})`,
+  };
+}
+
+async function pedirAGemini(clave: string, pedido: string): Promise<Respuesta> {
+  const esquema = JSON.stringify(z.toJSONSchema(ModuloZ));
+  const r = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODELO_GEMINI}:generateContent`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": clave },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SISTEMA }] },
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `${pedido}
+
+Responde SOLO con un objeto JSON que cumpla este JSON Schema:
+${esquema}`,
+              },
+            ],
+          },
+        ],
+        generationConfig: { responseMimeType: "application/json", maxOutputTokens: 32000 },
+      }),
+    },
+  );
+  if (!r.ok) return { salida: null, detalle: `Gemini respondió ${r.status}` };
+  const json = (await r.json()) as {
+    candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
+  };
+  const candidato = json.candidates?.[0];
+  const texto = candidato?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+  try {
+    const leido = ModuloZ.safeParse(JSON.parse(texto));
+    if (leido.success) return { salida: leido.data, detalle: "" };
+  } catch {
+    // cae al mensaje de abajo
+  }
+  return {
+    salida: null,
+    detalle: `Respuesta sin JSON válido (${candidato?.finishReason ?? "sin respuesta"})`,
+  };
+}
+
 async function todosLosDias(track: Track): Promise<Dia[]> {
   const app = MODULOS_APP[track].flatMap((m) => m.days);
   const rows = await db()`select dias from learn_modulos where track = ${track}`;
@@ -196,7 +272,7 @@ async function todosLosDias(track: Track): Promise<Dia[]> {
  * delante en una materia y no hay nada esperando aprobación, genera una semana.
  */
 export async function generarSiHaceFalta(): Promise<string[]> {
-  if (!generadorActivo()) return ["Generación apagada: falta ANTHROPIC_API_KEY"];
+  if (!(await generadorActivo())) return ["Generación apagada: falta la clave de la IA"];
   await asegurarTabla();
   const informe: string[] = [];
   const estados = await db()`select estado from mascota_estado`.catch(() => []);

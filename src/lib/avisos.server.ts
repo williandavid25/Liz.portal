@@ -30,7 +30,7 @@ export async function getConfig(key: string): Promise<string | null> {
   return (rows[0]?.value as string | undefined) ?? null;
 }
 
-async function setConfig(key: string, value: string) {
+export async function setConfig(key: string, value: string) {
   await ensureConfigTable();
   await db()`
     insert into app_config (key, value) values (${key}, ${value})

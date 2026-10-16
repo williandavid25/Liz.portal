@@ -49,7 +49,7 @@ import {
   pasosRepasoDiario,
   type Paso,
 } from "@/lib/learn/contenido";
-import { pendientesLearn, revisarModuloLearn } from "@/lib/cloud";
+import { claveIaLearn, pendientesLearn, revisarModuloLearn } from "@/lib/cloud";
 import type { ContenidoTrack, Dia, Premio, Track } from "@/lib/learn/tipos";
 import { TarjetaVocab, VistaEjercicio, type Respuesta } from "./Ejercicios";
 import { FondoLearn } from "./FondoLearn";
@@ -802,6 +802,62 @@ function RepasoHoy({
 
 type Pendiente = Awaited<ReturnType<typeof pendientesLearn>>["modulos"][number];
 
+/** Pegar la clave gratis de Google Gemini para que la IA escriba semanas nuevas. */
+function ActivarIa({ onListo }: { onListo: () => void }) {
+  const [clave, setClave] = useState("");
+  const [estado, setEstado] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+
+  const guardar = async () => {
+    setOcupado(true);
+    setEstado(null);
+    const r = await claveIaLearn({ data: clave.trim() }).catch(() => ({
+      ok: false,
+      detalle: "No se pudo guardar",
+    }));
+    setOcupado(false);
+    setEstado(r.ok ? "¡Listo! La IA ya puede escribir lecciones." : r.detalle);
+    if (r.ok) {
+      sonar("logro");
+      setClave("");
+      onListo();
+    }
+  };
+
+  return (
+    <div className="lrn-tarjeta rounded-3xl p-4">
+      <p className="text-[15px] font-extrabold leading-tight">Lecciones nuevas con IA (gratis)</p>
+      <p className="mt-1 text-xs text-white/60">
+        Entra con tu cuenta de Google, toca «Create API key», cópiala y pégala aquí.
+      </p>
+      <a
+        href="https://aistudio.google.com/apikey"
+        target="_blank"
+        rel="noreferrer"
+        className="mt-3 block rounded-2xl bg-white/10 py-2.5 text-center text-sm font-bold hover:bg-white/15"
+      >
+        Abrir Google AI Studio
+      </a>
+      <input
+        value={clave}
+        onChange={(e) => setClave(e.target.value)}
+        placeholder="Pega la clave aquí"
+        autoComplete="off"
+        className="mt-2 w-full rounded-2xl bg-white/10 px-3 py-2.5 text-sm outline-none placeholder:text-white/40"
+      />
+      <button
+        type="button"
+        disabled={ocupado || clave.trim().length < 20}
+        onClick={() => void guardar()}
+        className="lrn-boton-principal mt-2 w-full rounded-2xl py-2.5 text-sm font-extrabold disabled:opacity-50"
+      >
+        {ocupado ? "Revisando…" : "Guardar clave"}
+      </button>
+      {estado && <p className="mt-2 text-center text-xs text-white/70">{estado}</p>}
+    </div>
+  );
+}
+
 /** Módulos generados por la IA que esperan revisión antes de aparecer. */
 function ModulosPendientes({ onAprobado }: { onAprobado: () => void }) {
   const [datos, setDatos] = useState<{ activo: boolean; modulos: Pendiente[] } | null>(null);
@@ -857,6 +913,7 @@ function ModulosPendientes({ onAprobado }: { onAprobado: () => void }) {
           </div>
         </div>
       ))}
+      {!datos.activo && <ActivarIa onListo={cargar} />}
 
       {viendo && (
         <div className="fixed inset-0 z-[95] flex flex-col bg-[#0b1026]/95 backdrop-blur-sm">
