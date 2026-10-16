@@ -74,7 +74,14 @@ import {
 } from "@/components/StickersNota";
 import { MAX_STICKERS_NOTA, type StickerEnNota } from "@/lib/stickers";
 import { CapaDibujo } from "@/components/DibujoNota";
-import { GROSORES, type Trazo } from "@/lib/dibujo";
+import {
+  COLORES_TINTA,
+  GROSORES,
+  TINTA_INICIAL,
+  sombraTexto,
+  tintaValida,
+  type Trazo,
+} from "@/lib/dibujo";
 import { leerLearn, resumenLearn, useLearn } from "@/lib/learn/progreso";
 import type { Premio } from "@/lib/learn/tipos";
 
@@ -382,6 +389,9 @@ export function MascotaGame({
   const [dibujando, setDibujando] = useState(false);
   const [grosor, setGrosor] = useState<number>(GROSORES[1].g);
   const [trazosNota, setTrazosNota] = useState<Trazo[]>([]);
+  // Color de las letras y del lápiz (cualquiera: hay colores rápidos y uno libre).
+  const [tintaTexto, setTintaTexto] = useState(TINTA_INICIAL);
+  const [tintaLapiz, setTintaLapiz] = useState(TINTA_INICIAL);
   const textareaNota = useRef<HTMLTextAreaElement>(null);
   const coleccion = useColeccionStickers(escribiendo);
   // Panel tipo campanita de las notitas y el aviso flotante junto al botón.
@@ -1355,7 +1365,14 @@ export function MascotaGame({
     decir("¡Allá voy con tu nota!", 2000);
     avisarNota("Enviando tu nota…", "envio", 12000);
     setEnviandoNota(true);
-    void mandarNota(texto, emojiNota, COLOR_NOTA, pegados, trazos.length ? trazos : undefined)
+    void mandarNota(
+      texto,
+      emojiNota,
+      COLOR_NOTA,
+      pegados,
+      trazos.length ? trazos : undefined,
+      texto && tintaTexto !== TINTA_INICIAL ? tintaTexto : undefined,
+    )
       .catch(() => ({ ok: false, avisos: 0 }))
       .then((r) => {
         setEnviandoNota(false);
@@ -2190,11 +2207,17 @@ export function MascotaGame({
                   placeholder="Escribe algo bonito…"
                   aria-label="Texto de la nota"
                   className="mg-postit-texto"
+                  style={{
+                    color: tintaTexto,
+                    caretColor: tintaTexto,
+                    textShadow: sombraTexto(tintaTexto),
+                  }}
                 />
                 <CapaDibujo
                   trazos={trazosNota}
                   dibujando={dibujando}
                   grosor={grosor}
+                  color={tintaLapiz}
                   onTrazo={(t) => setTrazosNota((l) => [...l, t])}
                 />
               </div>
@@ -2244,6 +2267,48 @@ export function MascotaGame({
                     : "Agregar stickers"}
               </button>
             </div>
+            {(() => {
+              const actual = dibujando ? tintaLapiz : tintaTexto;
+              const elegir = (c: string) => (dibujando ? setTintaLapiz(c) : setTintaTexto(c));
+              const libre = !COLORES_TINTA.some((x) => x.c === actual);
+              return (
+                <div
+                  className="flex flex-wrap items-center justify-center gap-1.5"
+                  role="radiogroup"
+                  aria-label={dibujando ? "Color del lápiz" : "Color de las letras"}
+                >
+                  <span className="w-full text-center text-[11px] font-semibold text-white/60">
+                    {dibujando ? "Color del lápiz" : "Color de las letras"}
+                  </span>
+                  {COLORES_TINTA.map(({ c, nombre: nombreColor }) => (
+                    <button
+                      key={c}
+                      type="button"
+                      role="radio"
+                      aria-checked={actual === c}
+                      aria-label={`Color: ${nombreColor}`}
+                      title={nombreColor}
+                      onClick={() => elegir(c)}
+                      className={`mg-tinta-opcion ${actual === c ? "activo" : ""}`}
+                      style={{ background: c }}
+                    />
+                  ))}
+                  {/* Cualquier color: abre el selector del celular. */}
+                  <span
+                    className={`mg-tinta-opcion mg-tinta-libre ${libre ? "activo" : ""}`}
+                    style={libre ? { background: actual } : undefined}
+                    title="Cualquier color"
+                  >
+                    <input
+                      type="color"
+                      value={actual}
+                      onChange={(e) => elegir(e.target.value)}
+                      aria-label="Elegir cualquier color"
+                    />
+                  </span>
+                </div>
+              );
+            })()}
             {dibujando && (
               <div className="flex items-center justify-center gap-1.5">
                 <div className="flex gap-1" role="radiogroup" aria-label="Grosor del lápiz">
@@ -2386,7 +2451,15 @@ export function MascotaGame({
                 );
               })()}
               <div className="mg-postit-cara">
-                <p className="mg-postit-texto">{notaAbierta.texto}</p>
+                <p
+                  className="mg-postit-texto"
+                  style={{
+                    color: tintaValida(notaAbierta.tinta),
+                    textShadow: sombraTexto(tintaValida(notaAbierta.tinta)),
+                  }}
+                >
+                  {notaAbierta.texto}
+                </p>
                 {notaAbierta.trazos?.length ? <CapaDibujo trazos={notaAbierta.trazos} /> : null}
               </div>
               {notaAbierta.stickers?.length ? (
@@ -2709,6 +2782,16 @@ p.mg-postit-texto { overflow-y: auto; }
   60% { opacity: 1; transform: scale(0.92) rotate(4deg); }
   100% { opacity: 1; transform: scale(1) rotate(0); }
 }
+.mg-tinta-opcion {
+  position: relative; width: 26px; height: 26px; border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.25);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  transition: transform 0.2s cubic-bezier(.2,.9,.3,1.3), box-shadow 0.2s ease;
+}
+.mg-tinta-opcion:active { transform: scale(0.9); }
+.mg-tinta-opcion.activo { transform: scale(1.18); border-color: #fff; box-shadow: 0 0 0 2px rgba(15,19,40,0.9), 0 4px 10px rgba(0,0,0,0.45); }
+.mg-tinta-libre { background: conic-gradient(#ef4444, #facc15, #4ade80, #38bdf8, #a855f7, #ff4d8d, #ef4444); overflow: hidden; }
+.mg-tinta-libre > input { position: absolute; inset: -8px; width: calc(100% + 16px); height: calc(100% + 16px); opacity: 0; cursor: pointer; }
 .mg-sello-opcion {
   color: rgba(255,255,255,0.75);
   border: 1px solid rgba(255,255,255,0.14);

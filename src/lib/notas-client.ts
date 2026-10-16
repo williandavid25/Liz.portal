@@ -37,6 +37,7 @@ interface PorEnviar {
   color?: string;
   stickers?: StickerEnNota[];
   trazos?: Trazo[];
+  tinta?: string;
   createdAt: number;
   fallos: number;
 }
@@ -210,6 +211,7 @@ async function enviarCola() {
           color: item.color as never,
           stickers: item.stickers,
           trazos: item.trazos,
+          tinta: item.tinta,
         },
       }),
       LIMITE_ENVIO_MS,
@@ -342,9 +344,13 @@ export async function mandarNota(
   color?: string,
   stickers?: StickerEnNota[],
   trazos?: Trazo[],
+  tinta?: string,
 ): Promise<Resultado> {
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  cola = [...cola, { id, texto, emoji, color, stickers, trazos, createdAt: Date.now(), fallos: 0 }];
+  cola = [
+    ...cola,
+    { id, texto, emoji, color, stickers, trazos, tinta, createdAt: Date.now(), fallos: 0 },
+  ];
   guardarCola();
   recalcularEnviadas();
   await procesarCola();

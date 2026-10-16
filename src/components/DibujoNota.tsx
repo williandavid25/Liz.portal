@@ -1,25 +1,36 @@
 import { useRef } from "react";
-import { GIRO_CARA_GRADOS, MAX_PUNTOS, caminoTrazo, puntosDe, type Trazo } from "@/lib/dibujo";
+import {
+  GIRO_CARA_GRADOS,
+  MAX_PUNTOS,
+  TINTA_INICIAL,
+  caminoTrazo,
+  haloDe,
+  puntosDe,
+  tintaValida,
+  type Trazo,
+} from "@/lib/dibujo";
 
 // Capa del lápiz dentro de la cara del cuadro: firmas y dibujos a mano.
 // Mientras se dibuja, el trazo se pinta directo en el SVG (sin estado de
 // React por cada movimiento) y solo al soltar el dedo se guarda.
 
-const HALO = "rgba(220,255,240,0.6)";
-const TINTA = "#0a0a0a";
-
 function Trazos({ trazos }: { trazos: Trazo[] }) {
   return (
     <>
-      {/* Primero todos los halos y luego la tinta: el negro se lee sobre la galaxia. */}
-      <g stroke={HALO}>
+      {/* Primero todos los halos y luego la tinta: cada color se lee sobre la galaxia. */}
+      <g>
         {trazos.map((t, i) => (
-          <path key={i} d={caminoTrazo(t.p)} strokeWidth={t.g + 7} />
+          <path
+            key={i}
+            d={caminoTrazo(t.p)}
+            stroke={haloDe(tintaValida(t.c))}
+            strokeWidth={t.g + 7}
+          />
         ))}
       </g>
-      <g stroke={TINTA}>
+      <g>
         {trazos.map((t, i) => (
-          <path key={i} d={caminoTrazo(t.p)} strokeWidth={t.g} />
+          <path key={i} d={caminoTrazo(t.p)} stroke={tintaValida(t.c)} strokeWidth={t.g} />
         ))}
       </g>
     </>
@@ -30,11 +41,13 @@ export function CapaDibujo({
   trazos,
   dibujando = false,
   grosor = 12,
+  color = TINTA_INICIAL,
   onTrazo,
 }: {
   trazos: Trazo[];
   dibujando?: boolean;
   grosor?: number;
+  color?: string;
   /** Se llama con cada trazo terminado. */
   onTrazo?: (trazo: Trazo) => void;
 }) {
@@ -87,7 +100,7 @@ export function CapaDibujo({
     const p = puntos.current;
     puntos.current = null;
     pintar();
-    if (p) onTrazo?.({ g: grosor, p });
+    if (p) onTrazo?.(color === TINTA_INICIAL ? { g: grosor, p } : { g: grosor, p, c: color });
   };
 
   return (
@@ -107,8 +120,8 @@ export function CapaDibujo({
       onPointerCancel={alSubir}
     >
       <Trazos trazos={trazos} />
-      <path ref={halo} stroke={HALO} strokeWidth={grosor + 7} />
-      <path ref={tinta} stroke={TINTA} strokeWidth={grosor} />
+      <path ref={halo} stroke={haloDe(color)} strokeWidth={grosor + 7} />
+      <path ref={tinta} stroke={color} strokeWidth={grosor} />
     </svg>
   );
 }

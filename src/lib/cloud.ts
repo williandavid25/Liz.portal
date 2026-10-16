@@ -2,7 +2,15 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { Dia } from "./learn/tipos";
 import { IDS_COLOR } from "./colores-nota";
-import { GROSOR_MAX, GROSOR_MIN, MAX_PUNTOS, MAX_TRAZOS, puntosDe, type Trazo } from "./dibujo";
+import {
+  GROSOR_MAX,
+  GROSOR_MIN,
+  MAX_PUNTOS,
+  MAX_TRAZOS,
+  PATRON_TINTA,
+  puntosDe,
+  type Trazo,
+} from "./dibujo";
 import {
   ANCHO_MAX,
   ANCHO_MIN,
@@ -477,6 +485,8 @@ export interface NotaSnoopy {
   stickers?: StickerEnNota[];
   /** Firma o dibujo a mano (posición relativa a la cara del cuadro). */
   trazos?: Trazo[];
+  /** Color de las letras (#rrggbb; sin él, negro). */
+  tinta?: string;
   createdAt: number;
 }
 
@@ -504,6 +514,7 @@ export const enviarNota = createServerFn({ method: "POST" })
       color?: string;
       stickers?: StickerEnNota[];
       trazos?: Trazo[];
+      tinta?: string;
     }) =>
       z
         .object({
@@ -545,11 +556,13 @@ export const enviarNota = createServerFn({ method: "POST" })
                   .min(2)
                   .max(MAX_PUNTOS * 2)
                   .refine((p) => p.length % 2 === 0),
+                c: z.string().regex(PATRON_TINTA).optional(),
               }),
             )
             .max(MAX_TRAZOS)
             .refine((t) => puntosDe(t) <= MAX_PUNTOS)
             .optional(),
+          tinta: z.string().regex(PATRON_TINTA).optional(),
         })
         .refine(
           (n) => n.texto.length > 0 || (n.stickers?.length ?? 0) > 0 || (n.trazos?.length ?? 0) > 0,
@@ -568,6 +581,7 @@ export const enviarNota = createServerFn({ method: "POST" })
         color: data.color,
         stickers: data.stickers,
         trazos: data.trazos,
+        tinta: data.tinta,
         createdAt: Date.now(),
       };
       await reintentar(() => insertNota(nota));
