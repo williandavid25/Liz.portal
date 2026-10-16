@@ -857,11 +857,6 @@ function ModulosPendientes({ onAprobado }: { onAprobado: () => void }) {
           </div>
         </div>
       ))}
-      {!datos.activo && (
-        <p className="px-2 text-center text-[11px] text-white/40">
-          Contenido automático con IA: apagado (falta la clave ANTHROPIC_API_KEY en Vercel).
-        </p>
-      )}
 
       {viendo && (
         <div className="fixed inset-0 z-[95] flex flex-col bg-[#0b1026]/95 backdrop-blur-sm">
