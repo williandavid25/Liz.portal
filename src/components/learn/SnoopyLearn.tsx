@@ -1,24 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  Check,
-  FlaskConical,
-  Flame,
-  Gem,
-  Heart,
-  Languages,
-  Lock,
-  RotateCcw,
-  Shield,
-  Sparkles,
-  Trophy,
-  Volume2,
-  VolumeX,
-  X,
-  Zap,
-} from "lucide-react";
+import { FlaskConical, Languages, RotateCcw, Volume2, VolumeX, X } from "lucide-react";
 import { reproducir } from "@/lib/sonidos-mascota";
+import { Icono3D, type NombreIcono3D } from "@/components/Icono3D";
 import {
   COSTO_ESCUDO,
   COSTO_REPARAR,
@@ -433,7 +418,8 @@ function Inicio({
                 <span className="relative">{TEMAS[id].nombre}</span>
                 {infoRacha(estado.tracks[id], hoy).racha > 0 && (
                   <span className="relative flex items-center gap-0.5 text-[11px] text-orange-200">
-                    <Flame size={11} /> {infoRacha(estado.tracks[id], hoy).racha}
+                    <Icono3D nombre="llama" size={14} quieto />{" "}
+                    {infoRacha(estado.tracks[id], hoy).racha}
                   </span>
                 )}
               </button>
@@ -449,7 +435,12 @@ function Inicio({
             <div
               className={`lrn-llama ${racha.hechaHoy ? "encendida" : racha.racha > 0 ? "tibia" : "apagada"}`}
             >
-              <Flame size={34} strokeWidth={2.2} />
+              <Icono3D
+                nombre="llama"
+                size={50}
+                anim={racha.hechaHoy ? "titilar" : "quieto"}
+                apagado={racha.racha === 0}
+              />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-2xl font-extrabold leading-none">
@@ -466,13 +457,13 @@ function Inicio({
           {/* Recursos */}
           <div className="grid grid-cols-4 gap-2 text-center">
             <Recurso
-              Icono={Heart}
-              color="text-rose-300"
+              icono="corazon"
+              titulo="Corazones"
               valor={`${corazones.corazones}/${CORAZONES_MAX}`}
-              etiqueta={corazones.proximoEnMs ? `+1 en ${mmss(corazones.proximoEnMs)}` : "Llenos"}
+              etiqueta={corazones.proximoEnMs ? `+1 en ${mmss(corazones.proximoEnMs)}` : undefined}
             />
-            <Recurso Icono={Zap} color="text-amber-200" valor={t.xp} etiqueta="XP" />
-            <Recurso Icono={Gem} color="text-sky-200" valor={estado.gemas} etiqueta="Gemas" />
+            <Recurso icono="rayo" titulo="XP" valor={t.xp} />
+            <Recurso icono="gema" titulo="Gemas" valor={estado.gemas} />
             <EscudoBoton track={track} />
           </div>
 
@@ -547,32 +538,32 @@ function Inicio({
                         className={`lrn-nodo ${hecho ? "hecho" : actual ? "actual" : "bloqueado"} ${d.day_type === "test" ? "test" : ""}`}
                       >
                         {bloqueado ? (
-                          <Lock size={20} />
+                          <Icono3D nombre="candado" size={30} apagado />
                         ) : d.day_type === "test" ? (
-                          <Trophy size={22} />
+                          <Icono3D nombre="trofeo" size={38} quieto={!actual} />
                         ) : hecho ? (
-                          <Check size={24} strokeWidth={3} />
+                          <Icono3D nombre="check" size={34} />
                         ) : (
-                          <Star />
+                          <Icono3D nombre="estrella" size={38} brillo />
                         )}
                         {actual && <span className="lrn-onda" aria-hidden="true" />}
                       </span>
-                      <span
-                        className={`max-w-[9rem] text-center text-[11px] font-semibold leading-tight ${bloqueado ? "text-white/35" : "text-white/80"}`}
-                      >
-                        Día {d.day_id} · {d.title}
-                      </span>
+                      {actual && (
+                        <span className="max-w-[9rem] text-center text-[11px] font-semibold leading-tight text-white/85">
+                          {d.title}
+                        </span>
+                      )}
                     </motion.button>
                   </div>
                 );
               })}
               {contenido.days.length < TOTAL_DIAS && (
                 <div className="mt-1 flex flex-col items-center gap-1 text-white/35">
-                  <span className="lrn-nodo bloqueado">
-                    <Sparkles size={20} />
-                  </span>
-                  <span className="text-[11px] font-semibold">
-                    Días {contenido.days.length + 1}–{TOTAL_DIAS}: próximamente
+                  <span
+                    className="lrn-nodo bloqueado"
+                    title={`Días ${contenido.days.length + 1}–${TOTAL_DIAS}: próximamente`}
+                  >
+                    <Icono3D nombre="brillo" size={30} apagado />
                   </span>
                 </div>
               )}
@@ -593,7 +584,7 @@ function Inicio({
                     key={n}
                     className="flex items-center gap-1.5 rounded-full bg-amber-300/15 px-3 py-1.5 text-xs font-bold text-amber-100"
                   >
-                    <Trophy size={12} /> {n}
+                    <Icono3D nombre="trofeo" size={16} quieto /> {n}
                   </span>
                 ))}
               </div>
@@ -605,33 +596,25 @@ function Inicio({
   );
 }
 
-function Star() {
-  return (
-    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-      <path
-        d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
 function Recurso({
-  Icono,
-  color,
+  icono,
+  titulo,
   valor,
   etiqueta,
 }: {
-  Icono: typeof Heart;
-  color: string;
+  icono: NombreIcono3D;
+  titulo: string;
   valor: string | number;
-  etiqueta: string;
+  etiqueta?: string;
 }) {
   return (
-    <div className="lrn-tarjeta flex flex-col items-center gap-0.5 rounded-2xl px-1 py-2.5">
-      <Icono size={18} className={color} fill="currentColor" fillOpacity={0.25} />
+    <div
+      className="lrn-tarjeta flex flex-col items-center gap-1 rounded-2xl px-1 py-2.5"
+      title={titulo}
+    >
+      <Icono3D nombre={icono} size={30} quieto />
       <span className="text-[15px] font-extrabold tabular-nums">{valor}</span>
-      <span className="text-[10px] leading-tight text-white/55">{etiqueta}</span>
+      {etiqueta && <span className="text-[10px] leading-tight text-white/55">{etiqueta}</span>}
     </div>
   );
 }
@@ -651,15 +634,18 @@ function EscudoBoton({ track }: { track: Track }) {
           sonar("logro");
         }
       }}
-      className="lrn-tarjeta flex flex-col items-center gap-0.5 rounded-2xl px-1 py-2.5 transition enabled:hover:bg-white/15 disabled:opacity-80"
+      className="lrn-tarjeta flex flex-col items-center gap-1 rounded-2xl px-1 py-2.5 transition enabled:hover:bg-white/15 disabled:opacity-80"
       title={`Escudo: protege tu racha si faltas un día (${COSTO_ESCUDO} gemas)`}
+      aria-label={`Escudos: ${t.escudos}. Comprar uno por ${COSTO_ESCUDO} gemas`}
     >
-      <Shield size={18} className="text-emerald-200" fill="currentColor" fillOpacity={0.25} />
+      <Icono3D nombre="escudo" size={30} quieto />
       <span className="text-[15px] font-extrabold tabular-nums">{t.escudos}</span>
-      <span className="text-[10px] leading-tight text-white/55">
-        {t.escudos >= MAX_ESCUDOS ? "Escudos" : `+1 por ${COSTO_ESCUDO}`}
-        {t.escudos < MAX_ESCUDOS && <Gem size={9} className="ml-0.5 inline align-[-1px]" />}
-      </span>
+      {t.escudos < MAX_ESCUDOS && (
+        <span className="flex items-center gap-0.5 text-[10px] leading-tight text-white/55">
+          +1 · {COSTO_ESCUDO}
+          <Icono3D nombre="gema" size={11} quieto />
+        </span>
+      )}
     </button>
   );
 }
@@ -680,7 +666,8 @@ function RepararBoton({ track }: { track: Track }) {
       }}
       className="mt-2 flex items-center gap-1.5 rounded-full bg-orange-400/90 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-orange-400 disabled:opacity-50"
     >
-      <RotateCcw size={13} /> Reparar racha · {COSTO_REPARAR} <Gem size={12} />
+      <RotateCcw size={13} /> Reparar racha · {COSTO_REPARAR}{" "}
+      <Icono3D nombre="gema" size={14} quieto />
       {!puede && <span className="font-semibold opacity-80">(te faltan gemas)</span>}
     </button>
   );
@@ -706,11 +693,8 @@ function TareaHoy({
           alt=""
           className="lrn-flotar h-16 w-16 shrink-0 object-contain"
         />
-        <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--acento)]">
-            {hechaHoy ? "Sigue si quieres" : `${nombre} te dejó una tarea`}
-          </p>
-          <p className="mt-0.5 text-lg font-extrabold leading-tight">
+        <div className="min-w-0 self-center">
+          <p className="text-lg font-extrabold leading-tight">
             Día {dia.day_id} · {dia.title}
           </p>
           {dia.subtitle && <p className="text-sm text-white/70">{dia.subtitle}</p>}
@@ -721,11 +705,6 @@ function TareaHoy({
           {dia.snoopy_tip}
         </p>
       )}
-      <p className="mt-2 text-xs text-white/55">
-        {esTest
-          ? `${dia.total_questions} preguntas de repaso, una por una · aprueba con ${dia.pass_score_pct}%`
-          : `${dia.lesson.vocabulary.length} palabras nuevas y ${dia.exercises.length} preguntas, una por una`}
-      </p>
       <button
         type="button"
         onClick={onEmpezar}
@@ -1131,7 +1110,7 @@ function Sesion({
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 400, damping: 15 }}
               >
-                <Heart size={20} fill="currentColor" />
+                <Icono3D nombre="corazon" size={24} />
               </motion.span>
               {corazones}
             </span>
@@ -1156,22 +1135,20 @@ function Sesion({
       {/* Pregunta (una a la vez) */}
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         <div className="mx-auto max-w-md">
-          <div className="mb-4 mt-2 flex items-center gap-2.5">
+          {/* Tocar a Snoopy lo vuelve a leer. */}
+          <button
+            type="button"
+            onClick={leer}
+            aria-label={`${instruccion} Escuchar otra vez`}
+            title="Escuchar otra vez"
+            className="mb-4 mt-2 block transition active:scale-90"
+          >
             <img
               src="/mascota/frente.webp"
               alt=""
               className="lrn-flotar h-12 w-12 object-contain"
             />
-            <button
-              type="button"
-              onClick={leer}
-              title="Tocar para escuchar otra vez"
-              className="lrn-globo flex items-center gap-1.5 rounded-2xl bg-white/10 px-3 py-2 text-left text-sm font-semibold text-white/90 transition hover:bg-white/15 active:scale-[0.98]"
-            >
-              {instruccion}
-              <Volume2 size={14} className="shrink-0 opacity-60" aria-hidden="true" />
-            </button>
-          </div>
+          </button>
           <>
             <motion.div
               key={paso.key}
@@ -1215,7 +1192,7 @@ function Sesion({
                   className={`flex items-center gap-2 text-lg font-extrabold ${revision.correcta ? "text-emerald-200" : "text-rose-200"}`}
                 >
                   {revision.correcta ? (
-                    <Check size={22} strokeWidth={3} />
+                    <Icono3D nombre="check" size={28} />
                   ) : (
                     <X size={22} strokeWidth={3} />
                   )}
@@ -1228,9 +1205,6 @@ function Sesion({
                 )}
                 {"explanation" in paso.ej && paso.ej.explanation && (
                   <p className="mt-1 text-[13px] text-white/75">{paso.ej.explanation}</p>
-                )}
-                {!revision.correcta && !esTest && !paso.repaso && paso.ej.type !== "word_match" && (
-                  <p className="mt-1 text-[12px] text-white/60">La repasaremos al final 😉</p>
                 )}
               </motion.div>
             )}
@@ -1393,7 +1367,7 @@ function Resultado({
           transition={{ delay: 0.35, type: "spring", stiffness: 300, damping: 14 }}
         >
           <span className="lrn-llama encendida grande">
-            <Flame size={40} strokeWidth={2.2} />
+            <Icono3D nombre="llama" size={58} />
           </span>
           <div className="text-left">
             <p className="text-3xl font-black leading-none text-orange-100">
@@ -1407,27 +1381,9 @@ function Resultado({
       )}
 
       <div className="mt-5 grid w-full max-w-sm grid-cols-3 gap-2">
-        <Stat
-          etiqueta="XP"
-          valor={`+${premio.xp}`}
-          Icono={Zap}
-          color="text-amber-200"
-          retraso={0.5}
-        />
-        <Stat
-          etiqueta="Aciertos"
-          valor={`${pct}%`}
-          Icono={Check}
-          color="text-emerald-200"
-          retraso={0.6}
-        />
-        <Stat
-          etiqueta="Gemas"
-          valor={`+${premio.gemas}`}
-          Icono={Gem}
-          color="text-sky-200"
-          retraso={0.7}
-        />
+        <Stat titulo="XP" valor={`+${premio.xp}`} icono="rayo" retraso={0.5} />
+        <Stat titulo="Aciertos" valor={`${pct}%`} icono="check" retraso={0.6} />
+        <Stat titulo="Gemas" valor={`+${premio.gemas}`} icono="gema" retraso={0.7} />
       </div>
 
       {(premio.corazonExtra || premio.insignias.length > 0 || premio.metaAlcanzada) && (
@@ -1439,12 +1395,12 @@ function Resultado({
         >
           {premio.corazonExtra && (
             <span className="flex items-center gap-1 rounded-full bg-rose-400/15 px-3 py-1.5 text-xs font-bold text-rose-100">
-              <Heart size={12} fill="currentColor" /> +1 corazón
+              <Icono3D nombre="corazon" size={16} quieto /> +1 corazón
             </span>
           )}
           {premio.metaAlcanzada && (
             <span className="flex items-center gap-1 rounded-full bg-orange-400/20 px-3 py-1.5 text-xs font-bold text-orange-100">
-              <Flame size={12} /> ¡Meta de {premio.metaAlcanzada} días!
+              <Icono3D nombre="llama" size={16} quieto /> ¡Meta de {premio.metaAlcanzada} días!
             </span>
           )}
           {premio.insignias.map((n) => (
@@ -1452,7 +1408,7 @@ function Resultado({
               key={n}
               className="flex items-center gap-1 rounded-full bg-amber-300/20 px-3 py-1.5 text-xs font-bold text-amber-100"
             >
-              <Trophy size={12} /> {n}
+              <Icono3D nombre="trofeo" size={16} quieto /> {n}
             </span>
           ))}
         </motion.div>
@@ -1514,28 +1470,26 @@ function ContadorAnimado({ de, a }: { de: number; a: number }) {
 }
 
 function Stat({
-  etiqueta,
+  titulo,
   valor,
-  Icono,
-  color,
+  icono,
   retraso,
 }: {
-  etiqueta: string;
+  titulo: string;
   valor: string;
-  Icono: typeof Zap;
-  color: string;
+  icono: NombreIcono3D;
   retraso: number;
 }) {
   return (
     <motion.div
-      className="lrn-tarjeta flex flex-col items-center rounded-2xl py-3"
+      className="lrn-tarjeta flex flex-col items-center gap-1 rounded-2xl py-3"
+      title={titulo}
       initial={{ y: 16, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ delay: retraso, type: "spring", stiffness: 300, damping: 22 }}
     >
-      <Icono size={18} className={color} />
-      <span className="mt-0.5 text-lg font-extrabold">{valor}</span>
-      <span className="text-[10px] uppercase tracking-[0.12em] text-white/55">{etiqueta}</span>
+      <Icono3D nombre={icono} size={34} />
+      <span className="text-lg font-extrabold">{valor}</span>
     </motion.div>
   );
 }
@@ -1578,12 +1532,7 @@ function SinCorazones({
       </p>
       <div className="mt-4 flex gap-1.5" aria-label={`${corazones} de ${CORAZONES_MAX} corazones`}>
         {Array.from({ length: CORAZONES_MAX }, (_, k) => (
-          <Heart
-            key={k}
-            size={24}
-            className={k < corazones ? "text-rose-300" : "text-white/20"}
-            fill="currentColor"
-          />
+          <Icono3D key={k} nombre="corazon" size={30} quieto apagado={k >= corazones} />
         ))}
       </div>
       <div className="mt-6 flex w-full max-w-sm flex-col gap-2">
@@ -1659,22 +1608,21 @@ const CSS = `
 .lrn-flotar { animation: lrn-flotar 3.2s cubic-bezier(.45,.05,.55,.95) infinite; filter: drop-shadow(0 6px 8px rgba(0,0,0,0.35)); }
 @keyframes lrn-flotar { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-5px) rotate(2deg); } }
 
-.lrn-llama { display: grid; place-items: center; width: 62px; height: 62px; flex-shrink: 0; border-radius: 22px; transition: all 0.4s ease; }
+.lrn-llama { position: relative; display: grid; place-items: center; width: 62px; height: 62px; flex-shrink: 0; }
 .lrn-llama.grande { width: 70px; height: 70px; }
-.lrn-llama.encendida { color: #fff7ed; background: radial-gradient(circle at 50% 70%, #fdba74, #f97316 55%, #c2410c); box-shadow: 0 0 0 4px rgba(251,146,60,0.18), 0 10px 30px -6px rgba(249,115,22,0.75); }
-.lrn-llama.encendida svg { animation: lrn-fuego 1.4s cubic-bezier(.45,.05,.55,.95) infinite; transform-origin: 50% 90%; filter: drop-shadow(0 0 6px rgba(255,237,213,0.9)); }
-.lrn-llama.tibia { color: #fed7aa; background: rgba(251,146,60,0.18); box-shadow: inset 0 0 0 1px rgba(251,146,60,0.45); }
-.lrn-llama.tibia svg { animation: lrn-fuego 2.4s ease-in-out infinite; transform-origin: 50% 90%; opacity: 0.85; }
-.lrn-llama.apagada { color: rgba(255,255,255,0.35); background: rgba(255,255,255,0.06); }
-@keyframes lrn-fuego { 0%, 100% { transform: scale(1, 1) rotate(-2deg); } 50% { transform: scale(1.06, 1.12) rotate(2deg); } }
+.lrn-llama::before { content: ""; position: absolute; inset: 6px; border-radius: 999px; filter: blur(14px); opacity: 0; transition: opacity 0.4s ease; background: radial-gradient(circle, rgba(251,146,60,0.85), rgba(244,63,94,0) 70%); }
+.lrn-llama.encendida::before { opacity: 1; animation: lrn-aura 1.6s ease-in-out infinite alternate; }
+.lrn-llama.tibia::before { opacity: 0.35; }
+.lrn-llama > .i3d { position: relative; }
+@keyframes lrn-aura { from { transform: scale(0.9); opacity: 0.75; } to { transform: scale(1.12); opacity: 1; } }
 
 .lrn-nodo {
   position: relative; display: grid; place-items: center; width: 64px; height: 58px; border-radius: 999px;
   transition: transform 0.2s cubic-bezier(.2,.9,.3,1.3);
 }
-.lrn-nodo.hecho { color: #04121a; background: linear-gradient(180deg, #fde68a, #f59e0b); box-shadow: 0 5px 0 #b45309; }
+.lrn-nodo.hecho { background: linear-gradient(180deg, rgba(255,255,255,0.2), rgba(255,255,255,0.07)); box-shadow: 0 5px 0 rgba(0,0,0,0.3), inset 0 0 0 1.5px rgba(110,231,183,0.55), inset 0 1px 0 rgba(255,255,255,0.35); }
 .lrn-nodo.actual { color: #04121a; background: linear-gradient(180deg, color-mix(in srgb, var(--acento) 85%, white), var(--acento-fuerte)); box-shadow: 0 5px 0 color-mix(in srgb, var(--acento-fuerte) 55%, black), 0 0 24px var(--acento-suave); }
-.lrn-nodo.bloqueado { color: rgba(255,255,255,0.35); background: rgba(255,255,255,0.08); box-shadow: 0 5px 0 rgba(0,0,0,0.3); }
+.lrn-nodo.bloqueado { background: rgba(255,255,255,0.07); box-shadow: 0 5px 0 rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.12); }
 .lrn-nodo.test.hecho, .lrn-nodo.test.actual { width: 72px; height: 64px; }
 button:not(:disabled):active .lrn-nodo { transform: translateY(4px); box-shadow: none; }
 .lrn-onda { position: absolute; inset: -6px; border-radius: 999px; border: 2px solid var(--acento); animation: lrn-onda 1.8s ease-out infinite; }
@@ -1686,6 +1634,6 @@ button:not(:disabled):active .lrn-nodo { transform: translateY(4px); box-shadow:
 @keyframes lrn-sacudir { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-6px); } 40%, 60% { transform: translateX(6px); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .lrn-flotar, .lrn-llama svg, .lrn-onda, .lrn-cargando, .lrn-foto-img { animation: none !important; }
+  .lrn-flotar, .lrn-llama::before, .lrn-onda, .lrn-cargando, .lrn-foto-img { animation: none !important; }
 }
 `;

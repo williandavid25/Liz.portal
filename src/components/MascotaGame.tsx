@@ -9,31 +9,19 @@ import {
 } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
-  Bath,
   Bell,
   BellOff,
-  Bone,
   Check,
-  Droplets,
-  Drumstick,
-  Flame,
-  GraduationCap,
-  HeartPulse,
   House,
-  Lamp,
-  Mail,
-  Mic,
   MicOff,
   Moon,
   Pencil,
   Send,
-  Smile,
   Sticker as IconoSticker,
   Sun,
   Trees,
   Trophy,
   X,
-  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { VozMascota, type EstadoVoz } from "@/lib/voz-mascota";
@@ -61,6 +49,7 @@ import { getDeviceId } from "@/lib/dispositivo";
 import { COLORES_NOTA, colorValido, estiloColorNota, type ColorNota } from "@/lib/colores-nota";
 import { SNOOPY_CSS, SnoopyVivo, imgPose, type Pose } from "@/components/SnoopyVivo";
 import { WeatherPanel } from "@/components/WeatherPanel";
+import { ICONO3D_CSS, Icono3D, type NombreIcono3D } from "@/components/Icono3D";
 import {
   CapaStickers,
   ColeccionStickers,
@@ -76,6 +65,9 @@ import type { Premio } from "@/lib/learn/tipos";
 const cargarLearn = () => import("@/components/learn/SnoopyLearn");
 const learnInicial = () => leerLearn();
 const SnoopyLearn = lazy(cargarLearn);
+// El juego de piano también se descarga solo al abrirlo.
+const cargarPiano = () => import("@/components/piano/PianoTiles");
+const PianoTiles = lazy(cargarPiano);
 import {
   EFECTOS_CSS,
   EfectosDefs,
@@ -215,11 +207,11 @@ const escenaPorHora = (): Escena => {
   return h >= 7 && h < 19 ? "patio" : "dormitorio";
 };
 
-const STATS: Array<{ key: StatKey; Icono: LucideIcon; label: string; color: string }> = [
-  { key: "hambre", Icono: Drumstick, label: "Hambre", color: "#f87171" },
-  { key: "felicidad", Icono: Smile, label: "Felicidad", color: "#facc15" },
-  { key: "higiene", Icono: Droplets, label: "Higiene", color: "#4ade80" },
-  { key: "energia", Icono: Zap, label: "Energía", color: "#60a5fa" },
+const STATS: Array<{ key: StatKey; icono: NombreIcono3D; label: string }> = [
+  { key: "hambre", icono: "hueso", label: "Hambre" },
+  { key: "felicidad", icono: "corazon", label: "Felicidad" },
+  { key: "higiene", icono: "gota", label: "Higiene" },
+  { key: "energia", icono: "rayo", label: "Energía" },
 ];
 
 const ACCIONES: Record<
@@ -294,8 +286,7 @@ function SelloIcono({
   size?: number;
   className?: string;
 }) {
-  const S = sello(id).Icono;
-  return <S size={size} strokeWidth={2.2} className={className} aria-hidden="true" />;
+  return <Icono3D nombre={sello(id).icono} size={size} quieto className={className} />;
 }
 
 const FRASES_CARICIA = ["¡Jiji! 💛", "¡Me haces cosquillas!", "¡Te quiero! ❤️", "¡Otra vez! 🐾"];
@@ -386,6 +377,7 @@ export function MascotaGame({
   // Panel tipo campanita de las notitas y el aviso flotante junto al botón.
   const [panelNotas, setPanelNotas] = useState(false);
   const [aprendiendo, setAprendiendo] = useState(false);
+  const [jugando, setJugando] = useState(false);
   const learn = useLearn();
   const tarea = resumenLearn(learn);
   const [avisoNota, setAvisoNota] = useState<{ id: number; texto: string; tono: AvisoTono } | null>(
@@ -1459,21 +1451,21 @@ export function MascotaGame({
 
   const botones: Array<{
     tipo: TipoAccion;
-    Icono: LucideIcon;
+    icono: NombreIcono3D;
     label: string;
     necesita: boolean;
   }> = [
-    { tipo: "alimentar", Icono: Bone, label: "Comer", necesita: stats.hambre <= 30 },
-    { tipo: "banar", Icono: Bath, label: "Bañar", necesita: stats.higiene <= 30 },
+    { tipo: "alimentar", icono: "hueso", label: "Comer", necesita: stats.hambre <= 30 },
+    { tipo: "banar", icono: "burbujas", label: "Bañar", necesita: stats.higiene <= 30 },
     {
       tipo: "dormir",
-      Icono: Lamp,
-      label: dormido ? "Encender" : "Dormir",
+      icono: dormido ? "sol" : "luna",
+      label: dormido ? "Despertar" : "Dormir",
       necesita: !dormido && stats.energia <= 30,
     },
     {
       tipo: "pasear",
-      Icono: escena === "dormitorio" ? Trees : House,
+      icono: escena === "dormitorio" ? "arbol" : "casa",
       label: escena === "dormitorio" ? "Pasear" : "Casa",
       necesita: stats.felicidad <= 30,
     },
@@ -1491,7 +1483,7 @@ export function MascotaGame({
       onPointerMove={mirar}
       onPointerLeave={soltarMirada}
     >
-      <style>{CSS + SNOOPY_CSS + EFECTOS_CSS + STICKERS_CSS}</style>
+      <style>{CSS + SNOOPY_CSS + EFECTOS_CSS + STICKERS_CSS + ICONO3D_CSS}</style>
       <EfectosDefs />
       {/* Columna derecha: el clima y, justo debajo, el botón de notas. */}
       <div
@@ -1500,7 +1492,7 @@ export function MascotaGame({
         }`}
       >
         <WeatherPanel />
-        <div className="relative z-20 flex w-16 flex-col items-center gap-0.5 text-white">
+        <div className="relative z-20 flex w-16 flex-col items-center text-white">
           <button
             type="button"
             onClick={() => setPanelNotas((v) => !v)}
@@ -1515,7 +1507,12 @@ export function MascotaGame({
               panelNotas || escribiendo ? "mg-boton-activo" : ""
             } ${enviandoNota ? "mg-boton-cargando" : ""}`}
           >
-            <Mail size={22} strokeWidth={1.8} aria-hidden="true" className="text-pink-100" />
+            <Icono3D
+              nombre="sobre"
+              size={30}
+              anim={notas.length > 0 ? "flotar" : "quieto"}
+              className="mg-icono-boton"
+            />
             {notas.length > 0 ? (
               <span className="mg-nota-badge absolute -right-1 -top-1 z-[2] grid h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[11px] font-bold leading-none text-white">
                 {notas.length > 9 ? "9+" : notas.length}
@@ -1531,13 +1528,6 @@ export function MascotaGame({
               )
             )}
           </button>
-          <span
-            className={`whitespace-nowrap text-[10.5px] font-semibold leading-tight ${
-              notas.length > 0 ? "text-pink-200" : "text-white/80"
-            }`}
-          >
-            {notas.length > 0 ? "¡Nueva!" : "Notitas"}
-          </span>
 
           {/* Aviso flotante, como una notificación, al lado del botón. */}
           {avisoNota && !panelNotas && (
@@ -1570,7 +1560,7 @@ export function MascotaGame({
               >
                 <div className="mb-2 flex items-center justify-between border-b border-white/15 pb-2">
                   <p className="flex items-center gap-1.5 text-sm font-bold">
-                    <Mail size={15} className="text-pink-200" /> Notitas
+                    <Icono3D nombre="sobre" size={20} quieto /> Notitas
                   </p>
                   <button
                     type="button"
@@ -1604,9 +1594,7 @@ export function MascotaGame({
                           }}
                           className="flex w-full items-center gap-2 rounded-xl bg-rose-500/15 px-2.5 py-2 text-left transition hover:bg-rose-500/25"
                         >
-                          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-rose-500 text-white">
-                            <SelloIcono id={n.emoji} size={14} />
-                          </span>
+                          <SelloIcono id={n.emoji} size={26} />
                           <span className="min-w-0 flex-1">
                             <span className="block text-xs font-bold">
                               Nota nueva · tócala para leer
@@ -1636,7 +1624,7 @@ export function MascotaGame({
                           key={n.id}
                           className="flex items-center gap-2 rounded-xl bg-white/[0.06] px-2.5 py-2"
                         >
-                          <SelloIcono id={n.emoji} size={14} className="shrink-0 text-rose-200" />
+                          <SelloIcono id={n.emoji} size={20} />
                           <span className="flex-1 text-[11px] text-white/70">
                             {horaCorta(n.createdAt)}
                           </span>
@@ -1663,7 +1651,7 @@ export function MascotaGame({
         </div>
 
         {/* Snoopy Learn: la tarea del día y la racha. */}
-        <div className="relative flex w-16 flex-col items-center gap-0.5 text-white">
+        <div className="relative flex w-16 flex-col items-center text-white">
           <button
             type="button"
             onClick={() => setAprendiendo(true)}
@@ -1679,11 +1667,11 @@ export function MascotaGame({
               aprendiendo ? "mg-boton-activo" : ""
             } ${!tarea.hechaHoy ? "mg-boton-necesita" : ""}`}
           >
-            <GraduationCap
-              size={22}
-              strokeWidth={1.8}
-              aria-hidden="true"
-              className="text-amber-100"
+            <Icono3D
+              nombre="birrete"
+              size={32}
+              anim={tarea.hechaHoy ? "quieto" : "flotar"}
+              className="mg-icono-boton"
             />
             {tarea.racha > 0 ? (
               <span
@@ -1691,7 +1679,7 @@ export function MascotaGame({
                   tarea.hechaHoy ? "encendida" : "tibia"
                 }`}
               >
-                <Flame size={10} strokeWidth={2.6} />
+                <Icono3D nombre="llama" size={12} quieto />
                 {tarea.racha}
               </span>
             ) : (
@@ -1700,15 +1688,33 @@ export function MascotaGame({
               )
             )}
           </button>
-          <span
-            className={`whitespace-nowrap text-[10.5px] font-semibold leading-tight ${
-              tarea.hechaHoy ? "text-white/80" : "text-amber-200"
+        </div>
+
+        {/* Juego: Piano Tiles. */}
+        <div className="relative flex w-16 flex-col items-center text-white">
+          <button
+            type="button"
+            onClick={() => setJugando(true)}
+            onPointerEnter={() => void cargarPiano()}
+            onTouchStart={() => void cargarPiano()}
+            aria-label="Juego: Piano Tiles"
+            title="Juego"
+            className={`mg-boton mg-boton-transparente relative grid h-12 w-12 shrink-0 place-items-center overflow-visible rounded-full ${
+              jugando ? "mg-boton-activo" : ""
             }`}
           >
-            {tarea.hechaHoy ? "Aprender" : "¡Tarea!"}
-          </span>
+            <Icono3D nombre="musica" size={30} quieto className="mg-icono-boton" />
+          </button>
         </div>
       </div>
+
+      {jugando && (
+        <Suspense
+          fallback={<div className="fixed inset-0 z-[80] bg-[#07071a]" aria-hidden="true" />}
+        >
+          <PianoTiles onCerrar={() => setJugando(false)} />
+        </Suspense>
+      )}
 
       {aprendiendo && (
         <Suspense
@@ -1857,10 +1863,7 @@ export function MascotaGame({
               />
             </span>
             <span className="absolute -right-2 -top-2 flex h-6 min-w-6 items-center justify-center gap-0.5 rounded-full bg-rose-500 px-1.5 text-xs font-bold text-white shadow-lg">
-              {(() => {
-                const S = sello(notas[0]!.emoji).Icono;
-                return <S size={13} strokeWidth={2.4} aria-hidden="true" />;
-              })()}
+              <SelloIcono id={notas[0]!.emoji} size={15} />
               {notas.length > 1 ? notas.length : ""}
             </span>
           </button>
@@ -1983,7 +1986,7 @@ export function MascotaGame({
                     className="mg-pastilla flex items-center gap-1 rounded-full px-2 py-0.5"
                     title={`${racha} ${racha === 1 ? "día" : "días"} seguidos cuidándolo`}
                   >
-                    <Flame size={12} className="text-orange-300" />
+                    <Icono3D nombre="llama" size={15} quieto />
                     {racha}
                   </span>
                 )}
@@ -1991,7 +1994,7 @@ export function MascotaGame({
                   className="mg-pastilla flex items-center gap-1 rounded-full px-2 py-0.5"
                   title="Bienestar"
                 >
-                  <HeartPulse size={12} className="text-rose-300" />
+                  <Icono3D nombre="corazon" size={15} quieto />
                   {bienestar}%
                 </span>
                 <button
@@ -2000,7 +2003,7 @@ export function MascotaGame({
                   className="mg-pastilla flex items-center gap-1 rounded-full px-2 py-0.5 transition hover:bg-white/30"
                   aria-label={`Logros: ${progreso.logros.length} de ${LOGROS.length}`}
                 >
-                  <Trophy size={12} className="text-amber-200" />
+                  <Icono3D nombre="trofeo" size={15} quieto />
                   {progreso.logros.length}
                 </button>
               </div>
@@ -2011,18 +2014,10 @@ export function MascotaGame({
               const v = stats[s.key];
               const c = colorNivel(v);
               return (
-                <div key={s.key}>
-                  <div className="mb-1 flex items-center justify-between text-[12px] font-semibold">
-                    <span className="flex items-center gap-1.5 text-white/90">
-                      <s.Icono size={13} style={{ color: s.color }} aria-hidden="true" />
-                      {s.label}
-                    </span>
-                    <span key={`${s.key}-${v}`} className="mg-valor tabular-nums text-white/80">
-                      {v}
-                    </span>
-                  </div>
+                <div key={s.key} className="flex items-center gap-2" title={`${s.label}: ${v}`}>
+                  <Icono3D nombre={s.icono} size={22} quieto apagado={v <= 15} />
                   <div
-                    className="h-2 overflow-hidden rounded-full bg-white/20"
+                    className="h-2 flex-1 overflow-hidden rounded-full bg-white/20"
                     role="progressbar"
                     aria-label={s.label}
                     aria-valuenow={v}
@@ -2055,13 +2050,13 @@ export function MascotaGame({
         {botones.map((b) => {
           const activo =
             (b.tipo === "dormir" && dormido) || (accion !== null && accion.tipo === b.tipo);
-          const lamparaEncendida = b.tipo === "dormir" && !dormido;
           return (
-            <div key={b.tipo} className="flex w-16 flex-col items-center gap-0.5">
+            <div key={b.tipo} className="flex w-16 flex-col items-center">
               <button
                 type="button"
                 onClick={() => ejecutar(b.tipo)}
                 aria-label={b.tipo === "alimentar" ? "Alimentar" : b.label}
+                title={b.label}
                 aria-pressed={b.tipo === "dormir" ? dormido : undefined}
                 className={`mg-boton mg-boton-transparente relative grid h-12 w-12 shrink-0 place-items-center overflow-visible rounded-full ${
                   activo ? "mg-boton-activo" : ""
@@ -2069,23 +2064,19 @@ export function MascotaGame({
                   accion !== null && accion.tipo === b.tipo ? "mg-boton-cargando" : ""
                 }`}
               >
-                <b.Icono
-                  size={22}
-                  strokeWidth={1.8}
-                  aria-hidden="true"
-                  className={
-                    lamparaEncendida ? "mg-lampara-on" : b.tipo === "dormir" ? "opacity-60" : ""
-                  }
+                <Icono3D
+                  key={b.icono}
+                  nombre={b.icono}
+                  size={30}
+                  quieto
+                  className="mg-icono-boton"
                 />
               </button>
-              <span className="whitespace-nowrap text-[10.5px] font-semibold leading-tight text-white/80">
-                {b.label}
-              </span>
             </div>
           );
         })}
         {micDisponible && (
-          <div className="flex w-16 flex-col items-center gap-0.5">
+          <div className="flex w-16 flex-col items-center">
             <button
               type="button"
               onClick={() => (escuchando ? apagarMic() : void prenderMic())}
@@ -2096,11 +2087,12 @@ export function MascotaGame({
                 escuchando ? "mg-mic-activo" : "mg-boton-transparente"
               }`}
             >
-              {escuchando ? <MicOff size={20} /> : <Mic size={20} />}
+              {escuchando ? (
+                <MicOff size={20} />
+              ) : (
+                <Icono3D nombre="mic" size={30} quieto className="mg-icono-boton" />
+              )}
             </button>
-            <span className="whitespace-nowrap text-[10.5px] font-semibold leading-tight text-white/80">
-              {escuchando ? "Terminar" : "Háblale"}
-            </span>
           </div>
         )}
       </div>
@@ -2124,7 +2116,7 @@ export function MascotaGame({
           >
             <div className="flex items-center justify-between">
               <p className="flex items-center gap-2 text-lg font-bold leading-tight">
-                <Mail size={18} className="text-pink-200" /> Nota con {nombre}
+                <Icono3D nombre="sobre" size={24} quieto /> Nota con {nombre}
               </p>
               <button
                 type="button"
@@ -2146,14 +2138,9 @@ export function MascotaGame({
               style={estiloColorNota(colorNota)}
               onPointerDown={() => setStickerElegido(null)}
             >
-              {(() => {
-                const S = sello(emojiNota).Icono;
-                return (
-                  <span key={emojiNota} className="mg-postit-sello" aria-hidden="true">
-                    <S strokeWidth={2.2} />
-                  </span>
-                );
-              })()}
+              <span key={emojiNota} className="mg-postit-sello" aria-hidden="true">
+                <Icono3D nombre={sello(emojiNota).icono} size="100%" />
+              </span>
               <textarea
                 autoFocus
                 value={textoNota}
@@ -2249,7 +2236,7 @@ export function MascotaGame({
                 aria-label="Sello de la nota"
                 style={estiloColorNota(colorNota)}
               >
-                {Object.entries(SELLOS).map(([id, { nombre: nombreSello, Icono }]) => (
+                {Object.entries(SELLOS).map(([id, { nombre: nombreSello, icono }]) => (
                   <button
                     key={id}
                     type="button"
@@ -2265,7 +2252,7 @@ export function MascotaGame({
                       emojiNota === id ? "activo" : ""
                     }`}
                   >
-                    <Icono size={17} strokeWidth={2.2} aria-hidden="true" />
+                    <Icono3D nombre={icono} size={24} quieto={emojiNota !== id} />
                   </button>
                 ))}
               </div>
@@ -2305,14 +2292,9 @@ export function MascotaGame({
               {nombre} te trajo esta nota
             </p>
             <div className="mg-postit mx-auto" style={estiloColorNota(notaAbierta.color)}>
-              {(() => {
-                const S = sello(notaAbierta.emoji).Icono;
-                return (
-                  <span className="mg-postit-sello" aria-hidden="true">
-                    <S strokeWidth={2.2} />
-                  </span>
-                );
-              })()}
+              <span className="mg-postit-sello" aria-hidden="true">
+                <Icono3D nombre={sello(notaAbierta.emoji).icono} size="100%" />
+              </span>
               <p className="mg-postit-texto">{notaAbierta.texto}</p>
               {notaAbierta.stickers?.length ? (
                 <CapaStickers stickers={notaAbierta.stickers} />
@@ -2638,12 +2620,12 @@ p.mg-postit-texto { overflow-y: auto; }
 .mg-postit-sello {
   position: absolute; left: 50%; top: 0; translate: -50% -55%; z-index: 1;
   display: grid; place-items: center; width: 13cqw; height: 13cqw;
-  border-radius: 999px; color: #fff1f2;
-  background: radial-gradient(circle at 35% 30%, rgb(var(--pa, 251 113 133)), rgb(var(--pb, 225 29 72)) 55%, rgb(var(--pc, 159 18 57)));
-  box-shadow: 0 6px 14px rgba(10,5,20,0.45), inset 0 1px 1px rgba(255,255,255,0.45), inset 0 -2px 3px rgb(var(--pc, 159 18 57) / 0.7);
+  filter: drop-shadow(0 6px 8px rgba(10,5,20,0.4));
   animation: mg-sello-pone 0.45s cubic-bezier(.2,.9,.3,1.3) both;
 }
-.mg-postit-sello > svg { width: 55%; height: 55%; filter: drop-shadow(0 1px 1px rgba(80,0,20,0.5)); }
+.mg-icono-boton { transition: transform .25s cubic-bezier(.2,.9,.3,1.4); }
+.mg-boton:active .mg-icono-boton { transform: scale(0.86); }
+.mg-boton:hover .mg-icono-boton { transform: scale(1.08) translateY(-1px); }
 @keyframes mg-sello-pone {
   0% { opacity: 0; transform: scale(1.8) rotate(-25deg); }
   60% { opacity: 1; transform: scale(0.92) rotate(4deg); }
