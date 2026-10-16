@@ -24,7 +24,7 @@ const MODULOS_APP: Record<Track, ContenidoTrack[]> = {
 };
 const DIAS_POR_DELANTE = 7;
 const MODELO = "claude-opus-5-5";
-const MODELO_GEMINI = "gemini-2.5-flash";
+const MODELO_GEMINI = "gemini-3.8-flash";
 
 let tablaLista = false;
 async function asegurarTabla() {
@@ -216,7 +216,33 @@ async function pedirAClaude(pedido: string): Promise<Respuesta> {
 
 async function pedirAGemini(clave: string, pedido: string): Promise<Respuesta> {
   const esquema = JSON.stringify(z.toJSONSchema(ModuloZ));
-  const r = await fetch(
+  // La versión gratis a veces está saturada (503/429): reintenta unas veces.
+  let r: Response | null = null;
+  for (let intento = 0; intento < 4; intento++) {
+    if (intento > 0) await new Promise((listo) => setTimeout(listo, 10_000 * intento));
+    r = await llamarGemini(clave, pedido, esquema);
+    if (r.status !== 503 && r.status !== 429) break;
+  }
+  if (!r?.ok) return { salida: null, detalle: `Gemini respondió ${r?.status}` };
+  const json = (await r.json()) as {
+    candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
+  };
+  const candidato = json.candidates?.[0];
+  const texto = candidato?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+  try {
+    const leido = ModuloZ.safeParse(JSON.parse(texto));
+    if (leido.success) return { salida: leido.data, detalle: "" };
+  } catch {
+    // cae al mensaje de abajo
+  }
+  return {
+    salida: null,
+    detalle: `Respuesta sin JSON válido (${candidato?.finishReason ?? "sin respuesta"})`,
+  };
+}
+
+function llamarGemini(clave: string, pedido: string, esquema: string): Promise<Response> {
+  return fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${MODELO_GEMINI}:generateContent`,
     {
       method: "POST",
@@ -240,22 +266,6 @@ ${esquema}`,
       }),
     },
   );
-  if (!r.ok) return { salida: null, detalle: `Gemini respondió ${r.status}` };
-  const json = (await r.json()) as {
-    candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
-  };
-  const candidato = json.candidates?.[0];
-  const texto = candidato?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
-  try {
-    const leido = ModuloZ.safeParse(JSON.parse(texto));
-    if (leido.success) return { salida: leido.data, detalle: "" };
-  } catch {
-    // cae al mensaje de abajo
-  }
-  return {
-    salida: null,
-    detalle: `Respuesta sin JSON válido (${candidato?.finishReason ?? "sin respuesta"})`,
-  };
 }
 
 async function todosLosDias(track: Track): Promise<Dia[]> {
