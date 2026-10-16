@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { NombreIcono3D } from "@/components/Icono3D";
+import { Flower2, Heart, Moon, PawPrint, Sparkles, Star, type LucideIcon } from "lucide-react";
 
 /* This module intentionally exports the effect helpers used by MascotaGame. */
 /* eslint-disable react-refresh/only-export-components */
@@ -232,13 +232,13 @@ export function ParticulaVisual({ p }: { p: Particula }) {
 
 /* ---------------- Sellos de las notas ---------------- */
 
-export const SELLOS: Record<string, { nombre: string; icono: NombreIcono3D }> = {
-  corazon: { nombre: "Corazón", icono: "corazon" },
-  estrella: { nombre: "Estrella", icono: "estrella" },
-  luna: { nombre: "Luna", icono: "luna" },
-  flor: { nombre: "Flor", icono: "flor" },
-  huella: { nombre: "Huella", icono: "huella" },
-  brillo: { nombre: "Brillo", icono: "brillo" },
+export const SELLOS: Record<string, { nombre: string; Icono: LucideIcon }> = {
+  corazon: { nombre: "Corazón", Icono: Heart },
+  estrella: { nombre: "Estrella", Icono: Star },
+  luna: { nombre: "Luna", Icono: Moon },
+  flor: { nombre: "Flor", Icono: Flower2 },
+  huella: { nombre: "Huella", Icono: PawPrint },
+  brillo: { nombre: "Brillo", Icono: Sparkles },
 };
 export const SELLO_INICIAL = "corazon";
 /** Notas viejas guardaron un emoji: se muestran con el corazón. */
