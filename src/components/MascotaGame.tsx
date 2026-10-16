@@ -28,6 +28,7 @@ import {
   Pencil,
   Send,
   Smile,
+  Sticker as IconoSticker,
   Sun,
   Trees,
   Trophy,
@@ -60,6 +61,14 @@ import { getDeviceId } from "@/lib/dispositivo";
 import { COLORES_NOTA, colorValido, estiloColorNota, type ColorNota } from "@/lib/colores-nota";
 import { SNOOPY_CSS, SnoopyVivo, imgPose, type Pose } from "@/components/SnoopyVivo";
 import { WeatherPanel } from "@/components/WeatherPanel";
+import {
+  CapaStickers,
+  ColeccionStickers,
+  STICKERS_CSS,
+  subirSticker,
+  useColeccionStickers,
+} from "@/components/StickersNota";
+import { MAX_STICKERS_NOTA, type StickerEnNota } from "@/lib/stickers";
 import { leerLearn, resumenLearn, useLearn } from "@/lib/learn/progreso";
 import type { Premio } from "@/lib/learn/tipos";
 
@@ -340,7 +349,10 @@ const anclaEstilo = (a: Ancla): CSSProperties => ({
   width: `min(${a.s * 100}%, 46cqh)`,
 });
 
-export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
+export function MascotaGame({
+  notaInicial,
+  compartido = false,
+}: { notaInicial?: string; compartido?: boolean } = {}) {
   const navigate = useNavigate();
   const notas = useNotasRecibidas();
   const enviadas = useNotasEnviadas();
@@ -366,6 +378,11 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
   };
   const [enviandoNota, setEnviandoNota] = useState(false);
   const [notaLlena, setNotaLlena] = useState(false);
+  // Stickers pegados en la nota que se está escribiendo.
+  const [stickersNota, setStickersNota] = useState<StickerEnNota[]>([]);
+  const [stickerElegido, setStickerElegido] = useState<number | null>(null);
+  const [verStickers, setVerStickers] = useState(false);
+  const coleccion = useColeccionStickers(escribiendo);
   // Panel tipo campanita de las notitas y el aviso flotante junto al botón.
   const [panelNotas, setPanelNotas] = useState(false);
   const [aprendiendo, setAprendiendo] = useState(false);
@@ -444,6 +461,39 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     },
     [programar],
   );
+
+  // Imágenes que llegaron desde "Compartir con Liz" (Android): se suben a la
+  // colección y se abre el editor de notas con los stickers a la vista.
+  const compartidoHecho = useRef(false);
+  const recargarColeccion = coleccion.recargar;
+  useEffect(() => {
+    if (!compartido || compartidoHecho.current || typeof caches === "undefined") return;
+    compartidoHecho.current = true;
+    void (async () => {
+      const cache = await caches.open("liz-compartidos");
+      const claves = await cache.keys();
+      let agregados = 0;
+      for (const clave of claves) {
+        const r = await cache.match(clave);
+        const blob = await r?.blob();
+        if (blob) {
+          const archivo = new File([blob], "compartido", { type: blob.type || "image/png" });
+          if (await subirSticker(archivo)) agregados++;
+        }
+        await cache.delete(clave);
+      }
+      setEscribiendo(true);
+      setVerStickers(true);
+      recargarColeccion();
+      decir(
+        agregados > 0
+          ? `Agregué ${agregados} ${agregados === 1 ? "sticker" : "stickers"} a tu colección`
+          : "No pude agregar esa imagen como sticker",
+        3600,
+      );
+      void navigate({ to: "/mascota", search: {}, replace: true });
+    })();
+  }, [compartido, recargarColeccion, decir, navigate]);
 
   /** Aviso flotante junto al botón de notas (como una notificación). */
   const avisarNota = useCallback(
@@ -1267,9 +1317,13 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
   // la nota y el envío sigue en segundo plano (con reintentos si no hay red).
   const enviarNotaSnoopy = () => {
     const texto = textoNota.trim();
-    if (!texto) return;
+    const pegados = stickersNota;
+    if (!texto && pegados.length === 0) return;
     setTextoNota("");
     setNotaLlena(false);
+    setStickersNota([]);
+    setStickerElegido(null);
+    setVerStickers(false);
     setEscribiendo(false);
     if (dormido) setDormido(false);
     if (accion?.tipo !== "pasear") {
@@ -1288,7 +1342,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
     decir("¡Allá voy con tu nota!", 2000);
     avisarNota("Enviando tu nota…", "envio", 12000);
     setEnviandoNota(true);
-    void mandarNota(texto, emojiNota, colorNota)
+    void mandarNota(texto, emojiNota, colorNota, pegados)
       .catch(() => ({ ok: false, avisos: 0 }))
       .then((r) => {
         setEnviandoNota(false);
@@ -1437,7 +1491,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
       onPointerMove={mirar}
       onPointerLeave={soltarMirada}
     >
-      <style>{CSS + SNOOPY_CSS + EFECTOS_CSS}</style>
+      <style>{CSS + SNOOPY_CSS + EFECTOS_CSS + STICKERS_CSS}</style>
       <EfectosDefs />
       {/* Columna derecha: el clima y, justo debajo, el botón de notas. */}
       <div
@@ -2090,6 +2144,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
               key={colorNota}
               className="mg-postit mg-postit-tinte mx-auto"
               style={estiloColorNota(colorNota)}
+              onPointerDown={() => setStickerElegido(null)}
             >
               {(() => {
                 const S = sello(emojiNota).Icono;
@@ -2119,7 +2174,52 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
                 aria-label="Texto de la nota"
                 className="mg-postit-texto"
               />
+              <CapaStickers
+                stickers={stickersNota}
+                editable
+                seleccion={stickerElegido}
+                onSeleccion={setStickerElegido}
+                onCambio={setStickersNota}
+              />
             </div>
+            <button
+              type="button"
+              onClick={() => setVerStickers((v) => !v)}
+              aria-expanded={verStickers}
+              className={`mx-auto flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
+                verStickers
+                  ? "bg-white/20 text-white"
+                  : "bg-white/10 text-white/80 hover:bg-white/15"
+              }`}
+            >
+              <IconoSticker size={15} />
+              {verStickers
+                ? "Ocultar stickers"
+                : stickersNota.length > 0
+                  ? `Stickers (${stickersNota.length})`
+                  : "Agregar stickers"}
+            </button>
+            {verStickers && (
+              <ColeccionStickers
+                stickers={coleccion.stickers}
+                onCambio={coleccion.guardar}
+                lleno={stickersNota.length >= MAX_STICKERS_NOTA}
+                onElegir={(s) => {
+                  if (stickersNota.length >= MAX_STICKERS_NOTA) return;
+                  // Cada sticker nuevo cae cerca del centro, un poquito girado.
+                  const nuevo: StickerEnNota = {
+                    u: s.url,
+                    x: 0.5 + (Math.random() - 0.5) * 0.2,
+                    y: 0.55 + (Math.random() - 0.5) * 0.2,
+                    w: 0.3,
+                    r: Math.round((Math.random() - 0.5) * 16),
+                  };
+                  setStickersNota((l) => [...l, nuevo]);
+                  setStickerElegido(stickersNota.length);
+                  sonar("caricia");
+                }}
+              />
+            )}
             <div
               className="flex flex-wrap items-center justify-center gap-1.5"
               role="radiogroup"
@@ -2178,7 +2278,7 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
             </div>
             <button
               type="submit"
-              disabled={!textoNota.trim()}
+              disabled={!textoNota.trim() && stickersNota.length === 0}
               className="flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-pink-400 to-rose-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:brightness-110 disabled:opacity-45"
             >
               <Send size={16} />
@@ -2214,6 +2314,9 @@ export function MascotaGame({ notaInicial }: { notaInicial?: string } = {}) {
                 );
               })()}
               <p className="mg-postit-texto">{notaAbierta.texto}</p>
+              {notaAbierta.stickers?.length ? (
+                <CapaStickers stickers={notaAbierta.stickers} />
+              ) : null}
             </div>
             <p className="mt-3 text-center text-[11px] text-white/60">
               {new Date(notaAbierta.createdAt).toLocaleString("es-ES", {

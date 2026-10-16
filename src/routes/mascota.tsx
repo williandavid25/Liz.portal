@@ -3,8 +3,10 @@ import { MascotaGame } from "@/components/MascotaGame";
 
 export const Route = createFileRoute("/mascota")({
   // ?nota=<id>: llega al tocar el aviso de una nota de Snoopy.
-  validateSearch: (search: Record<string, unknown>): { nota?: string } => ({
+  // ?compartido=1: llegaron imágenes desde "Compartir" (Android) para stickers.
+  validateSearch: (search: Record<string, unknown>): { nota?: string; compartido?: string } => ({
     nota: typeof search.nota === "string" ? search.nota : undefined,
+    compartido: search.compartido != null ? String(search.compartido) : undefined,
   }),
   head: () => ({
     meta: [
@@ -20,6 +22,6 @@ export const Route = createFileRoute("/mascota")({
 });
 
 function MascotaPage() {
-  const { nota } = Route.useSearch();
-  return <MascotaGame notaInicial={nota} />;
+  const { nota, compartido } = Route.useSearch();
+  return <MascotaGame notaInicial={nota} compartido={!!compartido} />;
 }

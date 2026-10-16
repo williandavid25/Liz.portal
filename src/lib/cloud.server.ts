@@ -1,5 +1,6 @@
 import postgres from "postgres";
 import type { CloudStore } from "./cloud";
+import type { StickerEnNota } from "./stickers";
 
 // Todo lo que toca Postgres y Supabase Storage vive aparte, en un archivo *.server.ts: así
 // TanStack Start nunca lo mete en el bundle del navegador. Antes esto vivía
@@ -144,7 +145,7 @@ async function ensureFilesTable() {
  * Agrega una columna solo si falta. "alter table" bloquea la tabla aunque la
  * columna ya exista, y se ejecutaba en cada arranque del servidor.
  */
-async function agregarColumna(tabla: string, columna: string, tipo: "text" | "bigint") {
+async function agregarColumna(tabla: string, columna: string, tipo: "text" | "bigint" | "jsonb") {
   const existe = await db()`
     select 1 from information_schema.columns
     where table_schema = current_schema() and table_name = ${tabla} and column_name = ${columna}
@@ -190,6 +191,7 @@ async function ensureNotasTable() {
   await agregarColumna("notas_snoopy", "entregada_at", "bigint");
   await agregarColumna("notas_snoopy", "leida_at", "bigint");
   await agregarColumna("notas_snoopy", "color", "text");
+  await agregarColumna("notas_snoopy", "stickers", "jsonb");
   notasTableReady = true;
 }
 // Lo que queda de una nota leída (sin texto) se guarda un día para avisar.
@@ -343,14 +345,17 @@ export interface NotaRow {
   texto: string;
   emoji?: string;
   color?: string;
+  stickers?: StickerEnNota[];
   createdAt: number;
 }
 
 export async function insertNota(nota: NotaRow): Promise<void> {
   await ensureNotasTable();
-  await db()`
-    insert into notas_snoopy (id, de, texto, emoji, color, created_at)
-    values (${nota.id}, ${nota.de}, ${nota.texto}, ${nota.emoji ?? null}, ${nota.color ?? null}, ${nota.createdAt})
+  const sqlc = db();
+  await sqlc`
+    insert into notas_snoopy (id, de, texto, emoji, color, stickers, created_at)
+    values (${nota.id}, ${nota.de}, ${nota.texto}, ${nota.emoji ?? null}, ${nota.color ?? null},
+      ${nota.stickers?.length ? sqlc.json(nota.stickers as never) : null}, ${nota.createdAt})
     on conflict (id) do nothing
   `;
 }
@@ -365,7 +370,7 @@ export async function listNotasPara(device: string): Promise<NotaRow[]> {
     where created_at < ${ahora - NOTA_VIDA_MS} or leida_at < ${ahora - LEIDA_VIDA_MS}
   `;
   const rows = await db()`
-    select id, de, texto, emoji, color, created_at from notas_snoopy
+    select id, de, texto, emoji, color, stickers, created_at from notas_snoopy
     where de <> ${device} and leida_at is null
     order by created_at asc
     limit 20
@@ -385,6 +390,8 @@ export async function listNotasPara(device: string): Promise<NotaRow[]> {
     texto: r.texto as string,
     emoji: (r.emoji as string | null) ?? undefined,
     color: (r.color as string | null) ?? undefined,
+    stickers: ((typeof r.stickers === "string" ? JSON.parse(r.stickers) : r.stickers) ??
+      undefined) as StickerEnNota[] | undefined,
     createdAt: Number(r.created_at),
   }));
 }

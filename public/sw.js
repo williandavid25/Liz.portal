@@ -1,6 +1,8 @@
 // Service worker: permite "instalar" el sitio, abrirlo sin internet una vez
 // visitado, y recibir avisos de cartas nuevas con la app cerrada.
-const CACHE_NAME = "liz-portal-v6";
+const CACHE_NAME = "liz-portal-v7";
+// Imágenes que llegan desde "Compartir" (Android) mientras la app las recoge.
+const CACHE_COMPARTIDOS = "liz-compartidos";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -11,7 +13,11 @@ self.addEventListener("activate", (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))),
+        Promise.all(
+          keys
+            .filter((k) => k !== CACHE_NAME && k !== CACHE_COMPARTIDOS)
+            .map((k) => caches.delete(k)),
+        ),
       )
       .then(() => self.clients.claim()),
   );
@@ -19,6 +25,32 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
+  const ruta = new URL(req.url).pathname;
+  // "Compartir con Liz": se guardan las imágenes y se abre Mi mascota, que
+  // las agrega a la colección de stickers.
+  if (req.method === "POST" && ruta === "/compartir-sticker") {
+    event.respondWith(
+      (async () => {
+        try {
+          const datos = await req.formData();
+          const cache = await caches.open(CACHE_COMPARTIDOS);
+          const archivos = datos.getAll("imagenes").filter((f) => f && typeof f !== "string");
+          await Promise.all(
+            archivos.map((f, i) =>
+              cache.put(
+                new Request(`/compartido/${Date.now()}-${i}`),
+                new Response(f, { headers: { "content-type": f.type || "image/png" } }),
+              ),
+            ),
+          );
+        } catch {
+          /* sin imágenes */
+        }
+        return Response.redirect("/mascota?compartido=1", 303);
+      })(),
+    );
+    return;
+  }
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;

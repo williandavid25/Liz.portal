@@ -2,6 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { Dia } from "./learn/tipos";
 import { IDS_COLOR } from "./colores-nota";
+import {
+  ANCHO_MAX,
+  ANCHO_MIN,
+  MAX_BYTES_STICKER,
+  MAX_STICKERS_NOTA,
+  type Sticker,
+  type StickerEnNota,
+} from "./stickers";
 
 // Almacenamiento en la nube:
 // - Cartas, fotos (metadatos), eventos y música: una sola fila en Postgres
@@ -338,6 +346,66 @@ export const revisarModuloLearn = createServerFn({ method: "POST" })
     }
   });
 
+/* ---------------- Stickers de las notitas ---------------- */
+
+/** Colección de stickers (la misma en los dos celulares). */
+export const listarStickersFn = createServerFn({ method: "GET" }).handler(async () => {
+  try {
+    const { listarStickers } = await import("./stickers.server");
+    const { reintentar } = await import("./cloud.server");
+    return { ok: true, stickers: await reintentar(() => listarStickers()) };
+  } catch (e) {
+    console.error("No se pudieron leer los stickers:", e);
+    return { ok: false, stickers: [] as Sticker[] };
+  }
+});
+
+/** Sube una imagen y la agrega a la colección (conserva la transparencia). */
+export const agregarStickerFn = createServerFn({ method: "POST" })
+  .validator((formData: FormData) => formData)
+  .handler(async ({ data }) => {
+    const file = data.get("file");
+    if (
+      !(file instanceof File) ||
+      !file.type.startsWith("image/") ||
+      file.size > MAX_BYTES_STICKER
+    ) {
+      return { ok: false, sticker: null as Sticker | null };
+    }
+    try {
+      const { uploadToSupabaseStorage, saveFileBytes } = await import("./cloud.server");
+      const { guardarSticker } = await import("./stickers.server");
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const ext =
+        file.type
+          .split("/")[1]
+          ?.replace("jpeg", "jpg")
+          .replace(/[^a-z0-9]/g, "") || "png";
+      const id = `sticker-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      const url =
+        (await uploadToSupabaseStorage(`${id}.${ext}`, file.type, bytes)) ??
+        `/api/files/${await saveFileBytes(file.type, bytes)}`;
+      const sticker = { id, url };
+      await guardarSticker(sticker);
+      return { ok: true, sticker: sticker as Sticker | null };
+    } catch (e) {
+      console.error("No se pudo agregar el sticker:", e);
+      return { ok: false, sticker: null as Sticker | null };
+    }
+  });
+
+export const borrarStickerFn = createServerFn({ method: "POST" })
+  .validator((id: string) => z.string().min(1).max(120).parse(id))
+  .handler(async ({ data }) => {
+    try {
+      const { borrarSticker } = await import("./stickers.server");
+      return { ok: await borrarSticker(data) };
+    } catch (e) {
+      console.error("No se pudo borrar el sticker:", e);
+      return { ok: false };
+    }
+  });
+
 /* ---------------- Notas de Snoopy (temporales) ---------------- */
 
 export interface NotaSnoopy {
@@ -347,6 +415,8 @@ export interface NotaSnoopy {
   emoji?: string;
   /** Color del post-it (ver src/lib/colores-nota.ts). */
   color?: string;
+  /** Stickers pegados en la nota (posición relativa al post-it). */
+  stickers?: StickerEnNota[];
   createdAt: number;
 }
 
@@ -365,20 +435,49 @@ export interface NotaEnviada {
 
 /** Snoopy lleva una nota al otro celular (y le manda un aviso). */
 export const enviarNota = createServerFn({ method: "POST" })
-  .validator((input: { id?: string; de: string; texto: string; emoji?: string; color?: string }) =>
-    z
-      .object({
-        // Lo crea el celular: si un reintento llega dos veces, no se duplica.
-        id: z
-          .string()
-          .regex(/^[A-Za-z0-9-]{6,80}$/)
-          .optional(),
-        de: deviceSchema,
-        texto: z.string().trim().min(1).max(NOTA_MAX),
-        emoji: z.string().max(16).optional(),
-        color: z.enum(IDS_COLOR).optional(),
-      })
-      .parse(input),
+  .validator(
+    (input: {
+      id?: string;
+      de: string;
+      texto: string;
+      emoji?: string;
+      color?: string;
+      stickers?: StickerEnNota[];
+    }) =>
+      z
+        .object({
+          // Lo crea el celular: si un reintento llega dos veces, no se duplica.
+          id: z
+            .string()
+            .regex(/^[A-Za-z0-9-]{6,80}$/)
+            .optional(),
+          de: deviceSchema,
+          texto: z.string().trim().max(NOTA_MAX),
+          emoji: z.string().max(16).optional(),
+          color: z.enum(IDS_COLOR).optional(),
+          stickers: z
+            .array(
+              z.object({
+                // Solo imágenes de la colección (Supabase o archivos propios).
+                u: z
+                  .string()
+                  .max(500)
+                  .refine(
+                    (u) =>
+                      u.startsWith("/api/files/") ||
+                      /^https:\/\/[a-z0-9.-]+\.supabase\.co\//.test(u),
+                  ),
+                x: z.number().min(0).max(1),
+                y: z.number().min(0).max(1),
+                w: z.number().min(ANCHO_MIN).max(ANCHO_MAX),
+                r: z.number().min(-720).max(720),
+              }),
+            )
+            .max(MAX_STICKERS_NOTA)
+            .optional(),
+        })
+        .refine((n) => n.texto.length > 0 || (n.stickers?.length ?? 0) > 0, "Nota vacía")
+        .parse(input),
   )
   .handler(async ({ data }) => {
     try {
@@ -389,6 +488,7 @@ export const enviarNota = createServerFn({ method: "POST" })
         texto: data.texto,
         emoji: data.emoji,
         color: data.color,
+        stickers: data.stickers,
         createdAt: Date.now(),
       };
       await reintentar(() => insertNota(nota));
