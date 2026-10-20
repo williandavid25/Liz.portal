@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { Dia } from "./learn/tipos";
+import type { FilaRanking } from "./learn/ranking";
 import { IDS_COLOR } from "./colores-nota";
 import {
   GROSOR_MAX,
@@ -409,6 +410,81 @@ export const claveIaLearn = createServerFn({ method: "POST" })
     } catch (e) {
       console.error("No se pudo guardar la clave de la IA:", e);
       return { ok: false, detalle: "No se pudo guardar" };
+    }
+  });
+
+/* ---------------- Ranking de Snoopy Learn ---------------- */
+
+const avanceTrackSchema = z.object({
+  xp: z.number().int().min(0).max(10_000_000),
+  dia: z.number().int().min(1).max(100_000),
+  completados: z.number().int().min(0).max(100_000),
+  racha: z.number().int().min(0).max(100_000),
+  mejorRacha: z.number().int().min(0).max(100_000),
+  ultimoDia: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable(),
+  escudos: z.number().int().min(0).max(100),
+});
+
+/** Une este celular al ranking (o actualiza su nombre, foto y avance). */
+export const guardarRankingFn = createServerFn({ method: "POST" })
+  .validator((input: unknown) =>
+    z
+      .object({
+        device: deviceSchema,
+        nombre: z.string().trim().min(1).max(30),
+        foto: z
+          .string()
+          .max(600)
+          .url()
+          .or(z.string().max(600).startsWith("/api/files/"))
+          .nullable(),
+        avance: z.object({
+          english: avanceTrackSchema,
+          laboratory: avanceTrackSchema,
+          gemas: z.number().int().min(0).max(10_000_000),
+          insignias: z.number().int().min(0).max(1_000),
+        }),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    try {
+      const { guardarEnRanking } = await import("./ranking.server");
+      const { reintentar } = await import("./cloud.server");
+      await reintentar(() => guardarEnRanking(data));
+      return { ok: true };
+    } catch (e) {
+      console.error("No se pudo guardar en el ranking:", e);
+      return { ok: false };
+    }
+  });
+
+export const leerRankingFn = createServerFn({ method: "GET" })
+  .validator((device: string) => deviceSchema.parse(device))
+  .handler(async ({ data }) => {
+    try {
+      const { leerRanking } = await import("./ranking.server");
+      const { reintentar } = await import("./cloud.server");
+      return { ok: true, filas: await reintentar(() => leerRanking(data)) };
+    } catch (e) {
+      console.error("No se pudo leer el ranking:", e);
+      return { ok: false, filas: [] as FilaRanking[] };
+    }
+  });
+
+export const salirRankingFn = createServerFn({ method: "POST" })
+  .validator((device: string) => deviceSchema.parse(device))
+  .handler(async ({ data }) => {
+    try {
+      const { salirDelRanking } = await import("./ranking.server");
+      await salirDelRanking(data);
+      return { ok: true };
+    } catch (e) {
+      console.error("No se pudo salir del ranking:", e);
+      return { ok: false };
     }
   });
 

@@ -53,6 +53,7 @@ import { claveIaLearn, pendientesLearn, revisarModuloLearn } from "@/lib/cloud";
 import type { ContenidoTrack, Dia, Premio, Track } from "@/lib/learn/tipos";
 import { TarjetaVocab, VistaEjercicio, type Respuesta } from "./Ejercicios";
 import { FondoLearn } from "./FondoLearn";
+import { PantallaRanking, TarjetaRanking, useSincronizarRanking } from "./Ranking";
 import {
   callar,
   desbloquearVoz,
@@ -152,7 +153,8 @@ type Vista =
   | { tipo: "inicio" }
   | { tipo: "sesion"; dia: Dia; pasos: Paso[]; repaso: boolean }
   | { tipo: "resultado"; dia: Dia; premio: Premio; aciertos: number; total: number }
-  | { tipo: "sinCorazones"; dia: Dia };
+  | { tipo: "sinCorazones"; dia: Dia }
+  | { tipo: "ranking" };
 
 export default function SnoopyLearn({
   onCerrar,
@@ -176,6 +178,7 @@ export default function SnoopyLearn({
   const [contenido, setContenido] = useState<ContenidoTrack | null>(null);
   const [errorCarga, setErrorCarga] = useState(false);
   const [vista, setVista] = useState<Vista>({ tipo: "inicio" });
+  useSincronizarRanking(estado);
 
   // La música del sitio se pausa para concentrarse; vuelve al salir.
   useEffect(() => {
@@ -287,7 +290,15 @@ export default function SnoopyLearn({
                 .catch(() => {})
             }
             onCerrar={onCerrar}
+            onRanking={() => setVista({ tipo: "ranking" })}
             nombre={nombre}
+          />
+        )}
+        {vista.tipo === "ranking" && (
+          <PantallaRanking
+            key="ranking"
+            track={track}
+            onVolver={() => setVista({ tipo: "inicio" })}
           />
         )}
         {vista.tipo === "sesion" && contenido && (
@@ -345,6 +356,7 @@ function Inicio({
   onEmpezar,
   onRecargar,
   onCerrar,
+  onRanking,
   nombre,
 }: {
   track: Track;
@@ -354,6 +366,7 @@ function Inicio({
   onEmpezar: (d: Dia) => void;
   onRecargar: () => void;
   onCerrar: () => void;
+  onRanking: () => void;
   nombre: string;
 }) {
   const estado = useLearn();
@@ -475,6 +488,8 @@ function Inicio({
             <Recurso Icono={Gem} color="text-sky-200" valor={estado.gemas} etiqueta="Gemas" />
             <EscudoBoton track={track} />
           </div>
+
+          <TarjetaRanking track={track} onAbrir={onRanking} />
 
           {/* Tarea de hoy */}
           {errorCarga ? (
@@ -1708,6 +1723,8 @@ const CSS = `
 .lrn-boton-ok:active, .lrn-boton-mal:active { transform: translateY(3px); box-shadow: none; }
 .lrn-progreso { background: linear-gradient(90deg, var(--acento-fuerte), color-mix(in srgb, var(--acento) 70%, white)); box-shadow: 0 0 12px var(--acento-suave); }
 .lrn-globo { position: relative; }
+.lrn-avatar { color: #04121a; background: linear-gradient(160deg, color-mix(in srgb, var(--acento) 80%, white), var(--acento-fuerte)); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.25); }
+.lrn-hoja { background: color-mix(in srgb, var(--fondo-b) 70%, #0b0f1e); border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 -20px 50px -20px rgba(0,0,0,0.7); }
 .lrn-flotar { animation: lrn-flotar 3.2s cubic-bezier(.45,.05,.55,.95) infinite; filter: drop-shadow(0 6px 8px rgba(0,0,0,0.35)); }
 @keyframes lrn-flotar { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-5px) rotate(2deg); } }
 
