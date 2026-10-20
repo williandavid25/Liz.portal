@@ -47,6 +47,23 @@ export function nivelDe(xp: number): { nivel: number; desde: number; hasta: numb
   return { nivel, desde, hasta, pct: Math.min(100, ((xp - desde) / (hasta - desde)) * 100) };
 }
 
+/* ---------------- Ligas (por nivel) ---------------- */
+
+export type Liga = "cobre" | "oro" | "diamante";
+
+export const LIGAS: { id: Liga; nombre: string; desde: number }[] = [
+  { id: "cobre", nombre: "Cobre", desde: 1 },
+  { id: "oro", nombre: "Oro", desde: 5 },
+  { id: "diamante", nombre: "Diamante", desde: 10 },
+];
+
+export function ligaDe(nivel: number) {
+  return [...LIGAS].reverse().find((l) => nivel >= l.desde) ?? LIGAS[0]!;
+}
+
+/** "1.er lugar", "2.º lugar", "3.er lugar"… */
+export const lugarTexto = (n: number) => `${n}${n === 1 || n === 3 ? ".er" : ".º"} lugar`;
+
 export function avanceDe(e: EstadoLearn): AvanceRanking {
   const de = (t: ProgresoTrack): AvanceTrack => ({
     xp: t.xp,

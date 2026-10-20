@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Crown,
+  Gem,
   FlaskConical,
   Flame,
   Languages,
@@ -19,8 +20,11 @@ import { getDeviceId } from "@/lib/dispositivo";
 import { compressImage } from "@/lib/image";
 import { fechaLocal } from "@/lib/learn/progreso";
 import {
+  LIGAS,
   avanceDe,
   guardarPerfil,
+  ligaDe,
+  lugarTexto,
   leerPerfil,
   nivelDe,
   ordenar,
@@ -166,6 +170,17 @@ const Puesto = ({ n }: { n: number }) =>
     <span className="text-sm font-extrabold tabular-nums text-white/55">{n}</span>
   );
 
+function ChipLiga({ liga, nombre }: { liga: string; nombre: string }) {
+  const Icono = liga === "diamante" ? Gem : Medal;
+  return (
+    <span
+      className={`lrn-liga ${liga} inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider`}
+    >
+      <Icono size={11} strokeWidth={2.6} /> {nombre}
+    </span>
+  );
+}
+
 /* ---------------- Tarjeta del inicio ---------------- */
 
 export function TarjetaRanking({ track, onAbrir }: { track: Track; onAbrir: () => void }) {
@@ -175,6 +190,7 @@ export function TarjetaRanking({ track, onAbrir }: { track: Track; onAbrir: () =
   const yo = lista.findIndex((f) => f.esTu);
   const tuyo = yo >= 0 ? lista[yo]! : null;
   const nivel = tuyo ? nivelDe(puntaje(tuyo.avance, track).xp) : null;
+  const liga = nivel ? ligaDe(nivel.nivel) : null;
 
   return (
     <button
@@ -193,9 +209,11 @@ export function TarjetaRanking({ track, onAbrir }: { track: Track; onAbrir: () =
           <span className="block text-[15px] font-extrabold leading-tight">
             Únete con tu nombre y tu foto
           </span>
-        ) : tuyo && nivel ? (
-          <span className="block text-[15px] font-extrabold leading-tight">
-            Vas {yo + 1}.º de {lista.length} · Nivel {nivel.nivel}
+        ) : tuyo && nivel && liga ? (
+          <span className="flex flex-wrap items-center gap-1.5 text-[15px] font-extrabold leading-tight">
+            <span className={yo === 0 ? "lrn-texto-oro" : ""}>{lugarTexto(yo + 1)}</span>
+            <ChipLiga liga={liga.id} nombre={liga.nombre} />
+            <span className="text-[13px] text-white/60">Nivel {nivel.nivel}</span>
           </span>
         ) : (
           <span className="block text-[15px] font-extrabold leading-tight">Ver posiciones</span>
@@ -313,6 +331,8 @@ export function PantallaRanking({ track, onVolver }: { track: Track; onVolver: (
             lista.map((f, k) => {
               const p = puntaje(f.avance, vista, hoy);
               const nivel = nivelDe(p.xp);
+              const liga = ligaDe(nivel.nivel);
+              const primero = k === 0 && p.xp > 0;
               return (
                 <motion.div
                   key={`${f.nombre}-${k}`}
@@ -320,23 +340,34 @@ export function PantallaRanking({ track, onVolver }: { track: Track; onVolver: (
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(k, 8) * 0.04 }}
-                  className={`lrn-tarjeta rounded-3xl p-3.5 ${f.esTu ? "lrn-destacada" : ""}`}
+                  className={`lrn-tarjeta rounded-3xl p-3.5 ${primero ? "lrn-primero" : f.esTu ? "lrn-destacada" : ""}`}
                 >
+                  <p
+                    className={`mb-2 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.16em] ${primero ? "lrn-texto-oro" : "text-white/50"}`}
+                  >
+                    {primero && <Crown size={13} fill="currentColor" fillOpacity={0.35} />}
+                    {primero ? "Primer lugar" : lugarTexto(k + 1)}
+                  </p>
                   <div className="flex items-center gap-3">
                     <span className="grid w-6 shrink-0 place-items-center">
                       <Puesto n={k + 1} />
                     </span>
-                    <Avatar nombre={f.nombre} foto={f.foto} tam={48} />
+                    <span className={`lrn-aro ${liga.id} rounded-full p-[2.5px]`}>
+                      <Avatar nombre={f.nombre} foto={f.foto} tam={46} />
+                    </span>
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-1.5 truncate text-[15px] font-extrabold leading-tight">
-                        <span className="truncate">{f.nombre}</span>
+                        <span className={`truncate ${primero ? "lrn-texto-oro" : ""}`}>
+                          {f.nombre}
+                        </span>
                         {f.esTu && (
                           <span className="shrink-0 rounded-full bg-[var(--acento-suave)] px-2 py-0.5 text-[10px] font-bold text-[var(--acento)]">
                             Tú
                           </span>
                         )}
                       </p>
-                      <p className="mt-0.5 text-xs font-bold text-white/65">
+                      <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-bold text-white/65">
+                        <ChipLiga liga={liga.id} nombre={liga.nombre} />
                         Nivel {nivel.nivel}
                         <span className="font-semibold text-white/45">
                           {vista === "general" ? ` · hasta el día ${p.dia}` : ` · día ${p.dia}`}
@@ -351,7 +382,7 @@ export function PantallaRanking({ track, onVolver }: { track: Track; onVolver: (
                         aria-label={`Progreso al nivel ${nivel.nivel + 1}`}
                       >
                         <div
-                          className="lrn-progreso h-full rounded-full"
+                          className={`lrn-barra-liga ${liga.id} h-full rounded-full`}
                           style={{ width: `${nivel.pct}%` }}
                         />
                       </div>
@@ -385,6 +416,24 @@ export function PantallaRanking({ track, onVolver }: { track: Track; onVolver: (
           <p className="mt-1 text-center text-[11px] leading-snug text-white/40">
             Se ordena por XP. Cada nivel pide 50 XP más que el anterior.
           </p>
+          <div className="lrn-tarjeta mt-1 rounded-3xl p-3.5">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-white/55">
+              Ligas
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {LIGAS.map((l, i) => {
+                const hasta = LIGAS[i + 1]?.desde;
+                return (
+                  <div key={l.id} className="flex items-center justify-between gap-2">
+                    <ChipLiga liga={l.id} nombre={l.nombre} />
+                    <span className="text-xs text-white/55">
+                      {hasta ? `Niveles ${l.desde}–${hasta - 1}` : `Nivel ${l.desde} en adelante`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
