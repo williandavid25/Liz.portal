@@ -53,7 +53,12 @@ import { claveIaLearn, pendientesLearn, revisarModuloLearn } from "@/lib/cloud";
 import type { ContenidoTrack, Dia, Premio, Track } from "@/lib/learn/tipos";
 import { TarjetaVocab, VistaEjercicio, type Respuesta } from "./Ejercicios";
 import { FondoLearn } from "./FondoLearn";
-import { PantallaRanking, TarjetaRanking, useSincronizarRanking } from "./Ranking";
+import { EditarPerfil, PantallaRanking, TarjetaRanking, useSincronizarRanking } from "./Ranking";
+import { leerPerfil } from "@/lib/learn/ranking";
+
+// "Más tarde" en el registro del ranking: no vuelve a preguntar hasta que se
+// recargue la app.
+let registroPospuesto = false;
 import {
   callar,
   desbloquearVoz,
@@ -179,6 +184,8 @@ export default function SnoopyLearn({
   const [errorCarga, setErrorCarga] = useState(false);
   const [vista, setVista] = useState<Vista>({ tipo: "inicio" });
   useSincronizarRanking(estado);
+  // Quien todavía no está en el ranking se registra apenas entra a jugar.
+  const [pedirRegistro, setPedirRegistro] = useState(() => !registroPospuesto && !leerPerfil());
 
   // La música del sitio se pausa para concentrarse; vuelve al salir.
   useEffect(() => {
@@ -341,6 +348,17 @@ export default function SnoopyLearn({
           />
         )}
       </>
+      <AnimatePresence>
+        {pedirRegistro && vista.tipo === "inicio" && (
+          <EditarPerfil
+            bienvenida
+            onCerrar={() => {
+              if (!leerPerfil()) registroPospuesto = true;
+              setPedirRegistro(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>,
     document.body,
   );

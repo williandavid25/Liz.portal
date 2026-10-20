@@ -17,7 +17,7 @@ import {
 import { guardarRankingFn, leerRankingFn, salirRankingFn, uploadImage } from "@/lib/cloud";
 import { getDeviceId } from "@/lib/dispositivo";
 import { compressImage } from "@/lib/image";
-import { fechaLocal, leerLearn } from "@/lib/learn/progreso";
+import { fechaLocal } from "@/lib/learn/progreso";
 import {
   avanceDe,
   guardarPerfil,
@@ -102,15 +102,23 @@ async function subir(perfil: PerfilRanking, estado: EstadoLearn): Promise<boolea
 export function useSincronizarRanking(estado: EstadoLearn) {
   const perfil = usePerfil();
   const ultimo = useRef("");
+  // Si la nube no respondió, se vuelve a intentar a los 15 s.
+  const [reintento, setReintento] = useState(0);
   useEffect(() => {
     if (!perfil) return;
     const firma = JSON.stringify([perfil, avanceDe(estado)]);
     if (firma === ultimo.current) return;
-    const reloj = setTimeout(() => {
-      void subir(perfil, estado).then((ok) => ok && (ultimo.current = firma));
-    }, 1500);
+    const reloj = setTimeout(
+      () => {
+        void subir(perfil, estado).then((ok) => {
+          if (ok) ultimo.current = firma;
+          else setReintento((n) => n + 1);
+        });
+      },
+      reintento > 0 ? 15_000 : 800,
+    );
     return () => clearTimeout(reloj);
-  }, [perfil, estado]);
+  }, [perfil, estado, reintento]);
 }
 
 /* ---------------- Piezas ---------------- */
@@ -389,7 +397,19 @@ export function PantallaRanking({ track, onVolver }: { track: Track; onVolver: (
 
 /* ---------------- Registro / editar perfil ---------------- */
 
-function EditarPerfil({ onCerrar }: { onCerrar: () => void }) {
+/**
+ * Registro rápido: con solo el nombre ya entra. Se guarda al instante en el
+ * celular y la subida a la nube (y la de la foto, si sigue subiendo) termina
+ * por detrás con useSincronizarRanking.
+ */
+export function EditarPerfil({
+  onCerrar,
+  bienvenida = false,
+}: {
+  onCerrar: () => void;
+  /** Se abrió sola al entrar a Learn: muestra "Más tarde". */
+  bienvenida?: boolean;
+}) {
   const actual = leerPerfil();
   const [nombre, setNombre] = useState(actual?.nombre ?? "");
   const [foto, setFoto] = useState<string | null>(actual?.foto ?? null);
@@ -398,44 +418,44 @@ function EditarPerfil({ onCerrar }: { onCerrar: () => void }) {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const archivo = useRef<HTMLInputElement>(null);
+  const subida = useRef<Promise<string | null> | null>(null);
 
-  const elegirFoto = async (f: File | undefined) => {
+  const elegirFoto = (f: File | undefined) => {
     if (!f || !f.type.startsWith("image/")) return;
     setError(null);
-    const local = URL.createObjectURL(f);
-    setVista(local);
+    setVista(URL.createObjectURL(f));
     setSubiendo(true);
-    try {
-      const chica = await compressImage(f, 400, 0.85);
-      const fd = new FormData();
-      fd.append("file", chica);
-      const { url } = await uploadImage({ data: fd });
-      if (!url) throw new Error("sin url");
-      setFoto(url);
-    } catch {
-      setError("No se pudo subir la foto. Intenta de nuevo.");
-      setVista(foto);
-    } finally {
-      setSubiendo(false);
-    }
+    const anterior = foto;
+    const p = (async () => {
+      try {
+        const chica = await compressImage(f, 400, 0.85);
+        const fd = new FormData();
+        fd.append("file", chica);
+        const { url } = await uploadImage({ data: fd });
+        if (!url) throw new Error("sin url");
+        setFoto(url);
+        return url;
+      } catch {
+        setError("No se pudo subir la foto. Intenta de nuevo.");
+        setVista(anterior);
+        return null;
+      } finally {
+        setSubiendo(false);
+      }
+    })();
+    subida.current = p;
   };
 
-  const guardar = async () => {
+  const guardar = () => {
     const limpio = nombre.trim().slice(0, 30);
-    if (!limpio || subiendo) return;
-    setGuardando(true);
-    setError(null);
-    const perfil = { nombre: limpio, foto };
-    const r = await guardarRankingFn({
-      data: { device: getDeviceId(), ...perfil, avance: avanceDe(leerLearn()) },
-    }).catch(() => ({ ok: false }));
-    setGuardando(false);
-    if (!r.ok) {
-      setError("No hay conexión con la nube. Intenta de nuevo.");
-      return;
-    }
-    guardarPerfil(perfil);
-    void refrescarRanking();
+    if (!limpio) return;
+    guardarPerfil({ nombre: limpio, foto });
+    // La foto que sigue subiendo se agrega al perfil apenas llegue.
+    const pendiente = subiendo ? subida.current : null;
+    void pendiente?.then((url) => {
+      const p = leerPerfil();
+      if (url && p) guardarPerfil({ ...p, foto: url });
+    });
     onCerrar();
   };
 
@@ -466,8 +486,14 @@ function EditarPerfil({ onCerrar }: { onCerrar: () => void }) {
         role="dialog"
         aria-label={actual ? "Editar mi perfil" : "Unirme al ranking"}
       >
-        <p className="text-lg font-extrabold">{actual ? "Mi perfil" : "Únete al ranking"}</p>
-        <p className="mt-0.5 text-[13px] text-white/60">Así te verá la otra persona.</p>
+        <p className="text-lg font-extrabold">
+          {actual ? "Mi perfil" : bienvenida ? "¡Entra al ranking!" : "Únete al ranking"}
+        </p>
+        <p className="mt-0.5 text-[13px] text-white/60">
+          {actual
+            ? "Así te verá la otra persona."
+            : "Escribe tu nombre y listo: compite por niveles y puntos con la otra persona."}
+        </p>
 
         <div className="mt-4 flex flex-col items-center gap-2">
           <button
@@ -492,11 +518,11 @@ function EditarPerfil({ onCerrar }: { onCerrar: () => void }) {
             accept="image/*"
             className="hidden"
             onChange={(e) => {
-              void elegirFoto(e.target.files?.[0]);
+              elegirFoto(e.target.files?.[0]);
               e.target.value = "";
             }}
           />
-          <span className="text-xs text-white/50">Toca para elegir una foto</span>
+          <span className="text-xs text-white/50">Foto de perfil (opcional)</span>
         </div>
 
         <label className="mt-4 block text-[11px] font-bold uppercase tracking-[0.16em] text-white/55">
@@ -504,10 +530,12 @@ function EditarPerfil({ onCerrar }: { onCerrar: () => void }) {
           <input
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
+            autoFocus={!actual}
+            enterKeyHint="done"
             maxLength={30}
             placeholder="Cómo quieres aparecer"
             className="mt-1.5 w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-base font-semibold normal-case tracking-normal text-white outline-none placeholder:text-white/35 focus:border-[var(--acento)]"
-            onKeyDown={(e) => e.key === "Enter" && void guardar()}
+            onKeyDown={(e) => e.key === "Enter" && guardar()}
           />
         </label>
 
@@ -515,12 +543,21 @@ function EditarPerfil({ onCerrar }: { onCerrar: () => void }) {
 
         <button
           type="button"
-          disabled={!nombre.trim() || subiendo || guardando}
-          onClick={() => void guardar()}
+          disabled={!nombre.trim() || guardando}
+          onClick={guardar}
           className="lrn-boton-principal mt-4 w-full rounded-2xl py-3.5 text-[15px] font-extrabold disabled:opacity-50"
         >
-          {guardando ? "Guardando…" : actual ? "Guardar cambios" : "Unirme"}
+          {actual ? "Guardar cambios" : "Unirme"}
         </button>
+        {!actual && bienvenida && (
+          <button
+            type="button"
+            onClick={onCerrar}
+            className="mt-2 w-full rounded-2xl py-2.5 text-[13px] font-bold text-white/55 hover:text-white"
+          >
+            Más tarde
+          </button>
+        )}
         {actual && (
           <button
             type="button"
