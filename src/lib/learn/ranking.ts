@@ -49,12 +49,13 @@ export function nivelDe(xp: number): { nivel: number; desde: number; hasta: numb
 
 /* ---------------- Ligas (por nivel) ---------------- */
 
-export type Liga = "cobre" | "oro" | "diamante";
+export type Liga = "cobre" | "diamante" | "oro";
 
 export const LIGAS: { id: Liga; nombre: string; desde: number }[] = [
   { id: "cobre", nombre: "Cobre", desde: 1 },
-  { id: "oro", nombre: "Oro", desde: 5 },
-  { id: "diamante", nombre: "Diamante", desde: 10 },
+  { id: "diamante", nombre: "Diamante", desde: 5 },
+  // La más alta.
+  { id: "oro", nombre: "Oro", desde: 10 },
 ];
 
 export function ligaDe(nivel: number) {

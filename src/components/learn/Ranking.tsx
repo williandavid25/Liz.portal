@@ -191,12 +191,13 @@ export function TarjetaRanking({ track, onAbrir }: { track: Track; onAbrir: () =
   const tuyo = yo >= 0 ? lista[yo]! : null;
   const nivel = tuyo ? nivelDe(puntaje(tuyo.avance, track).xp) : null;
   const liga = nivel ? ligaDe(nivel.nivel) : null;
+  const primero = yo === 0 && !!tuyo && puntaje(tuyo.avance, track).xp > 0;
 
   return (
     <button
       type="button"
       onClick={onAbrir}
-      className="lrn-tarjeta flex w-full items-center gap-3 rounded-3xl p-3.5 text-left transition active:scale-[0.99]"
+      className={`lrn-tarjeta flex w-full items-center gap-3 rounded-3xl p-3.5 text-left transition active:scale-[0.99] ${primero ? "lrn-primero" : ""}`}
     >
       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-amber-300/15 text-amber-200">
         <Trophy size={22} />
@@ -211,7 +212,9 @@ export function TarjetaRanking({ track, onAbrir }: { track: Track; onAbrir: () =
           </span>
         ) : tuyo && nivel && liga ? (
           <span className="flex flex-wrap items-center gap-1.5 text-[15px] font-extrabold leading-tight">
-            <span className={yo === 0 ? "lrn-texto-oro" : ""}>{lugarTexto(yo + 1)}</span>
+            <span className={primero ? "lrn-texto-oro" : ""}>
+              {primero ? "👑 Primer lugar" : lugarTexto(yo + 1)}
+            </span>
             <ChipLiga liga={liga.id} nombre={liga.nombre} />
             <span className="text-[13px] text-white/60">Nivel {nivel.nivel}</span>
           </span>

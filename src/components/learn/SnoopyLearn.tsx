@@ -1756,9 +1756,21 @@ const CSS = `
 .lrn-barra-liga.diamante { background: linear-gradient(90deg, #9333ea, #f0abfc); box-shadow: 0 0 10px rgba(217,70,239,0.7); }
 .lrn-texto-oro { background: linear-gradient(110deg, #fff6b0, #fcd34d 35%, #f59e0b 60%, #fff3a3); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .lrn-primero {
-  border-color: rgba(250,204,21,0.75);
-  background: linear-gradient(150deg, rgba(253,224,71,0.24), rgba(234,179,8,0.10) 45%, rgba(245,158,11,0.18));
-  box-shadow: 0 0 0 1px rgba(250,204,21,0.35), 0 0 28px -4px rgba(250,204,21,0.55), inset 0 1px 0 rgba(255,246,176,0.4);
+  position: relative; overflow: hidden; isolation: isolate;
+  border-color: rgba(250,204,21,0.8);
+  background: linear-gradient(150deg, rgba(253,224,71,0.26), rgba(234,179,8,0.10) 45%, rgba(245,158,11,0.2));
+  animation: lrn-latido-oro 2.4s ease-in-out infinite;
+}
+/* Destello de luz que cruza el panel dorado. */
+.lrn-primero::after {
+  content: ""; position: absolute; inset: -40% auto -40% -60%; width: 45%; z-index: -1; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255,246,176,0.55) 45%, rgba(255,255,255,0.75) 50%, rgba(255,246,176,0.55) 55%, transparent);
+  transform: skewX(-18deg); animation: lrn-destello 3s ease-in-out infinite;
+}
+@keyframes lrn-destello { 0% { left: -60%; } 55%, 100% { left: 130%; } }
+@keyframes lrn-latido-oro {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(250,204,21,0.35), 0 0 22px -6px rgba(250,204,21,0.5), inset 0 1px 0 rgba(255,246,176,0.4); }
+  50% { box-shadow: 0 0 0 1px rgba(253,224,71,0.7), 0 0 38px -2px rgba(250,204,21,0.85), inset 0 1px 0 rgba(255,246,176,0.6); }
 }
 .lrn-hoja { background: color-mix(in srgb, var(--fondo-b) 70%, #0b0f1e); border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 -20px 50px -20px rgba(0,0,0,0.7); }
 .lrn-flotar { animation: lrn-flotar 3.2s cubic-bezier(.45,.05,.55,.95) infinite; filter: drop-shadow(0 6px 8px rgba(0,0,0,0.35)); }
@@ -1791,6 +1803,6 @@ button:not(:disabled):active .lrn-nodo { transform: translateY(4px); box-shadow:
 @keyframes lrn-sacudir { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-6px); } 40%, 60% { transform: translateX(6px); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .lrn-flotar, .lrn-llama svg, .lrn-onda, .lrn-cargando, .lrn-foto-img, .lrn-liga { animation: none !important; }
+  .lrn-flotar, .lrn-llama svg, .lrn-onda, .lrn-cargando, .lrn-foto-img, .lrn-liga, .lrn-primero, .lrn-primero::after { animation: none !important; }
 }
 `;
