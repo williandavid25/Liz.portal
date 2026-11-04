@@ -1765,9 +1765,11 @@ const CSS = `
 .lrn-primero::after {
   content: ""; position: absolute; inset: -40% auto -40% -60%; width: 45%; z-index: -1; pointer-events: none;
   background: linear-gradient(100deg, transparent, rgba(255,246,176,0.55) 45%, rgba(255,255,255,0.75) 50%, rgba(255,246,176,0.55) 55%, transparent);
-  transform: skewX(-18deg); animation: lrn-destello 3s ease-in-out infinite;
+  transform: translateX(0) skewX(-18deg); animation: lrn-destello 3s ease-in-out infinite;
 }
-@keyframes lrn-destello { 0% { left: -60%; } 55%, 100% { left: 130%; } }
+/* Cruza de left -60% a 130% del panel (190 % = 4,22 veces su ancho de 45 %).
+   Con transform lo mueve la tarjeta gráfica; con left se redibujaba el panel. */
+@keyframes lrn-destello { 0% { transform: translateX(0) skewX(-18deg); } 55%, 100% { transform: translateX(422%) skewX(-18deg); } }
 @keyframes lrn-latido-oro {
   0%, 100% { box-shadow: 0 0 0 1px rgba(250,204,21,0.35), 0 0 22px -6px rgba(250,204,21,0.5), inset 0 1px 0 rgba(255,246,176,0.4); }
   50% { box-shadow: 0 0 0 1px rgba(253,224,71,0.7), 0 0 38px -2px rgba(250,204,21,0.85), inset 0 1px 0 rgba(255,246,176,0.6); }

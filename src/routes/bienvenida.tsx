@@ -616,12 +616,8 @@ function Bienvenida() {
 
                         {/* Sello de cera: late despacito y se rompe al abrir */}
                         <span className="pointer-events-none absolute left-[52.3%] top-[57.6%] z-30 w-[18.5%] -translate-x-1/2 -translate-y-1/2">
-                          <motion.img
-                            src="/cartas/sello.webp"
-                            alt=""
-                            aria-hidden="true"
-                            draggable={false}
-                            className="sello-latir block w-full select-none"
+                          <motion.span
+                            className="relative block"
                             initial={false}
                             animate={
                               isOpening
@@ -629,7 +625,23 @@ function Bienvenida() {
                                 : { scale: 1, rotate: 0, opacity: 1 }
                             }
                             transition={{ duration: 0.35, ease: "easeOut" }}
-                          />
+                          >
+                            {/* Brillo cálido que late: copia del sello que solo cambia de opacidad. */}
+                            <img
+                              src="/cartas/sello.webp"
+                              alt=""
+                              aria-hidden="true"
+                              draggable={false}
+                              className="sello-brillo block w-full select-none"
+                            />
+                            <img
+                              src="/cartas/sello.webp"
+                              alt=""
+                              aria-hidden="true"
+                              draggable={false}
+                              className="sello-latir relative block w-full select-none"
+                            />
+                          </motion.span>
                         </span>
                       </div>
 

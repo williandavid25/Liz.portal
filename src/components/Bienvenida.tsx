@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { esperarSplash } from "./Splash";
 
 const TITULO = "Bienvenida, mi niña";
@@ -11,8 +11,54 @@ const TITULO = "Bienvenida, mi niña";
  * La animación espera a que cargue la fuente manuscrita (Great Vibes): si
  * arrancara antes se dibujaría con la letra de reserva y luego saltaría.
  */
+// El brillo recorre las letras: el degradado (2200 de ancho) da una vuelta cada 9 s.
+const BRILLO_ANCHO = 2200;
+const BRILLO_MS = 9000;
+// Se mueve 12 veces por segundo: cada paso corre el degradado ~1 % de su ciclo,
+// imperceptible, y redibuja el título 5 veces menos que a 60 por segundo (antes
+// con SMIL obligaba a repintar el título y su resplandor en cada cuadro).
+const BRILLO_PASO_MS = 80;
+
 export function Bienvenida() {
   const [listo, setListo] = useState(false);
+  const tintaRef = useRef<SVGLinearGradientElement>(null);
+  const tituloRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const tinta = tintaRef.current;
+    const titulo = tituloRef.current;
+    if (!tinta || !titulo) return;
+    const inicio = performance.now();
+    let id = 0;
+    let visible = true;
+    const mover = () => {
+      const x = -(((performance.now() - inicio) % BRILLO_MS) / BRILLO_MS) * BRILLO_ANCHO;
+      tinta.setAttribute("gradientTransform", `translate(${x.toFixed(1)} 0)`);
+    };
+    const arrancar = () => {
+      window.clearInterval(id);
+      if (visible && document.visibilityState === "visible") {
+        mover();
+        id = window.setInterval(mover, BRILLO_PASO_MS);
+      }
+    };
+    // Fuera de la pantalla o con la app en segundo plano, se detiene.
+    const observer =
+      typeof IntersectionObserver === "function"
+        ? new IntersectionObserver(([e]) => {
+            visible = !!e?.isIntersecting;
+            arrancar();
+          })
+        : null;
+    observer?.observe(titulo);
+    document.addEventListener("visibilitychange", arrancar);
+    arrancar();
+    return () => {
+      window.clearInterval(id);
+      observer?.disconnect();
+      document.removeEventListener("visibilitychange", arrancar);
+    };
+  }, []);
 
   useEffect(() => {
     let hecho = false;
@@ -38,13 +84,14 @@ export function Bienvenida() {
       }`}
     >
       <h1 className="sr-only">{TITULO}</h1>
-      <div className="bienvenida-titulo w-full max-w-[44rem]" aria-hidden="true">
+      <div ref={tituloRef} className="bienvenida-titulo w-full max-w-[44rem]" aria-hidden="true">
         <svg viewBox="0 0 1100 210" className="h-auto w-full overflow-visible">
           <defs>
             {/* Degradado con los colores de la flor (dorado → rosa → lavanda).
                 Mide el doble del título y se desplaza en bucle: un brillo que
-                recorre las letras lentamente. */}
+                recorre las letras lentamente (lo mueve el efecto de arriba). */}
             <linearGradient
+              ref={tintaRef}
               id="bienvenida-tinta"
               gradientUnits="userSpaceOnUse"
               x1="0"
@@ -60,14 +107,6 @@ export function Bienvenida() {
               <stop offset="68%" stopColor="#ff8db8" />
               <stop offset="84%" stopColor="#ffd9a0" />
               <stop offset="100%" stopColor="#ffd9a0" />
-              <animateTransform
-                attributeName="gradientTransform"
-                type="translate"
-                from="0 0"
-                to="-2200 0"
-                dur="9s"
-                repeatCount="indefinite"
-              />
             </linearGradient>
           </defs>
           <text

@@ -405,6 +405,27 @@ export function MascotaGame({
   const [sobreVolando, setSobreVolando] = useState(0);
   const [stats, setStats] = useState<Stats>(INICIAL);
   const [escena, setEscena] = useState<Escena>("dormitorio");
+  // El fondo de la escena que no se ve se descarga después (ver fondoSrc).
+  const [otrosFondos, setOtrosFondos] = useState(false);
+  useEffect(() => {
+    let idle = 0;
+    let espera = 0;
+    // Cuando la página terminó de cargar y el celular queda libre.
+    const pedir = () => {
+      if (typeof window.requestIdleCallback === "function") {
+        idle = window.requestIdleCallback(() => setOtrosFondos(true), { timeout: 3000 });
+      } else {
+        espera = window.setTimeout(() => setOtrosFondos(true), 1000);
+      }
+    };
+    if (document.readyState === "complete") espera = window.setTimeout(pedir, 800);
+    else window.addEventListener("load", pedir, { once: true });
+    return () => {
+      window.removeEventListener("load", pedir);
+      window.clearTimeout(espera);
+      if (idle && typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idle);
+    };
+  }, []);
   const [orient, setOrient] = useState<Orientacion>("v");
   const [nombre, setNombre] = useState("Snoopy");
   const [progreso, setProgreso] = useState<Progreso>(PROGRESO_INICIAL);
@@ -1510,6 +1531,14 @@ export function MascotaGame({
   ];
 
   const fondos = FONDOS[orient];
+  // El fondo de la otra escena se descarga cuando el celular queda libre (o al
+  // cambiar de escena), no al abrir: el del patio pesa ~300 KB y frenaba la
+  // carga. Mientras no se ve, tampoco se dibuja (visibility).
+  const fondoSrc = (e: Escena) => (e === escena || otrosFondos ? fondos[e] : undefined);
+  const fondoEstilo = (e: Escena): CSSProperties => ({
+    opacity: escena === e ? 1 : 0,
+    visibility: escena === e ? "visible" : "hidden",
+  });
   const ancla = dormido || tristeEnCama ? ANCLAS[orient].cama : ANCLAS[orient][escena];
   const sombraAncha = pose === "durmiendo" || pose === "banando";
   return (
@@ -1762,11 +1791,11 @@ export function MascotaGame({
         {(["dormitorio", "patio"] as Escena[]).map((e) => (
           <img
             key={e}
-            src={fondos[e]}
+            src={fondoSrc(e)}
             alt=""
             decoding="async"
             className="mg-fondo mg-desenfoque absolute inset-0 h-full w-full object-cover"
-            style={{ opacity: escena === e ? 1 : 0 }}
+            style={fondoEstilo(e)}
           />
         ))}
       </div>
@@ -1777,12 +1806,12 @@ export function MascotaGame({
           {(["dormitorio", "patio"] as Escena[]).map((e) => (
             <img
               key={e}
-              src={fondos[e]}
+              src={fondoSrc(e)}
               alt=""
               decoding="async"
               fetchPriority={e === escena ? "high" : "low"}
               className="mg-fondo absolute inset-0 h-full w-full object-cover"
-              style={{ opacity: escena === e ? 1 : 0 }}
+              style={fondoEstilo(e)}
               aria-hidden="true"
             />
           ))}
@@ -2634,6 +2663,13 @@ const CSS = `
   border: 1px solid rgba(255,255,255,0.22);
   box-shadow: 0 24px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.15);
 }
+/* Modo ligero (celulares de gama baja): sin desenfoque, el vidrio se apoya en un
+   tinte oscuro para que el texto se siga leyendo igual sobre la escena. */
+html[data-ligero] .mg-vidrio { background: linear-gradient(rgba(255,255,255,0.14), rgba(255,255,255,0.14)), rgba(14,16,38,0.34); }
+html[data-ligero] .mg-vidrio-fuerte { background: linear-gradient(rgba(255,255,255,0.2), rgba(255,255,255,0.2)), rgba(14,16,38,0.4); }
+html[data-ligero] .mg-vidrio-oscuro { background: rgba(22,26,52,0.94); }
+html[data-ligero] .mg-boton-transparente { background: rgba(10,12,30,0.2); }
+html[data-ligero] .mg-boton-transparente.mg-boton-activo { background: rgba(255,255,255,0.16); }
 .mg-stats {
   text-shadow: 0 2px 5px rgba(0,0,0,0.62);
 }
@@ -2642,7 +2678,7 @@ const CSS = `
 /* Escena */
 .mg-escena { container-type: size; overflow: hidden; }
 .mg-lienzo { position: absolute; left: 50%; bottom: 0; translate: -50% 0; }
-.mg-fondo { transition: opacity 0.7s ease; }
+.mg-fondo { transition: opacity 0.7s ease, visibility 0.7s; }
 .mg-desenfoque { filter: blur(22px) brightness(0.5) saturate(1.2); transform: scale(1.15); }
 .mg-kb { animation: mg-kb 34s ease-in-out infinite alternate; transform-origin: 50% 100%; }
 .mg-overlay { transition: background-color 1.2s ease; }
@@ -2849,12 +2885,36 @@ p.mg-postit-texto { overflow-y: auto; }
 }
 .mg-boton > svg { position: relative; z-index: 1; }
 .mg-boton:focus-visible { outline: 2px solid rgba(255,255,255,0.9); outline-offset: 2px; }
-.mg-boton-necesita { animation: mg-necesita 1.6s ease-in-out infinite; }
+.mg-boton-necesita { box-shadow: 0 10px 30px rgba(0,0,0,0.18); }
+/* Aro blanco que pulsa cuando un botón necesita atención. Es un ::after que solo
+   cambia de opacidad (lo mueve la tarjeta gráfica); animar el box-shadow del
+   botón obligaba a redibujarlo, con su vidrio, en cada cuadro. */
+.mg-boton-necesita::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.5);
+  opacity: 0;
+  pointer-events: none;
+  animation: mg-necesita 1.6s ease-in-out infinite;
+}
 .mg-lampara-on { color: #fde68a; filter: drop-shadow(0 0 6px rgba(253,230,138,0.85)); }
 .mg-progreso { width: 0; animation: mg-progreso linear both; }
 .mg-redondo { transition: transform 0.2s ease, opacity 0.2s ease; }
 .mg-redondo:not(:disabled):hover { transform: scale(1.08); }
-.mg-mic-activo { background: #f43f5e; border: 1px solid rgba(255,255,255,0.5); animation: mg-latido 1.3s ease-in-out infinite; }
+.mg-mic-activo { background: #f43f5e; border: 1px solid rgba(255,255,255,0.5); isolation: isolate; }
+/* Onda roja que sale del micrófono: un ::after que crece y se desvanece. */
+.mg-mic-activo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: rgba(244,63,94,0.6);
+  pointer-events: none;
+  animation: mg-latido 1.3s ease-in-out infinite;
+}
 
 /* Logros */
 .mg-panel-fondo { animation: mg-aparecer 0.2s ease both; }
@@ -3002,22 +3062,19 @@ p.mg-postit-texto { overflow-y: auto; }
 @keyframes mg-parpadeo { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 @keyframes mg-progreso { from { width: 0; } to { width: 100%; } }
 @keyframes mg-carga { to { transform: rotate(360deg); } }
-@keyframes mg-necesita {
-  0%, 100% { box-shadow: 0 10px 30px rgba(0,0,0,0.18), 0 0 0 0 rgba(255,255,255,0.0); }
-  50% { box-shadow: 0 10px 30px rgba(0,0,0,0.18), 0 0 0 2px rgba(255,255,255,0.5); }
-}
+@keyframes mg-necesita { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
 @keyframes mg-valor-cambio {
   0% { opacity: 0.55; transform: translateY(2px) scale(0.96); }
   60% { opacity: 1; transform: translateY(-1px) scale(1.08); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
-@keyframes mg-latido { 0%, 100% { box-shadow: 0 0 0 0 rgba(244,63,94,0.6); } 50% { box-shadow: 0 0 0 10px rgba(244,63,94,0); } }
+@keyframes mg-latido { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.42); opacity: 0; } }
 @keyframes mg-aparecer { from { opacity: 0; } to { opacity: 1; } }
 @keyframes mg-brillo { 0%, 100% { transform: scale(1) rotate(-4deg); } 50% { transform: scale(1.08) rotate(4deg); } }
 
 @media (prefers-reduced-motion: reduce) {
   .mg-kb, .mg-mota, .mg-respirar, .mg-breathe, .mg-tilt, .mg-shake, .mg-wiggle, .mg-bounce, .mg-walk,
-  .mg-entregar, .mg-sombra-respira, .mg-sombra-camina, .mg-sombra-salta, .mg-nota-flota, .mg-barra-baja, .mg-boton-necesita, .mg-mic-activo,
+  .mg-entregar, .mg-sombra-respira, .mg-sombra-camina, .mg-sombra-salta, .mg-nota-flota, .mg-barra-baja, .mg-boton-necesita::after, .mg-mic-activo::after,
   .mg-celebra-emoji, .mg-boton-cargando::before { animation: none; }
   .mg-pop, .mg-toast, .mg-panel, .mg-celebra, .mg-nota-abre, .mg-sobre-vuela { animation-duration: 0.01s; }
 }

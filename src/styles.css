@@ -756,24 +756,64 @@
   }
 }
 /* El sello de cera "respira" con un brillo cálido (sin tocar su transform,
-   que lo usa la animación de abrir). */
+   que lo usa la animación de abrir). Antes se animaba el `filter`, y eso
+   redibujaba cada sello en cada cuadro (en un celular barato la página iba a
+   saltos). Ahora la sombra es fija y el brillo es una copia del sello con el
+   resplandor ya dibujado, que solo cambia de opacidad: lo mueve la tarjeta
+   gráfica y se ve igual. */
 .sello-latir {
+  filter: drop-shadow(0 3px 5px rgb(80 10 10 / 0.45));
+}
+.sello-brillo {
+  position: absolute;
+  inset: 0;
+  filter: drop-shadow(0 0 10px rgb(255 90 70 / 0.7));
+  opacity: 0;
+  will-change: opacity;
   animation: sello-latir 2.8s ease-in-out infinite;
 }
 @keyframes sello-latir {
   0%,
   100% {
-    filter: drop-shadow(0 3px 5px rgb(80 10 10 / 0.45));
+    opacity: 0;
   }
   50% {
-    filter: drop-shadow(0 3px 5px rgb(80 10 10 / 0.45)) drop-shadow(0 0 10px rgb(255 90 70 / 0.7));
+    opacity: 1;
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .sobre-flotar,
-  .sello-latir {
+  .sello-brillo {
     animation: none;
   }
+}
+
+/* Botón "Ver mis cartas" de la portada: late suave (escala y brillo). En CSS
+   lo anima la tarjeta gráfica; con JavaScript se recalculaba cada cuadro. */
+.cartas-latido {
+  animation: cartas-latido 2.6s ease-in-out infinite;
+}
+@keyframes cartas-latido {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.86;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+/* ===== Modo ligero (celulares de gama baja, ver src/lib/rendimiento.ts) =====
+   El desenfoque del "vidrio esmerilado" se recalcula en cada cuadro cuando lo
+   de atrás se mueve, y es lo que más traba a esos celulares. Ahí se quita solo
+   el desenfoque: los paneles quedan translúcidos y todas las animaciones siguen. */
+html[data-ligero] *,
+html[data-ligero] *::before,
+html[data-ligero] *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
 /* Contenteditable placeholder styling */

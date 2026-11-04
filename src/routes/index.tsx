@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
 import { ArrowDown, ArrowUp, Mail } from "lucide-react";
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { FallingStars } from "@/components/FallingStars";
@@ -56,11 +55,8 @@ const roundBtn =
 
 function CartasButton() {
   return (
-    <motion.div
-      animate={{ scale: [1, 1.04, 1], opacity: [0.86, 1, 0.86] }}
-      transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
-      className="min-w-0 flex-1 sm:flex-none"
-    >
+    // Late con CSS (.cartas-latido en styles.css): lo anima la tarjeta gráfica.
+    <div className="cartas-latido min-w-0 flex-1 sm:flex-none">
       <Link
         to="/bienvenida"
         className="flex items-center justify-center gap-2 rounded-full border border-yellow-100/40 bg-black/35 px-4 py-3 font-display text-sm text-yellow-50 shadow-[0_0_30px_rgba(255,190,35,.3)] backdrop-blur-md transition-colors hover:bg-black/55 sm:px-7 sm:py-3.5 sm:text-lg"
@@ -68,7 +64,7 @@ function CartasButton() {
         <Mail size={20} className="shrink-0" />
         <span className="truncate">Ver mis cartas</span>
       </Link>
-    </motion.div>
+    </div>
   );
 }
 

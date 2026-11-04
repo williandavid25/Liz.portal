@@ -16,7 +16,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { NotificationBell } from "../components/NotificationBell";
 import { FallingStars } from "../components/FallingStars";
 import { DismissLayer } from "../components/DismissLayer";
-import { Splash } from "../components/Splash";
+import { Splash, esperarSplash } from "../components/Splash";
+import { SCRIPT_LIGERO, medirFluidez } from "../lib/rendimiento";
 import { useAjustes, setAjustes, hydrateAjustes } from "../lib/ajustes";
 import { useNotasRecibidas } from "../lib/notas-client";
 import { enablePush, refreshPushIfGranted } from "../lib/push-client";
@@ -131,8 +132,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="es">
+    // suppressHydrationWarning: el script de abajo puede marcar <html> con
+    // data-ligero antes de que React tome la página.
+    <html lang="es" suppressHydrationWarning>
       <head>
+        {/* Antes de pintar: celulares de gama baja usan el modo ligero. */}
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_LIGERO }} />
         <HeadContent />
       </head>
       <body>
@@ -261,6 +266,23 @@ function AppShell() {
       const timeoutId = window.setTimeout(register, 1000);
       return () => window.clearTimeout(timeoutId);
     }
+  }, []);
+
+  // Modo ligero: cuando la página ya cargó y está animándose, se mide si el
+  // celular va fluido; si no, se quita el desenfoque del vidrio (ver rendimiento.ts).
+  useEffect(() => {
+    let detener = () => {};
+    let timeoutId = 0;
+    let cancelado = false;
+    void esperarSplash().then(() => {
+      if (cancelado) return;
+      timeoutId = window.setTimeout(() => (detener = medirFluidez()), 2500);
+    });
+    return () => {
+      cancelado = true;
+      window.clearTimeout(timeoutId);
+      detener();
+    };
   }, []);
 
   // Avisos automáticos: con la app instalada, al primer toque en cualquier
