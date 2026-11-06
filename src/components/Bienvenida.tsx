@@ -133,7 +133,7 @@ export function Bienvenida() {
       {/* px extra + text-balance: en celular el texto queda bien dentro del
           margen (no pegado a los bordes) y las líneas salen parejas. */}
       <p
-        className="bienvenida-texto mt-1 flex w-full max-w-[34rem] flex-col items-center px-5 text-center font-sans text-[1rem] font-semibold leading-relaxed sm:mt-2 sm:px-0 sm:text-[1.35rem]"
+        className="bienvenida-texto mt-1 flex w-full max-w-[34rem] flex-col items-center px-2 text-center font-sans text-[clamp(0.875rem,4.3vw,1rem)] font-semibold leading-relaxed sm:mt-2 sm:px-0 sm:text-[1.35rem]"
         aria-label="Este es tu espacio, hecho especialmente para ti. Espero que te guste y que aquí puedas guardar y escribir muchos momentos bonitos."
       >
         <span>Este es tu espacio, hecho especialmente para ti.</span>

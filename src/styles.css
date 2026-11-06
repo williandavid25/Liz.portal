@@ -14,8 +14,8 @@
   font-display: swap;
   src: url("/fonts/great-vibes-latin.woff2") format("woff2");
   unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
-    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @theme inline {
@@ -585,9 +585,31 @@
     0 0 8px rgb(244 141 220 / 0.95),
     0 0 18px rgb(225 103 199 / 0.75);
 }
+/* Cada frase en su línea; en pantallas angostas baja de línea en vez de
+   salirse por los costados. */
 .bienvenida-texto span {
   display: block;
-  white-space: nowrap;
+  text-wrap: balance;
+}
+@media (min-width: 480px) {
+  .bienvenida-texto span {
+    white-space: nowrap;
+  }
+}
+/* Celular acostado (poca altura): el título se ajusta al alto disponible para
+   que el texto entre completo debajo de él. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .bienvenida {
+    top: calc(env(safe-area-inset-top) + 94px);
+  }
+  .bienvenida-titulo {
+    max-width: min(44rem, 140svh);
+  }
+  .bienvenida-texto {
+    margin-top: 0;
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
 }
 .bienvenida--play .bienvenida-titulo {
   animation: bienvenida-escribir 3.4s cubic-bezier(0.45, 0.05, 0.4, 1) 0.3s forwards;
@@ -625,8 +647,13 @@
   }
 }
 @keyframes bienvenida-brillo {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .bienvenida--play .bienvenida-titulo,
@@ -647,7 +674,14 @@
   font-size: clamp(3.4rem, 15vw, 6rem);
   line-height: 1.2;
   padding: 0 0.25em;
-  background: linear-gradient(100deg, #ffd9a0 0%, #ff9ec4 30%, #ffe9f3 50%, #d4b0ff 70%, #ff8db8 100%);
+  background: linear-gradient(
+    100deg,
+    #ffd9a0 0%,
+    #ff9ec4 30%,
+    #ffe9f3 50%,
+    #d4b0ff 70%,
+    #ff8db8 100%
+  );
   background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -703,8 +737,8 @@
   font-display: swap;
   src: url("/fonts/fredoka-latin.woff2") format("woff2");
   unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
-    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 .mascota-ui {
   font-family: "Fredoka", Karla, sans-serif;

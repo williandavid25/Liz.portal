@@ -11,6 +11,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { es } from "react-day-picker/locale";
 import { Calendar } from "@/components/ui/calendar";
 import { loadStoreShared, saveEventos, queuePendingEventos, type CalendarEvent } from "@/lib/cloud";
 
@@ -297,6 +298,7 @@ function CalendarioPage() {
             style={{ boxShadow: "var(--shadow-soft)" }}
           >
             <Calendar
+              locale={es}
               mode="single"
               selected={undefined}
               month={month}

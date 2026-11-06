@@ -449,6 +449,7 @@ export function MascotaGame({
   const [cartaPendiente, setCartaPendiente] = useState<CartaPendiente | null>(null);
 
   const raizRef = useRef<HTMLElement>(null);
+  const globoRef = useRef<HTMLDivElement>(null);
   const idRef = useRef(0);
   const accionRef = useRef(0);
   const timers = useRef(new Set<number>());
@@ -1539,11 +1540,67 @@ export function MascotaGame({
     visibility: escena === e ? "visible" : "hidden",
   });
   const ancla = dormido || tristeEnCama ? ANCLAS[orient].cama : ANCLAS[orient][escena];
+
+  // El globo sale sobre la cabeza de Snoopy. Si ahí choca con la columna de
+  // botones (o con las barras, con el celular acostado), se corre de lado lo
+  // justo; si además cabe sin tocar el clima, también lo esquiva. Se mide con
+  // offsetWidth (sin la escala de la animación de entrada).
+  const textoGlobo = globo ?? toast?.texto ?? "";
+  useEffect(() => {
+    const zona = globoRef.current;
+    const raiz = raizRef.current;
+    if (!zona || !raiz || !textoGlobo) return;
+    const acomodar = () => {
+      const p = zona.firstElementChild as HTMLElement | null;
+      if (!p) return;
+      zona.style.translate = "";
+      const z = zona.getBoundingClientRect();
+      const ancho = p.offsetWidth * (z.width / Math.max(1, zona.offsetWidth));
+      const g = {
+        left: z.left + z.width / 2 - ancho / 2,
+        right: z.left + z.width / 2 + ancho / 2,
+        top: z.bottom - p.offsetHeight,
+        bottom: z.bottom,
+      };
+      const caja = raiz.getBoundingClientRect();
+      let min = caja.left + 8;
+      let max = caja.right - 8;
+      const esquivar = (sel: string, obligatorio: boolean) => {
+        const r = raiz.querySelector(sel)?.getBoundingClientRect();
+        if (!r || !r.width || r.bottom <= g.top || r.top >= g.bottom) return;
+        let nMin = min;
+        let nMax = max;
+        if (r.left + r.width / 2 < (g.left + g.right) / 2) nMin = Math.max(min, r.right + 8);
+        else nMax = Math.min(max, r.left - 8);
+        if (obligatorio || nMax - nMin >= ancho) {
+          min = nMin;
+          max = nMax;
+        }
+      };
+      esquivar(".mg-columna", true);
+      esquivar(".mg-barras", true);
+      esquivar(".mg-derecha", false);
+      const lo = min - g.left;
+      const hi = max - g.right;
+      const dx = lo > hi ? lo : Math.min(Math.max(0, lo), hi);
+      if (Math.abs(dx) > 0.5)
+        zona.style.translate = `${Math.round(dx / (z.width / Math.max(1, zona.offsetWidth)))}px 0`;
+    };
+    const cuadro = requestAnimationFrame(acomodar);
+    // Snoopy se desliza 0.6 s cuando cambia de lugar: se vuelve a medir al final.
+    const tarde = window.setTimeout(acomodar, 650);
+    window.addEventListener("resize", acomodar);
+    return () => {
+      cancelAnimationFrame(cuadro);
+      window.clearTimeout(tarde);
+      window.removeEventListener("resize", acomodar);
+    };
+  }, [textoGlobo, ancla, orient]);
   const sombraAncha = pose === "durmiendo" || pose === "banando";
   return (
     <section
       ref={raizRef}
-      className={`mascota-ui mg-raiz mg-alto relative -mb-px min-h-[600px] overflow-hidden bg-[#0f1328] ${escena}`}
+      className={`mascota-ui mg-raiz mg-alto relative -mb-px overflow-hidden bg-[#0f1328] ${escena}`}
       onPointerDownCapture={() => (interactuo.current = true)}
       onKeyDownCapture={() => (interactuo.current = true)}
       onPointerMove={mirar}
@@ -1553,7 +1610,7 @@ export function MascotaGame({
       <EfectosDefs />
       {/* Columna derecha: el clima y, justo debajo, el botón de notas. */}
       <div
-        className={`mg-contenido absolute right-4 top-[calc(env(safe-area-inset-top)+260px)] z-10 flex flex-col items-end gap-3 sm:right-6 sm:top-[calc(env(safe-area-inset-top)+286px)] ${
+        className={`mg-contenido mg-derecha absolute right-4 z-10 flex flex-col items-end gap-3 sm:right-6 ${
           listo ? "opacity-100" : "opacity-0"
         }`}
       >
@@ -1947,7 +2004,15 @@ export function MascotaGame({
             />
           ))}
         </div>
-        {/* Capa de mensajes y partículas: misma geometría, por encima de la luz. */}
+        <p className="sr-only" aria-live="polite">
+          {globo ?? toast?.texto ?? ""}
+        </p>
+        <div className="mg-fundido pointer-events-none absolute inset-x-0 bottom-0 h-16" />
+      </div>
+
+      {/* Capa de mensajes y partículas: misma geometría que la escena, pero por
+          encima de los botones, así el globo nunca queda tapado. */}
+      <div className="mg-capa-mensajes pointer-events-none absolute inset-0 z-[11]">
         <div
           className="mg-lienzo mg-kb pointer-events-none"
           style={lienzoEstilo(fondos.ar)}
@@ -1957,7 +2022,10 @@ export function MascotaGame({
             {particulas.map((p) => (
               <ParticulaVisual key={p.id} p={p} />
             ))}
-            <div className="absolute inset-x-[-60%] bottom-[96%] flex justify-center">
+            <div
+              ref={globoRef}
+              className="absolute inset-x-[-60%] bottom-[96%] flex justify-center"
+            >
               {globo ? (
                 <p className="mg-globo mg-vidrio-fuerte mg-mensaje rounded-2xl px-4 py-1.5 text-center text-sm font-bold text-white">
                   {globo}
@@ -1975,15 +2043,11 @@ export function MascotaGame({
             </div>
           </div>
         </div>
-        <p className="sr-only" aria-live="polite">
-          {globo ?? toast?.texto ?? ""}
-        </p>
-        <div className="mg-fundido pointer-events-none absolute inset-x-0 bottom-0 h-16" />
       </div>
 
       {/* Barras */}
       <div
-        className={`mg-contenido absolute left-1/2 top-[calc(env(safe-area-inset-top)+96px)] z-10 w-full max-w-[352px] -translate-x-1/2 px-4 text-white sm:top-[calc(env(safe-area-inset-top)+116px)] ${
+        className={`mg-contenido mg-barras absolute left-1/2 top-[calc(env(safe-area-inset-top)+96px)] z-10 w-full max-w-[352px] -translate-x-1/2 px-4 text-white sm:top-[calc(env(safe-area-inset-top)+116px)] ${
           listo ? "opacity-100" : "opacity-0"
         }`}
       >
@@ -2930,14 +2994,36 @@ p.mg-postit-texto { overflow-y: auto; }
   box-shadow: 0 0 0 2px rgba(253,224,71,0.7), 0 0 34px rgba(253,224,71,0.55);
   animation: mg-brillo 1.6s ease-in-out infinite;
 }
-/* Columna de botones a la izquierda, a la misma altura que el clima (derecha). */
-.mg-columna {
-  left: max(12px, calc(50% - 250px));
-  top: calc(env(safe-area-inset-top) + 260px);
+/* Columnas de los costados, a la misma altura y justo debajo de las barras:
+   a la izquierda los botones, a la derecha el clima y las notitas. */
+.mg-raiz { --mg-arriba: calc(env(safe-area-inset-top) + 260px); }
+.mg-columna, .mg-derecha { top: var(--mg-arriba); }
+.mg-columna { left: max(12px, calc(50% - 250px)); }
+@media (min-width: 640px) { .mg-raiz { --mg-arriba: calc(env(safe-area-inset-top) + 286px); } }
+/* Pantallas bajas: las columnas suben y los botones se achican un poco para
+   que entren todos sin cortarse abajo. */
+@media (max-height: 700px) and (orientation: portrait) {
+  .mg-raiz { --mg-arriba: calc(env(safe-area-inset-top) + 234px); }
+  .mg-columna { gap: 2px; }
+  .mg-columna .mg-boton { width: 44px; height: 44px; }
 }
-@media (min-width: 640px) { .mg-columna { top: calc(env(safe-area-inset-top) + 286px); } }
-/* Mensajes angostos para no chocar con la columna; si no caben, bajan de línea. */
-.mg-mensaje { width: max-content; max-width: min(300px, calc(100vw - 170px)); }
+/* Muy bajas (celulares de 4 pulgadas): los botones en dos columnas. */
+@media (max-height: 559px) and (orientation: portrait) {
+  .mg-columna { display: grid; grid-template-columns: repeat(2, auto); gap: 2px 4px; }
+}
+/* Celular acostado: barras arriba a la izquierda con los botones debajo, el
+   clima y las notitas a la derecha, y Snoopy libre en el centro. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .mg-raiz { --mg-arriba: calc(env(safe-area-inset-top) + 100px); }
+  .mg-barras { top: var(--mg-arriba); left: calc(env(safe-area-inset-left) + 12px); max-width: 258px; padding: 0; translate: none; }
+  .mg-columna { top: calc(var(--mg-arriba) + 134px); left: calc(env(safe-area-inset-left) + 12px); display: grid; grid-template-columns: repeat(3, auto); gap: 2px 6px; }
+  .mg-columna .mg-boton { width: 40px; height: 40px; }
+  .mg-barras .mg-pastilla { padding: 1px 6px; gap: 3px; font-size: 11px; }
+  .mg-derecha { right: calc(env(safe-area-inset-right) + 16px); width: 232px; flex-flow: row-reverse wrap; align-items: flex-start; justify-content: flex-start; }
+}
+/* El globo se corre de lado solo si choca con los botones (efecto del globo en el componente). */
+.mg-mensaje { width: max-content; max-width: min(300px, calc(100vw - 96px)); }
+.mg-capa-mensajes { container-type: size; overflow: hidden; }
 
 .mg-switch {
   position: relative; width: 38px; height: 22px; border-radius: 999px;

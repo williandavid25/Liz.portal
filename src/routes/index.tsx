@@ -106,7 +106,7 @@ function GalaxiaIframe() {
       title="Galaxia Simple - Agujero Negro, Día de las Flores Amarillas"
       src="/galaxia-flores-amarillas.html"
       allow="autoplay; fullscreen"
-      className="block h-[100svh] min-h-[38rem] w-full max-w-full border-0 bg-black"
+      className="block h-[100svh] min-h-[20rem] w-full max-w-full border-0 bg-black"
       scrolling="no"
     />
   );
@@ -183,7 +183,7 @@ function Inicio() {
     <div className="relative">
       <section
         id="portada"
-        className="relative h-[100svh] min-h-[32rem] overflow-hidden bg-[#02020a]"
+        className="relative h-[100svh] min-h-[20rem] overflow-hidden bg-[#02020a]"
       >
         {portada.tipo === "galaxia" ? (
           <GalaxiaIframe />
@@ -220,7 +220,7 @@ function Inicio() {
           {loadGalaxia ? (
             <GalaxiaIframe />
           ) : (
-            <div className="h-[100svh] min-h-[38rem] w-full bg-[#02020a]" aria-hidden="true" />
+            <div className="h-[100svh] min-h-[20rem] w-full bg-[#02020a]" aria-hidden="true" />
           )}
           {nextGalaxia && (
             <div className="absolute inset-x-0 bottom-5 z-20 flex justify-center px-4 sm:bottom-8">
