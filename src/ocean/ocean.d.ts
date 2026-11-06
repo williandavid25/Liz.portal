@@ -3,6 +3,8 @@ declare module "@/ocean/Game/Game.class" {
   export default class Game {
     constructor(canvas: HTMLCanvasElement, resources: unknown, debugMode?: boolean);
     destroy(): void;
+    /** Pausa (false) o reanuda (true) el dibujo. */
+    setActive(active: boolean): void;
   }
 }
 

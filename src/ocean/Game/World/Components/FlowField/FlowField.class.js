@@ -23,6 +23,7 @@ export default class FlowField {
     };
 
     this.particles = [];
+    this._flow = new THREE.Vector3();
     this.createParticles();
   }
 
@@ -79,6 +80,7 @@ export default class FlowField {
       uniforms: {
         uColor: { value: new THREE.Color(0x00ddff) },
         uTime: { value: 0 },
+        uPixelRatio: { value: 1 },
       },
       transparent: true,
       depthWrite: false,
@@ -102,22 +104,6 @@ export default class FlowField {
   getFlowField(x, y, z, time, particle) {
     const scale = this.config.noiseScale;
     const t = time * 0.3;
-
-    // Use cached noise values if available and not too old
-    const cacheKey = `${Math.floor(x * 10)}_${Math.floor(y * 10)}_${Math.floor(z * 10)}_${Math.floor(t * 10)}`;
-    if (
-      this._noiseCache &&
-      this._noiseCache[cacheKey] &&
-      this._noiseCache.frame === this._frameCount
-    ) {
-      const cached = this._noiseCache[cacheKey];
-      return new THREE.Vector3(cached.x, cached.y, cached.z);
-    }
-
-    // Initialize cache if needed
-    if (!this._noiseCache || this._noiseCache.frame !== this._frameCount) {
-      this._noiseCache = { frame: this._frameCount };
-    }
 
     const scale2 = scale * 2;
     const t15 = t * 1.5;
@@ -154,16 +140,15 @@ export default class FlowField {
     const swirlX = Math.cos(swirl) * turbulence;
     const swirlY = Math.sin(swirl) * turbulence;
 
-    const result = {
-      x: cosAngle1 * cosAngle2 + swirlX,
-      y: sinAngle2 + swirlY,
-      z: sinAngle1 * cosAngle2 + nz * 0.3,
-    };
-
-    // Cache the result
-    this._noiseCache[cacheKey] = result;
-
-    return new THREE.Vector3(result.x, result.y, result.z);
+    // Se escribe en un solo vector reutilizado. Antes cada partícula creaba
+    // en cada cuadro un texto (clave de caché que casi nunca acertaba), un
+    // objeto y un Vector3 nuevos: ~80.000 objetos por segundo que el
+    // navegador tenía que limpiar, y cada limpieza era un tirón en celulares.
+    const out = this._flow;
+    out.x = cosAngle1 * cosAngle2 + swirlX;
+    out.y = sinAngle2 + swirlY;
+    out.z = sinAngle1 * cosAngle2 + nz * 0.3;
+    return out;
   }
 
   update() {
@@ -185,14 +170,11 @@ export default class FlowField {
     const minZ = -halfZ - margin;
     const maxZ = halfZ + margin;
 
-    // Cache velocity damping factors
-    const velDamp = 0.95;
-    const velBlend = 0.05;
+    // Suavizado de la velocidad: 0.95 por cuadro a 60 por segundo, calculado
+    // según el tiempo real para que a 30 por segundo se mueva igual.
+    const velDamp = Math.pow(0.95, delta * 60);
+    const velBlend = 1 - velDamp;
     const flowSpeed = this.config.flowSpeed;
-
-    // Reduce noise calculation frequency - only update every few frames
-    const shouldUpdateNoise = this._frameCount % 3 === 0;
-    this._frameCount = (this._frameCount || 0) + 1;
 
     for (let i = 0; i < this.config.particleCount; i++) {
       const i3 = i * 3;
@@ -238,7 +220,8 @@ export default class FlowField {
     }
 
     this.geometry.attributes.position.needsUpdate = true;
-    this.geometry.attributes.velocity.needsUpdate = true;
+    // La velocidad solo se usa aquí (el sombreador no la lee): no hace falta
+    // volver a enviarla a la tarjeta gráfica en cada cuadro.
 
     this.material.uniforms.uTime.value = elapsed;
   }

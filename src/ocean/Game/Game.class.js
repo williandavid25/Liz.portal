@@ -8,6 +8,9 @@ import Renderer from "./Core/Renderer.class";
 import PostProcessing from "./Systems/PostProcessing.class";
 import World from "./World/World.scene";
 
+// Resolución mínima a la que baja el océano en equipos lentos (ver medirFluidez).
+const CALIDAD_MINIMA = 0.75;
+
 export default class Game {
   constructor(canvas, resources, debugMode) {
     if (Game.instance) {
@@ -30,11 +33,60 @@ export default class Game {
     this.world = new World();
     this.postProcessing = new PostProcessing();
 
+    this._muestras = [];
     this.time.on("animate", () => {
       this.update();
+      this.medirFluidez(this.time.frameMs);
     });
     this.sizes.on("resize", () => {
       this.resize();
+    });
+  }
+
+  /** Pausa (false) o reanuda (true) el dibujo, p. ej. cuando sale de la pantalla. */
+  setActive(active) {
+    this.time?.setActive(active);
+    // Al volver se empieza a medir de cero (el primer cuadro trae la pausa).
+    if (this._muestras) this._muestras.length = 0;
+  }
+
+  /**
+   * Resolución adaptable: cada ~90 cuadros mira la mediana del tiempo por
+   * cuadro. Si pasa de 24 ms (menos de ~42 por segundo) dibuja con un 15 %
+   * menos de resolución, hasta un mínimo del 75 % (más abajo el delfín ya se
+   * ve dentado). La animación, la cantidad de partículas y su tamaño en
+   * pantalla quedan iguales; en un celular que no da abasto solo se pierde un
+   * poco de nitidez y vuelve a ir fluido. En un equipo que va bien nunca se activa.
+   */
+  medirFluidez(frameMs) {
+    const sizes = this.sizes;
+    if (!sizes || sizes.quality <= CALIDAD_MINIMA || !(frameMs > 0)) return;
+    // Saltos largos (pestaña recién mostrada, carga) no cuentan.
+    if (frameMs > 250) return;
+    const muestras = this._muestras;
+    muestras.push(frameMs);
+    if (muestras.length < 90) return;
+    const orden = muestras.slice().sort((a, b) => a - b);
+    muestras.length = 0;
+    if (orden[45] > 24) {
+      sizes.setQuality(Math.max(CALIDAD_MINIMA, Math.round((sizes.quality - 0.15) * 100) / 100));
+    }
+  }
+
+  /**
+   * Los puntos (fondo marino, estela, destellos) miden su tamaño en píxeles
+   * del lienzo: al bajar la resolución se escalan igual para que en pantalla
+   * se vean del mismo tamaño que antes.
+   */
+  ajustarTamanoPuntos() {
+    const quality = this.sizes.quality;
+    this.scene.traverse((child) => {
+      const uniform = child.material?.uniforms?.uPixelRatio;
+      if (!uniform) return;
+      if (child.material.userData.basePixelRatio === undefined) {
+        child.material.userData.basePixelRatio = uniform.value;
+      }
+      uniform.value = child.material.userData.basePixelRatio * quality;
     });
   }
 
@@ -49,6 +101,7 @@ export default class Game {
     this.camera.resize();
     this.renderer.resize();
     this.postProcessing.resize();
+    this.ajustarTamanoPuntos();
   }
 
   update() {

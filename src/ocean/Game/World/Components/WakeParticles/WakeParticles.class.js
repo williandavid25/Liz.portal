@@ -97,19 +97,33 @@ export default class WakeParticles {
     const tempPosition = new THREE.Vector3();
     const tempNormal = new THREE.Vector3();
 
+    // Antes, por cada una de las ~2300 partículas se recorrían TODOS los
+    // vértices del delfín para hallar el más cercano: millones de cálculos de
+    // golpe que congelaban el celular varios segundos al abrir el océano. Ahora
+    // se usa la grilla espacial que el delfín ya armó (solo mira los vértices
+    // vecinos). Si por algo no existe, se busca como antes.
+    const dolphin = this.dolphin;
+    const usarGrilla =
+      dolphin?.dolphinMesh === this.dolphinMesh &&
+      dolphin._vertexGrid &&
+      dolphin._vertexCellSize > 0;
+    const searchVec = new THREE.Vector3();
+
     for (let i = 0; i < this.PARTICLES; i++) {
       this.sampler.sample(tempPosition, tempNormal);
 
       let closestIndex = 0;
-      let closestDist = Infinity;
-      const searchVec = new THREE.Vector3();
-
-      for (let v = 0; v < posAttr.count; v++) {
-        searchVec.fromBufferAttribute(posAttr, v);
-        const dist = searchVec.distanceToSquared(tempPosition);
-        if (dist < closestDist) {
-          closestDist = dist;
-          closestIndex = v;
+      if (usarGrilla) {
+        closestIndex = dolphin._findNearestVertex(tempPosition, posAttr, dolphin._vertexCellSize);
+      } else {
+        let closestDist = Infinity;
+        for (let v = 0; v < posAttr.count; v++) {
+          searchVec.fromBufferAttribute(posAttr, v);
+          const dist = searchVec.distanceToSquared(tempPosition);
+          if (dist < closestDist) {
+            closestDist = dist;
+            closestIndex = v;
+          }
         }
       }
 
@@ -126,6 +140,15 @@ export default class WakeParticles {
 
   initGPGPU() {
     this.gpuCompute = new GPUComputationRenderer(this.WIDTH, this.WIDTH, this.renderer);
+    // La simulación escribe posiciones en una textura de números decimales.
+    // Muchas tarjetas gráficas de celulares baratos no pueden escribir en
+    // texturas de precisión completa (EXT_color_buffer_float) pero sí de media
+    // precisión: ahí se usa esa, y la estela se ve igual en vez de quedar
+    // vacía o con errores.
+    const ext = this.renderer.extensions;
+    if (!ext.has("EXT_color_buffer_float") && ext.has("EXT_color_buffer_half_float")) {
+      this.gpuCompute.setDataType(THREE.HalfFloatType);
+    }
 
     const dtPosition = this.gpuCompute.createTexture();
     const dtSpawnPoints = this.gpuCompute.createTexture();

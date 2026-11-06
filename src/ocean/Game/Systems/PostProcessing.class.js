@@ -157,6 +157,8 @@ export default class PostProcessing {
   }
 
   resize() {
+    // Sigue a la resolución del renderer (baja en equipos lentos, ver Game).
+    this.composer.setPixelRatio(this.renderer.getPixelRatio());
     this.composer.setSize(this.sizes.width, this.sizes.height);
   }
 

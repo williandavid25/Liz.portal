@@ -452,6 +452,8 @@ export default class Dolphin {
     // buenos cientos de ms, más en celular. Con una grilla espacial armada
     // una sola vez, cada búsqueda solo mira los vértices cercanos.
     const cellSize = this._buildVertexGrid(posAttr);
+    // La estela (WakeParticles) reutiliza esta misma grilla.
+    this._vertexCellSize = cellSize;
 
     for (let i = 0; i < this.sparkleCount; i++) {
       this.sampler.sample(tempPosition, tempNormal);

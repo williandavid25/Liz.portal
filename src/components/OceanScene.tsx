@@ -6,10 +6,13 @@ import ASSETS from "@/ocean/assets";
 function supportsWebGL() {
   try {
     const canvas = document.createElement("canvas");
-    return !!(
-      window.WebGLRenderingContext &&
-      (canvas.getContext("webgl2") || canvas.getContext("webgl"))
-    );
+    const gl = window.WebGLRenderingContext
+      ? canvas.getContext("webgl2") || canvas.getContext("webgl")
+      : null;
+    // Se suelta el contexto de prueba al instante: los celulares permiten
+    // pocos contextos 3D a la vez y este quedaba ocupando uno (y memoria).
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    return !!gl;
   } catch {
     return false;
   }
@@ -39,6 +42,25 @@ export default function OceanScene({ className }: { className?: string }) {
 
     let game: InstanceType<typeof Game> | null = null;
     let cancelled = false;
+
+    // Solo se dibuja mientras el océano está en pantalla. Antes seguía
+    // animándose (60 veces por segundo, con todo el 3D) aunque estuvieras
+    // arriba viendo la portada o la galaxia, y en un celular de gama baja eso
+    // trababa la página entera. Al volver sigue justo donde quedó.
+    let visible = true;
+    const observer =
+      typeof IntersectionObserver === "function"
+        ? new IntersectionObserver(
+            ([entry]) => {
+              visible = !!entry?.isIntersecting;
+              game?.setActive(visible);
+            },
+            // -1px: si queda justo pegado al borde de la pantalla (así lo
+            // dejan los botones "Bajar a…"/"Subir a…") no cuenta como visible.
+            { rootMargin: "-1px 0px -1px 0px" },
+          )
+        : null;
+    observer?.observe(canvas);
     // Si por conexión lenta o un recurso caído nunca termina de cargar, no
     // se queda pegado en "Cargando el océano…" para siempre: se degrada al
     // fondo cósmico normal, como si el navegador no soportara WebGL.
@@ -59,6 +81,7 @@ export default function OceanScene({ className }: { className?: string }) {
         if (cancelled) return;
         try {
           game = new Game(canvas, resources, false);
+          game.setActive(visible);
           setReady(true);
         } catch (err) {
           console.error("No se pudo iniciar la escena del océano:", err);
@@ -77,6 +100,7 @@ export default function OceanScene({ className }: { className?: string }) {
 
     return () => {
       cancelled = true;
+      observer?.disconnect();
       clearTimeout(giveUp);
       if (arranque !== undefined) {
         if (usaIdle) window.cancelIdleCallback(arranque);

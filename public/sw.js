@@ -1,6 +1,6 @@
 // Service worker: permite "instalar" el sitio, abrirlo sin internet una vez
 // visitado, y recibir avisos de cartas nuevas con la app cerrada.
-const CACHE_NAME = "liz-portal-v7";
+const CACHE_NAME = "liz-portal-v8";
 // Imágenes que llegan desde "Compartir" (Android) mientras la app las recoge.
 const CACHE_COMPARTIDOS = "liz-compartidos";
 

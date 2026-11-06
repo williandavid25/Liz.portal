@@ -69,8 +69,40 @@ function CartasButton() {
 }
 
 function GalaxiaIframe() {
+  const ref = useRef<HTMLIFrameElement>(null);
+  // Cuando la galaxia sale de la pantalla se le avisa para que deje de
+  // dibujar (antes seguía animándose aunque estuvieras viendo el océano, y en
+  // un celular de gama baja las dos escenas 3D a la vez lo trababan todo).
+  useEffect(() => {
+    const iframe = ref.current;
+    if (!iframe || typeof IntersectionObserver !== "function") return;
+    let visible = true;
+    const avisar = () =>
+      iframe.contentWindow?.postMessage(
+        { galaxia: visible ? "sigue" : "pausa" },
+        window.location.origin,
+      );
+    // -1px arriba y abajo: los botones "Bajar a…" dejan la galaxia justo en
+    // el borde de la pantalla, y sin esto el navegador la sigue contando como
+    // visible (toca el borde) aunque no se vea nada de ella.
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        visible = !!entry?.isIntersecting;
+        avisar();
+      },
+      { rootMargin: "-1px 0px -1px 0px" },
+    );
+    observer.observe(iframe);
+    // Si la galaxia termina de cargar ya fuera de la pantalla, que lo sepa.
+    iframe.addEventListener("load", avisar);
+    return () => {
+      observer.disconnect();
+      iframe.removeEventListener("load", avisar);
+    };
+  }, []);
   return (
     <iframe
+      ref={ref}
       title="Galaxia Simple - Agujero Negro, Día de las Flores Amarillas"
       src="/galaxia-flores-amarillas.html"
       allow="autoplay; fullscreen"

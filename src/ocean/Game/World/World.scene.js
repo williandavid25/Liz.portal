@@ -25,8 +25,9 @@ export default class World {
   update() {
     // Get camera frustum for culling
     const camera = this.game.camera.cameraInstance;
-    const frustum = new THREE.Frustum();
-    const cameraMatrix = new THREE.Matrix4();
+    // Se reutilizan en cada cuadro (sin crear objetos nuevos).
+    const frustum = (this._frustum ??= new THREE.Frustum());
+    const cameraMatrix = (this._cameraMatrix ??= new THREE.Matrix4());
     cameraMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     frustum.setFromProjectionMatrix(cameraMatrix);
 

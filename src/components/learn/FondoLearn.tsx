@@ -94,7 +94,7 @@ function Luciernagas({ colores }: { colores: [number, number, number][] }) {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let w = 0;
     let h = 0;
-    let bichos: Luciernaga[] = [];
+    const bichos: Luciernaga[] = [];
 
     const crear = (): Luciernaga => ({
       x: Math.random() * w,
@@ -107,14 +107,50 @@ function Luciernagas({ colores }: { colores: [number, number, number][] }) {
       ritmo: 0.6 + Math.random() * 1.1, // titileo: entre ~2,5 y 6 s
       color: colores[Math.floor(Math.random() * colores.length)]!,
     });
+    // Halo de cada color dibujado UNA vez (antes se armaba un degradado nuevo
+    // por luciérnaga en cada cuadro, ~2000 por segundo, y eso trababa a los
+    // celulares baratos). Mismo degradado: 0.55 → 0.18 → 0 de opacidad.
+    const HALO_PX = 80;
+    const halos = new Map<string, HTMLCanvasElement>();
+    const haloDe = (color: [number, number, number]) => {
+      const clave = color.join(",");
+      let img = halos.get(clave);
+      if (!img) {
+        img = document.createElement("canvas");
+        img.width = img.height = HALO_PX * 2;
+        const hctx = img.getContext("2d")!;
+        const grad = hctx.createRadialGradient(HALO_PX, HALO_PX, 0, HALO_PX, HALO_PX, HALO_PX);
+        grad.addColorStop(0, `rgba(${clave},0.55)`);
+        grad.addColorStop(0.25, `rgba(${clave},0.18)`);
+        grad.addColorStop(1, `rgba(${clave},0)`);
+        hctx.fillStyle = grad;
+        hctx.fillRect(0, 0, HALO_PX * 2, HALO_PX * 2);
+        halos.set(clave, img);
+      }
+      return img;
+    };
+
     const medir = () => {
+      const anchoPrevio = w;
+      const altoPrevio = h;
       w = canvas.clientWidth;
       h = canvas.clientHeight;
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const cantidad = Math.round(Math.min(34, Math.max(14, (w * h) / 16000)));
-      bichos = Array.from({ length: cantidad }, crear);
+      // Al cambiar el tamaño (en el celular pasa cada vez que la barra del
+      // navegador aparece o se esconde) las luciérnagas que ya volaban siguen
+      // en su lugar, proporcional al nuevo tamaño; solo se agregan o quitan
+      // las que falten o sobren. Antes se recreaban todas y saltaban.
+      if (anchoPrevio > 0 && altoPrevio > 0) {
+        for (const b of bichos) {
+          b.x *= w / anchoPrevio;
+          b.y *= h / altoPrevio;
+        }
+      }
+      if (bichos.length > cantidad) bichos.length = cantidad;
+      while (bichos.length < cantidad) bichos.push(crear());
     };
     medir();
     window.addEventListener("resize", medir);
@@ -144,21 +180,18 @@ function Luciernagas({ colores }: { colores: [number, number, number][] }) {
         // Brillo que se enciende y apaga (con momentos de casi apagado).
         const pulso = Math.pow((Math.sin(b.fase) + 1) / 2, 2.2);
         const alfa = 0.15 + pulso * 0.85;
-        const [r, g, bl] = b.color;
         const halo = b.r * (7 + pulso * 5);
-        const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, halo);
-        grad.addColorStop(0, `rgba(${r},${g},${bl},${0.55 * alfa})`);
-        grad.addColorStop(0.25, `rgba(${r},${g},${bl},${0.18 * alfa})`);
-        grad.addColorStop(1, `rgba(${r},${g},${bl},0)`);
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, halo, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = `rgba(255,255,250,${0.35 + alfa * 0.65})`;
+        // El halo es la imagen ya dibujada de su color, escalada y con la
+        // misma transparencia que antes llevaba el degradado.
+        ctx.globalAlpha = alfa;
+        ctx.drawImage(haloDe(b.color), b.x - halo, b.y - halo, halo * 2, halo * 2);
+        ctx.globalAlpha = 0.35 + alfa * 0.65;
+        ctx.fillStyle = "rgb(255,255,250)";
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.r * (0.6 + pulso * 0.5), 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.globalAlpha = 1;
       raf = quieto ? 0 : requestAnimationFrame(dibujar);
     };
     raf = requestAnimationFrame(dibujar);
