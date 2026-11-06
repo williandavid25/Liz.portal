@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { guardarRespaldoFn, leerRespaldoFn } from "@/lib/cloud";
 import { NOMBRE_MAX, leerLlave, llaveDeNombre, registrar } from "@/lib/usuario";
+import { esperarSplash } from "@/components/Splash";
 
 // Respalda en la nube lo que solo vive en el celular (Snoopy y Snoopy Learn),
 // uno por persona. La primera vez pide el nombre de quien usa el celular
@@ -52,11 +53,19 @@ export function RespaldoNube() {
     setDueno(leerLlave());
   }, []);
 
-  // La pregunta aparece cuando la pantalla ya cargó, no encima del inicio.
+  // La pregunta aparece apenas se va la pantalla de carga (en cualquier
+  // página), con un respiro para que primero se vea dónde se está.
   useEffect(() => {
     if (dueno !== null) return;
-    const t = window.setTimeout(() => setPreguntar(true), 1500);
-    return () => window.clearTimeout(t);
+    let t = 0;
+    let cancelado = false;
+    void esperarSplash().then(() => {
+      if (!cancelado) t = window.setTimeout(() => setPreguntar(true), 900);
+    });
+    return () => {
+      cancelado = true;
+      window.clearTimeout(t);
+    };
   }, [dueno]);
 
   // Respaldo automático: cada minuto si algo cambió, y al salir de la app.
@@ -131,7 +140,7 @@ export function RespaldoNube() {
   if (!preguntar || dueno) return null;
 
   return (
-    <div className="fixed inset-0 z-[95] grid place-items-center bg-black/55 px-6 backdrop-blur-sm">
+    <div className="mascota-ui fixed inset-0 z-[95] grid place-items-center bg-black/55 px-6 backdrop-blur-sm">
       <form
         role="dialog"
         aria-modal="true"

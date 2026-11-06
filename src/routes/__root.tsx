@@ -16,6 +16,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { NotificationBell } from "../components/NotificationBell";
 import { FallingStars } from "../components/FallingStars";
 import { DismissLayer } from "../components/DismissLayer";
+import { RespaldoNube } from "../components/RespaldoNube";
 import { Splash, esperarSplash } from "../components/Splash";
 import { SCRIPT_LIGERO, medirFluidez } from "../lib/rendimiento";
 import { useAjustes, setAjustes, hydrateAjustes } from "../lib/ajustes";
@@ -686,19 +687,28 @@ function AppShell() {
   return (
     <div className="relative min-h-screen">
       <Splash />
-      {/* Foto de Snoopy en la cama con luz violeta, difuminada para que el texto se lea bien. */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden bg-cosmos">
-        <img
-          src="/snoopy-fondo.jpg"
-          alt=""
-          aria-hidden="true"
-          width={736}
-          height={981}
-          className="h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-photo-overlay" />
-        <div className="absolute inset-0 bg-cosmos-vignette" />
-      </div>
+      {/* Registro: al entrar por primera vez (en cualquier página) pide el
+          nombre y queda registrada en el juego y su respaldo en la nube. */}
+      <RespaldoNube />
+      {/* Foto de Snoopy en la cama con luz violeta, difuminada para que el texto se lea bien.
+          En "Mi mascota" el juego ocupa toda la pantalla: ahí el fondo es del
+          mismo color oscuro del juego, así nunca asoma una franja morada. */}
+      {pathname === "/mascota" ? (
+        <div className="pointer-events-none fixed inset-0 bg-[#0f1328]" />
+      ) : (
+        <div className="pointer-events-none fixed inset-0 overflow-hidden bg-cosmos">
+          <img
+            src="/snoopy-fondo.jpg"
+            alt=""
+            aria-hidden="true"
+            width={736}
+            height={981}
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-photo-overlay" />
+          <div className="absolute inset-0 bg-cosmos-vignette" />
+        </div>
+      )}
 
       {/* Estrellas que caen como nieve. */}
       {/* En "Mi mascota" la escena tapa todo el fondo: animarlas ahí sería gasto inútil. */}

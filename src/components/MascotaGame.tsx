@@ -64,7 +64,6 @@ import type { ColorNota } from "@/lib/colores-nota";
 import { getDeviceId } from "@/lib/dispositivo";
 import { SNOOPY_CSS, SnoopyVivo, imgPose, type Pose } from "@/components/SnoopyVivo";
 import { WeatherPanel } from "@/components/WeatherPanel";
-import { RespaldoNube } from "@/components/RespaldoNube";
 import {
   CapaStickers,
   ColeccionStickers,
@@ -1544,7 +1543,7 @@ export function MascotaGame({
   return (
     <section
       ref={raizRef}
-      className={`mascota-ui mg-raiz relative -mb-px h-[100svh] min-h-[600px] overflow-hidden bg-[#0f1328] ${escena}`}
+      className={`mascota-ui mg-raiz mg-alto relative -mb-px min-h-[600px] overflow-hidden bg-[#0f1328] ${escena}`}
       onPointerDownCapture={() => (interactuo.current = true)}
       onKeyDownCapture={() => (interactuo.current = true)}
       onPointerMove={mirar}
@@ -1552,7 +1551,6 @@ export function MascotaGame({
     >
       <style>{CSS + SNOOPY_CSS + EFECTOS_CSS + STICKERS_CSS}</style>
       <EfectosDefs />
-      <RespaldoNube />
       {/* Columna derecha: el clima y, justo debajo, el botón de notas. */}
       <div
         className={`mg-contenido absolute right-4 top-[calc(env(safe-area-inset-top)+260px)] z-10 flex flex-col items-end gap-3 sm:right-6 sm:top-[calc(env(safe-area-inset-top)+286px)] ${
@@ -2639,6 +2637,11 @@ export function MascotaGame({
 }
 
 const CSS = `
+/* Alto de la pantalla en todo momento: 100svh era el alto con la barra del
+   navegador visible; al esconderse (o en ventana flotante) la pantalla crecía y
+   abajo quedaba una franja del fondo morado de la app. dvh sigue el alto real;
+   svh y vh quedan para navegadores viejos. */
+.mg-alto { height: 100vh; height: 100svh; height: 100dvh; }
 .mg-raiz { text-shadow: 0 1px 2px rgba(0,0,0,0.35); touch-action: manipulation; }
 .mg-contenido { transition: opacity 0.5s ease; }
 
