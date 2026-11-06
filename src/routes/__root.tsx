@@ -268,23 +268,6 @@ function AppShell() {
     }
   }, []);
 
-  // Modo ligero: cuando la página ya cargó y está animándose, se mide si el
-  // celular va fluido; si no, se quita el desenfoque del vidrio (ver rendimiento.ts).
-  useEffect(() => {
-    let detener = () => {};
-    let timeoutId = 0;
-    let cancelado = false;
-    void esperarSplash().then(() => {
-      if (cancelado) return;
-      timeoutId = window.setTimeout(() => (detener = medirFluidez()), 2500);
-    });
-    return () => {
-      cancelado = true;
-      window.clearTimeout(timeoutId);
-      detener();
-    };
-  }, []);
-
   // Avisos automáticos: con la app instalada, al primer toque en cualquier
   // parte se piden los permisos y el celular queda anotado para recibir
   // cartas, notas y avisos de Snoopy con la app cerrada. (Los navegadores,
@@ -303,6 +286,27 @@ function AppShell() {
   const pathname = routerState.location.pathname;
   useEffect(() => {
     setPanel(null);
+  }, [pathname]);
+
+  // Modo ligero: cuando la página ya cargó y está animándose, se mide si el
+  // celular va fluido; si no, se quita el desenfoque del vidrio (ver rendimiento.ts).
+  // Se mide en CADA página a la que se entra (hasta que se active): antes solo
+  // se medía la primera, casi siempre la portada, que va bien; al pasar a "Mi
+  // mascota" (el juego, mucho más pesado) nunca se volvía a medir y en un
+  // celular de gama baja el desenfoque lo dejaba trabado.
+  useEffect(() => {
+    let detener = () => {};
+    let timeoutId = 0;
+    let cancelado = false;
+    void esperarSplash().then(() => {
+      if (cancelado) return;
+      timeoutId = window.setTimeout(() => (detener = medirFluidez()), 2500);
+    });
+    return () => {
+      cancelado = true;
+      window.clearTimeout(timeoutId);
+      detener();
+    };
   }, [pathname]);
 
   useEffect(() => {
