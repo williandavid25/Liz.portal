@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { guardarRankingFn, leerRankingFn, salirRankingFn, uploadImage } from "@/lib/cloud";
 import { getDeviceId } from "@/lib/dispositivo";
+import { leerNombre } from "@/lib/usuario";
 import { compressImage } from "@/lib/image";
 import { fechaLocal } from "@/lib/learn/progreso";
 import {
@@ -463,7 +464,9 @@ export function EditarPerfil({
   bienvenida?: boolean;
 }) {
   const actual = leerPerfil();
-  const [nombre, setNombre] = useState(actual?.nombre ?? "");
+  // Si todavía no está en el ranking, aparece ya escrito el nombre con el que
+  // se registró en la app (lo puede cambiar).
+  const [nombre, setNombre] = useState(actual?.nombre ?? leerNombre() ?? "");
   const [foto, setFoto] = useState<string | null>(actual?.foto ?? null);
   const [vista, setVista] = useState<string | null>(actual?.foto ?? null);
   const [subiendo, setSubiendo] = useState(false);

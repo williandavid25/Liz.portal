@@ -1,14 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { guardarRespaldoFn, leerRespaldoFn } from "@/lib/cloud";
+import { NOMBRE_MAX, leerLlave, llaveDeNombre, registrar } from "@/lib/usuario";
 
 // Respalda en la nube lo que solo vive en el celular (Snoopy y Snoopy Learn),
-// uno por persona. La primera vez pregunta de quién es el celular; si ya había
-// un respaldo más nuevo (por ejemplo, después de reinstalar), lo recupera.
-
-type Dueno = "liz" | "david";
+// uno por persona. La primera vez pide el nombre de quien usa el celular
+// (cualquiera puede registrarse); si ese nombre ya tenía un respaldo más nuevo
+// (por ejemplo, después de reinstalar o cambiar de celular), lo recupera.
 
 const CLAVES = ["liz-mascota-juego", "snoopy-learn-v1"];
-const DUENO_KEY = "liz-dueno";
 const TS_KEY = "liz-respaldo-ts";
 const CADA_MS = 60_000;
 
@@ -42,14 +41,15 @@ function escribir(k: string, v: string) {
 }
 
 export function RespaldoNube() {
-  // undefined: aún no se leyó; null: falta elegir.
-  const [dueno, setDueno] = useState<Dueno | null | undefined>(undefined);
+  // undefined: aún no se leyó; null: falta registrarse.
+  const [dueno, setDueno] = useState<string | null | undefined>(undefined);
   const [preguntar, setPreguntar] = useState(false);
   const [ocupado, setOcupado] = useState(false);
+  const [nombre, setNombre] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const d = leer(DUENO_KEY);
-    setDueno(d === "liz" || d === "david" ? d : null);
+    setDueno(leerLlave());
   }, []);
 
   // La pregunta aparece cuando la pantalla ya cargó, no encima del inicio.
@@ -97,15 +97,22 @@ export function RespaldoNube() {
     };
   }, [dueno]);
 
-  const elegir = async (d: Dueno) => {
+  const entrar = async (e: FormEvent) => {
+    e.preventDefault();
+    const llave = llaveDeNombre(nombre);
+    if (!llave) {
+      setError("Escribe tu nombre (al menos 2 letras).");
+      return;
+    }
+    setError(null);
     setOcupado(true);
-    escribir(DUENO_KEY, d);
+    registrar(llave, nombre);
     try {
-      const r = await leerRespaldoFn({ data: d });
+      const r = await leerRespaldoFn({ data: llave });
       const nube = r.ok ? r.respaldo : null;
       const localTs = Number(leer(TS_KEY) ?? 0);
       if (nube && Object.keys(nube.datos).length && nube.actualizado > localTs) {
-        // Hay un respaldo más nuevo: se recupera y se recarga para usarlo.
+        // Ese nombre ya tenía un respaldo más nuevo: se recupera y se recarga.
         for (const [k, v] of Object.entries(nube.datos)) {
           if (CLAVES.includes(k)) escribir(k, v);
         }
@@ -118,45 +125,54 @@ export function RespaldoNube() {
     }
     setPreguntar(false);
     setOcupado(false);
-    setDueno(d);
+    setDueno(llave);
   };
 
   if (!preguntar || dueno) return null;
 
   return (
     <div className="fixed inset-0 z-[95] grid place-items-center bg-black/55 px-6 backdrop-blur-sm">
-      <div
+      <form
         role="dialog"
         aria-modal="true"
         aria-labelledby="respaldo-titulo"
+        onSubmit={(e) => void entrar(e)}
         className="w-full max-w-xs rounded-3xl border border-white/15 bg-[#1b1230]/90 p-5 text-center text-white shadow-2xl backdrop-blur-xl"
       >
         <img src="/mascota/frente.webp" alt="" className="mx-auto h-20 w-20 object-contain" />
         <p id="respaldo-titulo" className="mt-2 text-lg font-extrabold">
-          ¿De quién es este celular?
+          ¡Hola! ¿Cómo te llamas?
         </p>
         <p className="mt-1 text-[13px] leading-snug text-white/70">
-          Así guardo tu Snoopy y tu racha en la nube, y no se pierden nunca.
+          Con tu nombre guardo tu Snoopy y tu racha en la nube. Si ya usabas la app en otro celular,
+          escribe el mismo nombre y se recupera todo.
         </p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            disabled={ocupado}
-            onClick={() => void elegir("liz")}
-            className="rounded-2xl bg-gradient-to-r from-pink-400 to-rose-500 py-3 font-extrabold shadow-lg transition hover:brightness-110 active:scale-95 disabled:opacity-60"
-          >
-            Liz
-          </button>
-          <button
-            type="button"
-            disabled={ocupado}
-            onClick={() => void elegir("david")}
-            className="rounded-2xl bg-gradient-to-r from-sky-400 to-indigo-500 py-3 font-extrabold shadow-lg transition hover:brightness-110 active:scale-95 disabled:opacity-60"
-          >
-            David
-          </button>
-        </div>
-      </div>
+        <input
+          type="text"
+          value={nombre}
+          onChange={(e) => {
+            setNombre(e.target.value);
+            if (error) setError(null);
+          }}
+          maxLength={NOMBRE_MAX}
+          autoComplete="given-name"
+          autoCapitalize="words"
+          enterKeyHint="go"
+          placeholder="Tu nombre"
+          aria-label="Tu nombre"
+          aria-invalid={!!error}
+          disabled={ocupado}
+          className="mt-4 w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-center text-base font-bold text-white outline-none placeholder:font-semibold placeholder:text-white/40 focus:border-pink-300"
+        />
+        {error && <p className="mt-2 text-xs font-semibold text-rose-300">{error}</p>}
+        <button
+          type="submit"
+          disabled={ocupado || !nombre.trim()}
+          className="mt-3 w-full rounded-2xl bg-gradient-to-r from-pink-400 to-indigo-500 py-3 font-extrabold shadow-lg transition hover:brightness-110 active:scale-95 disabled:opacity-60"
+        >
+          {ocupado ? "Un momento…" : "Entrar"}
+        </button>
+      </form>
     </div>
   );
 }

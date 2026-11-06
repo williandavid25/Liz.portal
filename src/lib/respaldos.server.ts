@@ -1,10 +1,11 @@
 import { db } from "./cloud.server";
 
 // Respaldo en la nube de lo que cada celular guarda solo en el teléfono
-// (Snoopy y Snoopy Learn), uno por persona. Si se reinstala la app o se borran
+// (Snoopy y Snoopy Learn), uno por persona registrada. Si se reinstala la app o se borran
 // los datos del navegador, se recupera desde aquí.
 
-export type Dueno = "liz" | "david";
+/** Nombre normalizado de la persona (ver src/lib/usuario.ts). */
+export type Dueno = string;
 export type DatosRespaldo = Record<string, string>;
 
 let tablaLista = false;

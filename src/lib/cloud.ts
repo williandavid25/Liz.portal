@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Dia } from "./learn/tipos";
 import type { FilaRanking } from "./learn/ranking";
 import { IDS_COLOR } from "./colores-nota";
+import { LLAVE_REGEX, NOMBRE_MAX, NOMBRE_MIN } from "./usuario";
 import {
   GROSOR_MAX,
   GROSOR_MIN,
@@ -315,14 +316,16 @@ export const savePushSubscription = createServerFn({ method: "POST" })
 
 /* ---------------- Respaldo de cada celular (Snoopy y Learn) ---------------- */
 
-const duenoSchema = z.enum(["liz", "david"]);
+// Llave de la persona: su nombre normalizado (ver src/lib/usuario.ts). Los
+// registrados de antes como "liz" y "david" siguen valiendo igual.
+const duenoSchema = z.string().min(NOMBRE_MIN).max(NOMBRE_MAX).regex(LLAVE_REGEX);
 const datosRespaldoSchema = z
   .record(z.string().max(60), z.string().max(300_000))
   .refine((d) => Object.keys(d).length <= 10, "Demasiadas claves");
 
 /** Lee el respaldo de una persona (null si todavía no hay). */
 export const leerRespaldoFn = createServerFn({ method: "GET" })
-  .validator((dueno: "liz" | "david") => duenoSchema.parse(dueno))
+  .validator((dueno: string) => duenoSchema.parse(dueno))
   .handler(async ({ data }) => {
     try {
       const { leerRespaldo } = await import("./respaldos.server");
@@ -335,15 +338,14 @@ export const leerRespaldoFn = createServerFn({ method: "GET" })
   });
 
 export const guardarRespaldoFn = createServerFn({ method: "POST" })
-  .validator(
-    (input: { dueno: "liz" | "david"; datos: Record<string, string>; actualizado: number }) =>
-      z
-        .object({
-          dueno: duenoSchema,
-          datos: datosRespaldoSchema,
-          actualizado: z.number().int().min(0),
-        })
-        .parse(input),
+  .validator((input: { dueno: string; datos: Record<string, string>; actualizado: number }) =>
+    z
+      .object({
+        dueno: duenoSchema,
+        datos: datosRespaldoSchema,
+        actualizado: z.number().int().min(0),
+      })
+      .parse(input),
   )
   .handler(async ({ data }) => {
     try {
